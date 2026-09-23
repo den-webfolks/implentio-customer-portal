@@ -13,7 +13,7 @@ test('invoices index searches, filters, and links to memos', async ({ page }) =>
   await panel.getByRole('combobox').nth(2).selectOption('pending')
   await page.getByRole('button', { name: 'Apply filters' }).click()
   await expect(page.getByText('Showing 1 of 20 invoices')).toBeVisible()
-  await expect(page.getByText('Audit not complete')).toBeVisible()
+  await expect(page.getByText('Audit not complete', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Remove filter' }).click()
 
   await page.getByRole('button', { name: 'CM-2026-0630 →' }).first().click()
