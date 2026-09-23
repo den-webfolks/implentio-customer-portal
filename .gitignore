@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+*.local
+.env
+.env.*
+!.env.example
+.DS_Store
+.vercel/
+playwright-report/
+test-results/
+tests/vrt/**/*-actual.png
+tests/vrt/**/*-diff.png
