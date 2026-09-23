@@ -60,6 +60,8 @@ export interface AppDataSource {
   recordGroupOutcome(input: { groupId: string; collection: Collection }): Promise<void>
   /** Return an excluded group to the eligible pool. */
   includeGroupInAnotherRequest(groupId: string): Promise<void>
+  /** Update the dispute draft (excluded groups + draft-start date). */
+  setDisputeDraft(input: { excludedIds: string[]; draftDate: string | null }): Promise<void>
   addActivity(entry: ActivityEntry): Promise<void>
 
   // ---- account mutations ----

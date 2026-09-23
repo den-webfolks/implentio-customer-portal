@@ -159,6 +159,12 @@ export class FixtureDataSource implements AppDataSource {
     return Promise.resolve()
   }
 
+  setDisputeDraft(input: { excludedIds: string[]; draftDate: string | null }): Promise<void> {
+    this.store.disputeExcludedIds = [...input.excludedIds]
+    this.store.disputeDraftDate = input.draftDate
+    return Promise.resolve()
+  }
+
   addActivity(entry: ActivityEntry): Promise<void> {
     this.store.activity = [entry, ...this.store.activity]
     return Promise.resolve()
