@@ -1,0 +1,32 @@
+.underlineRow {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1.5px solid var(--imp-gray-300);
+}
+
+.underlineTab {
+  background: none;
+  border: none;
+  border-bottom: 2.5px solid transparent;
+  color: var(--imp-fg-muted);
+  font: 600 14px var(--imp-font-body);
+  padding: 10px 4px;
+  cursor: pointer;
+  margin-bottom: -1.5px;
+}
+
+.underlineTab:hover {
+  color: var(--imp-ink);
+}
+
+.underlineTab:focus-visible {
+  outline: 2px solid var(--imp-purple-300);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.underlineTabOn {
+  composes: underlineTab;
+  border-bottom-color: var(--imp-purple-500);
+  color: var(--imp-ink);
+}

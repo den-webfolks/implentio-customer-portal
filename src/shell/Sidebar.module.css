@@ -1,0 +1,121 @@
+/* Sidebar structure — lifted from the prototype's inline styles
+   (template ~1047–1151). Shared classes (ia-aside, ia-rail-*, db-nav-*,
+   db-avatar, ia-tip*) come from proto.css. */
+
+.aside {
+  flex: none;
+  background: var(--imp-white);
+  border-right: 1.5px solid var(--imp-gray-300);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.asideExpanded {
+  composes: aside;
+  width: 240px;
+  padding: 16px 14px;
+}
+
+.asideCollapsed {
+  composes: aside;
+  width: 68px;
+  padding: 16px 8px;
+}
+
+.brandRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 16px;
+  border-bottom: 1.5px solid var(--imp-gray-300);
+}
+
+.brandRowCollapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 12px;
+  border-bottom: 1.5px solid var(--imp-gray-300);
+}
+
+.brandLink {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.railNav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 8px;
+}
+
+.railFooter {
+  margin-top: auto;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding-top: 12px;
+  border-top: 1.5px solid var(--imp-gray-300);
+}
+
+.railAvatarBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.navHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--imp-fg-muted);
+}
+
+.navDisabled {
+  cursor: default;
+  pointer-events: none;
+  color: var(--imp-gray-500);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profileMenu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 12px;
+  right: 12px;
+  background: #fff;
+  border: 2px solid var(--imp-ink);
+  border-radius: 12px;
+  box-shadow: var(--imp-shadow-md);
+  overflow: hidden;
+  z-index: 60;
+}
+
+.profileTrigger {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.profileChevron {
+  margin-left: auto;
+  flex: none;
+  color: var(--imp-fg-subtle);
+}

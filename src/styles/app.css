@@ -1,0 +1,17 @@
+/* Global base styles — mirrors the prototype's base element rules.
+   Tokens: tokens.css · Fonts: fonts.css · Component styles: CSS Modules. */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--imp-gray-100);
+  color: var(--imp-ink);
+  font-family: var(--imp-font-body);
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+}

@@ -1,0 +1,95 @@
+/**
+ * The data-source seam. Screens reach data only through feature hooks →
+ * data/queries.ts → this interface. Phase 1 binds FixtureDataSource
+ * (src/demo); Phase 3 adds SupabaseDataSource without touching call sites.
+ *
+ * All methods are async so the backend implementation can slot in.
+ * The interface grows milestone by milestone — add methods when a screen
+ * needs them, not speculatively.
+ */
+import type {
+  AccountSettings,
+  ActivityEntry,
+  BillerContact,
+  Collection,
+  CreditMemoSummary,
+  DownloadEvent,
+  EmailProvider,
+  MemoDetail,
+  OutcomeGroup,
+  TeamMember,
+} from '@/domain/types'
+
+/** Account-level download history (overlays memo report states). */
+export interface DownloadState {
+  downloadedMemoIds: string[]
+  memoDlEvents: Record<string, DownloadEvent>
+}
+
+/** An outcome row on the tracker's Credit Outcomes tab. */
+export type OutcomeRow = OutcomeGroup & { memoId: string; memoVersion: string }
+
+/** One row on the account-wide invoices index. */
+export interface InvoiceIndexRow {
+  id: string
+  inv: string
+  /** Invoice date, MM/DD/YYYY. */
+  period: string
+  reportPeriod: string | null
+  biller: string
+  carriers: string[]
+  carrierText: string
+  warehouse: string
+  /** Original (full) invoice total. */
+  amountN: number
+  /** Packages on the full invoice. */
+  packages: number | null
+  /** Eligible parcel amount reviewed. */
+  parcelN: number | null
+  status: 'variance' | 'clear' | 'pending' | 'historical'
+  memoId: string | null
+}
+
+/** Dispute-draft context for the golden memo's finding groups. */
+export interface DisputeContext {
+  /** Finding-group ids excluded from the current dispute draft. */
+  excludedIds: string[]
+  /** Display date the draft was started, or null when no draft exists. */
+  draftDate: string | null
+  /** Memo-level dispute (findings-unavailable path): 'awaiting' | 'completed'. */
+  memoDisputeStatus: 'awaiting' | 'completed' | null
+}
+
+export interface AppDataSource {
+  // ---- queries ----
+  listMemos(): Promise<CreditMemoSummary[]>
+  getMemoDetail(memoId: string): Promise<MemoDetail | null>
+  getDownloadState(): Promise<DownloadState>
+  getDisputeContext(): Promise<DisputeContext>
+  listOutcomeRows(): Promise<OutcomeRow[]>
+  listInvoiceIndex(): Promise<InvoiceIndexRow[]>
+  getAccount(): Promise<AccountSettings>
+  getActivity(): Promise<ActivityEntry[]>
+
+  // ---- mutations ----
+  recordMemoDownload(memoId: string): Promise<void>
+  /** Mark finding groups pursued (dispute sent). */
+  markGroupsPursued(input: {
+    groupIds: string[]
+    via: 'connected' | 'manual'
+  }): Promise<void>
+  /** Record or edit a collection outcome on a finding group. */
+  recordGroupOutcome(input: { groupId: string; collection: Collection }): Promise<void>
+  /** Return an excluded group to the eligible pool. */
+  includeGroupInAnotherRequest(groupId: string): Promise<void>
+  /** Update the dispute draft (excluded groups + draft-start date). */
+  setDisputeDraft(input: { excludedIds: string[]; draftDate: string | null }): Promise<void>
+  addActivity(entry: ActivityEntry): Promise<void>
+
+  // ---- account mutations ----
+  inviteMember(input: { name: string; email: string }): Promise<TeamMember>
+  updateMember(member: TeamMember): Promise<void>
+  revokeMember(memberId: string): Promise<void>
+  saveBillerContact(contact: BillerContact): Promise<void>
+  setEmailAccountStatus(provider: EmailProvider, status: 'connected' | 'not_connected' | 'expired'): Promise<void>
+}
