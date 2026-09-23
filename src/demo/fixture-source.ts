@@ -259,6 +259,12 @@ export class FixtureDataSource implements AppDataSource {
   }
 
   saveBillerContact(contact: BillerContact): Promise<void> {
+    // A biller has at most one default dispute contact at a time.
+    if (contact.dispute) {
+      this.store.account.billerContacts = this.store.account.billerContacts.map((c) =>
+        c.biller === contact.biller && c.id !== contact.id ? { ...c, dispute: false } : c,
+      )
+    }
     const existing = this.store.account.billerContacts.findIndex((c) => c.id === contact.id)
     if (existing >= 0) this.store.account.billerContacts[existing] = { ...contact }
     else this.store.account.billerContacts.push({ ...contact })
