@@ -100,6 +100,15 @@ function DisputeWizardInner({
     [],
   )
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const selGroups = eligibleGroups.filter((g) => !excludedIds.includes(g.id))
   const selAmount = selGroups.reduce((s, g) => s + g.varN, 0)
   const pkgSet = new Set<string>()

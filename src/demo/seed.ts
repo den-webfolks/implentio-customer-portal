@@ -10,6 +10,7 @@ import type {
   FindingGroup,
   MemoInvoice,
   ReportDispute,
+  ReportMonth,
   UnderGroup,
 } from '@/domain/types'
 import { parseCmData, parseCmPkg } from './fixtures/schema'
@@ -27,6 +28,7 @@ export interface SeedState {
   reportName: string
   preparedBy: string
   invoices: MemoInvoice[]
+  reportMonths: ReportMonth[]
   findingGroups: FindingGroup[]
   underGroups: UnderGroup[]
   findingsUnavailable: boolean
@@ -104,6 +106,7 @@ export function buildBaseSeed(): SeedState {
     reportName: cmData.memo.reportName,
     preparedBy: cmData.memo.preparedBy,
     invoices: cmData.invoices,
+    reportMonths: cmData.reportMonths,
     findingGroups,
     underGroups: cmData.underGroups,
     findingsUnavailable: false,

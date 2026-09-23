@@ -1,6 +1,6 @@
 /** "Update credit memo dispute" modal (template ~5865–6050): per-finding
  *  outcome dropdowns with amount/date/reason drafts, plus bulk apply. */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { CollectionStatus, FindingGroup, MemoDetail } from '@/domain/types'
 import { fmtMoney, r2 } from '@/domain/money'
 import { useRecordGroupOutcome } from './api'
@@ -103,6 +103,21 @@ export function OutcomeModal({ detail, onClose }: { detail: MemoDetail; onClose:
     })
     setOpenPanel(null)
   }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.stopPropagation()
+      setOpenDropdown((dd) => {
+        if (dd) return null
+        onClose()
+        return dd
+      })
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const applyBulk = () => {
     if (!bulkStatus) return

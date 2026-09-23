@@ -1,1 +1,1 @@
-{"root":["./vite.config.ts","./playwright.config.ts","./tools/decode-template.mts","./tools/extract-assets.mts","./tools/extract-fixtures.mts","./tools/screenshot.mts"],"version":"6.0.3"}
+{"root":["./vite.config.ts","./playwright.config.ts","./tools/capture-prototype-refs.mts","./tools/decode-template.mts","./tools/extract-assets.mts","./tools/extract-fixtures.mts","./tools/screenshot.mts"],"version":"6.0.3"}

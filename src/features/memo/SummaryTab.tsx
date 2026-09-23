@@ -19,6 +19,7 @@ import {
 } from './derive'
 import { FindingCard } from './FindingCard'
 import { DisputeWizard } from './DisputeWizard'
+import { ReportPreviewModal } from './ReportPreviewModal'
 import { OutcomeModal } from './OutcomeModal'
 
 const VARIANCE_TIP =
@@ -39,6 +40,7 @@ export function SummaryTab({
   const includeAgain = useIncludeInAnotherRequest()
   const [filters, setFilters] = useState<FindingFilters>(INITIAL_FINDING_FILTERS)
   const [methodOpen, setMethodOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
   const [wizardOpen, setWizardOpen] = useState(
     () => new URLSearchParams(window.location.search).get('prep') === '1',
   )
@@ -108,6 +110,7 @@ export function SummaryTab({
   ) => (
     <select
       className="ia-input"
+      aria-label={allLabel}
       value={filters[key]}
       style={{
         padding: '8px 10px',
@@ -484,6 +487,9 @@ export function SummaryTab({
             <button className="db-btn db-btn-secondary db-btn-sm" onClick={onDownloadExcel}>
               Download Credit Memo
             </button>
+            <button className="db-btn db-btn-primary db-btn-sm" onClick={() => setReportOpen(true)}>
+              Review Summary
+            </button>
           </div>
         </div>
       </div>
@@ -507,6 +513,9 @@ export function SummaryTab({
       )}
       {outcomesOpen && (
         <OutcomeModal detail={detail} onClose={() => setOutcomesOpen(false)} />
+      )}
+      {reportOpen && (
+        <ReportPreviewModal detail={detail} onClose={() => setReportOpen(false)} onDownload={onDownloadExcel} />
       )}
     </div>
   )

@@ -54,6 +54,7 @@ export class FixtureDataSource implements AppDataSource {
         reportName: this.store.reportName,
         preparedBy: this.store.preparedBy,
         invoices: this.store.invoices,
+        reportMonths: this.store.reportMonths,
         findingGroups: this.store.findingGroups,
         underGroups: this.store.underGroups,
         findingsUnavailable: this.store.findingsUnavailable,

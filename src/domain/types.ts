@@ -306,6 +306,25 @@ export interface UnderGroup {
   records: VarianceRecord[]
 }
 
+/** One invoice row on the monthly report rollup (report preview). */
+export interface ReportMonthRow {
+  inv: string
+  base: number
+  fuel: number
+  res: number
+  das: number
+  peak: number
+  invN: number
+  expN: number
+  varN: number
+}
+
+export interface ReportMonth {
+  name: string
+  rows: ReportMonthRow[]
+  totals: Omit<ReportMonthRow, 'inv'>
+}
+
 /** Full drill-down data for the golden memo. */
 export interface MemoDetail {
   memo: CreditMemoSummary
@@ -314,6 +333,7 @@ export interface MemoDetail {
   reportName: string
   preparedBy: string
   invoices: MemoInvoice[]
+  reportMonths: ReportMonth[]
   findingGroups: FindingGroup[]
   underGroups: UnderGroup[]
   /** True when detailed findings could not be published for this memo. */

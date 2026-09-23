@@ -3,7 +3,7 @@
  * focus return: the a11y the prototype's inline modals lacked), styled to
  * match the prototype's modal chrome exactly (template ~2300).
  */
-import { type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import styles from './Modal.module.css'
 
@@ -20,6 +20,14 @@ export interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, width = 420, children, footer }: ModalProps) {
+  // Controlled dialogs have no Radix Trigger, so remember the opener and
+  // return focus to it on close (prototype behavior; a11y baseline).
+  const openerRef = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    if (open && document.activeElement instanceof HTMLElement) {
+      openerRef.current = document.activeElement
+    }
+  }, [open])
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
       <Dialog.Portal>
@@ -28,6 +36,10 @@ export function Modal({ open, onClose, title, width = 420, children, footer }: M
           <Dialog.Content
             className={styles.content}
             style={{ width }}
+            onCloseAutoFocus={(e) => {
+              e.preventDefault()
+              openerRef.current?.focus()
+            }}
             onOpenAutoFocus={(e) => {
               // Match prototype behavior: focus stays on the dialog, not the
               // first input, so screen readers announce the title first.
