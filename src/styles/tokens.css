@@ -1,0 +1,184 @@
+/* ==========================================================================
+   Implentio — canonical design tokens
+   Ported verbatim from the Phase-1 prototype (source of truth there:
+   source/BRAND-GUIDELINES.pdf, Aug 2025). Font faces live in fonts.css.
+   The Figma design system (in progress) becomes authoritative in Phase 2.
+   ========================================================================== */
+
+:root {
+  /* ---------- Brand purple (primary, 100–500) ---------------------------- */
+  --imp-purple-100: #E3E1FA;
+  --imp-purple-200: #DAD8FF;
+  --imp-purple-300: #ABA6EF;
+  --imp-purple-400: #8174DF;
+  --imp-purple-500: #5642CE;   /* primary brand accent */
+
+  /* ---------- Brand orange (secondary, 100–500) ------------------------- */
+  --imp-orange-100: #FFCA98;
+  --imp-orange-200: #FFB16A;
+  --imp-orange-300: #FFA450;
+  --imp-orange-400: #FF8B4A;
+  --imp-orange-500: #F25E0A;   /* secondary brand accent */
+
+  /* ---------- Grayscale (cool/purple-tinted, 100–900) ------------------- */
+  --imp-gray-100: #F6F4FF;
+  --imp-gray-200: #ECEAFC;
+  --imp-gray-300: #D6D4E8;
+  --imp-gray-400: #CCCADE;
+  --imp-gray-500: #BBB8D3;
+  --imp-gray-600: #9B98BA;
+  --imp-gray-700: #625F8E;
+  --imp-gray-800: #3A3766;
+  --imp-gray-900: #100F41;     /* darkest neutral — used in shadows + ink */
+
+  /* Pure black/white available but rarely the right call. */
+  --imp-white: #FFFFFF;
+  --imp-ink:   #100F41;        /* alias for gray-900, the brand "ink" */
+  --imp-paper: #FBF5EB;        /* warm cream surface — the brand "paper" */
+
+  /* ---------- Semantic state colors (proposed; verify with brand) ------- */
+  --imp-success: #1F8A4C;      /* deep green — distinct from brand */
+  --imp-success-bg: #DDF1E3;
+  --imp-warning: #F2A20A;      /* amber — distinct from brand orange-500 */
+  --imp-warning-bg: #FFF1CF;
+  --imp-error:   #C8341A;      /* deep red, not pink */
+  --imp-error-bg: #FBDED7;
+  --imp-info:    var(--imp-purple-400);
+  --imp-info-bg: var(--imp-purple-100);
+
+  /* ---------- Money sentiment (Implentio is a money app) ---------------- */
+  --imp-positive: var(--imp-success);   /* recouped / saved $$ */
+  --imp-negative: var(--imp-error);     /* overcharge / variance */
+  --imp-pending:  var(--imp-orange-400);
+
+  /* ---------- Surfaces (LIGHT mode default) ----------------------------- */
+  --imp-bg:        var(--imp-white);
+  --imp-surface:   var(--imp-gray-100);
+  --imp-elevated:  var(--imp-white);
+  --imp-border:    var(--imp-gray-300);
+  --imp-border-strong: var(--imp-ink);          /* hero "stroke" border */
+
+  --imp-fg:         var(--imp-gray-900);        /* primary text */
+  --imp-fg-muted:   var(--imp-gray-700);        /* secondary text */
+  --imp-fg-subtle:  var(--imp-gray-600);        /* tertiary / captions */
+  --imp-fg-on-dark: var(--imp-white);
+  --imp-fg-on-purple: var(--imp-white);
+  --imp-fg-on-orange: var(--imp-ink);
+
+  /* ---------- Type families & weights ---------------------------------- */
+  --imp-font-display: "Sora", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --imp-font-body:    "Montserrat", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --imp-font-mono:    ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+
+  --imp-display-weight: 600;     /* Sora SemiBold */
+  --imp-body-weight:    500;     /* Montserrat Medium */
+  --imp-body-weight-strong: 700; /* Montserrat Bold for emphasis */
+
+  /* ---------- Type scale (1.25 modular, 16px base) --------------------- */
+  --imp-text-xs:    12px;        /* metadata, micro labels */
+  --imp-text-sm:    14px;        /* secondary copy, table cells */
+  --imp-text-base:  16px;        /* body */
+  --imp-text-md:    18px;        /* lead */
+  --imp-text-lg:    20px;
+  --imp-text-xl:    24px;
+  --imp-text-2xl:   30px;        /* h3 */
+  --imp-text-3xl:   38px;        /* h2 */
+  --imp-text-4xl:   48px;        /* h1 */
+  --imp-text-5xl:   64px;        /* hero */
+  --imp-text-6xl:   80px;        /* marketing hero */
+
+  /* ---------- Line heights -------------------------------------------- */
+  --imp-leading-display: 1.05;
+  --imp-leading-headline: 1.15;
+  --imp-leading-body:   1.55;
+  --imp-leading-tight:  1.3;
+
+  /* ---------- Letter spacing ------------------------------------------ */
+  --imp-tracking-display: -0.02em;
+  --imp-tracking-headline: -0.01em;
+  --imp-tracking-body:    0em;
+  --imp-tracking-eyebrow: 0.08em;     /* uppercase eyebrows */
+
+  /* ---------- Body max width ------------------------------------------ */
+  --imp-prose-max: 68ch;
+
+  /* ---------- Spacing (8pt baseline + 4px half-step) ------------------ */
+  --imp-space-0:  0;
+  --imp-space-1:  4px;
+  --imp-space-2:  8px;
+  --imp-space-3:  12px;
+  --imp-space-4:  16px;
+  --imp-space-5:  24px;
+  --imp-space-6:  32px;
+  --imp-space-7:  48px;
+  --imp-space-8:  64px;
+  --imp-space-9:  96px;
+  --imp-space-10: 128px;
+
+  /* ---------- Radii --------------------------------------------------- */
+  --imp-radius-sm:   4px;
+  --imp-radius-md:   8px;
+  --imp-radius-lg:   16px;
+  --imp-radius-xl:   24px;
+  --imp-radius-pill: 999px;
+
+  /* ---------- Strokes (the brand uses BOLD strokes, not 1px hairlines) - */
+  --imp-stroke-thin:   1px;
+  --imp-stroke:        2px;     /* default border width */
+  --imp-stroke-bold:   3px;     /* hero / emphasis */
+
+  /* ---------- Bold dark offset shadows (NOT soft blur) ---------------- */
+  --imp-shadow-xs:  2px 2px 0 var(--imp-ink);
+  --imp-shadow-sm:  3px 3px 0 var(--imp-ink);
+  --imp-shadow-md:  5px 5px 0 var(--imp-ink);
+  --imp-shadow-lg:  8px 8px 0 var(--imp-ink);
+  --imp-shadow-xl: 12px 12px 0 var(--imp-ink);
+
+  /* Soft shadows are reserved for product UI surfaces where the
+     hard offset would feel too marketing-y (e.g. dropdowns over data). */
+  --imp-shadow-soft-sm: 0 1px 2px rgba(16, 15, 65, 0.08), 0 1px 1px rgba(16, 15, 65, 0.04);
+  --imp-shadow-soft-md: 0 6px 16px rgba(16, 15, 65, 0.10), 0 2px 4px rgba(16, 15, 65, 0.06);
+  --imp-shadow-soft-lg: 0 16px 40px rgba(16, 15, 65, 0.16), 0 4px 8px rgba(16, 15, 65, 0.08);
+
+  /* ---------- Motion -------------------------------------------------- */
+  --imp-ease-out:  cubic-bezier(0.22, 1, 0.36, 1);
+  --imp-ease-in:   cubic-bezier(0.55, 0, 1, 0.45);
+  --imp-ease-snap: cubic-bezier(0.34, 1.56, 0.64, 1); /* slight overshoot */
+  --imp-dur-fast:   120ms;
+  --imp-dur-base:   200ms;
+  --imp-dur-slow:   320ms;
+
+  /* ---------- Z-layers ------------------------------------------------ */
+  --imp-z-base: 0;
+  --imp-z-sticky: 100;
+  --imp-z-overlay: 800;
+  --imp-z-modal: 900;
+  --imp-z-toast: 1000;
+}
+
+/* ============================================================================
+   Semantic element styles — opt in by adding class="imp-prose" to a wrapper,
+   or by using these classes directly. Kept as classes (not raw tag selectors)
+   so the system doesn't fight host stylesheets.
+   ============================================================================ */
+
+.imp-prose {
+  font-family: var(--imp-font-body);
+  font-weight: var(--imp-body-weight);
+  font-size: var(--imp-text-base);
+  line-height: var(--imp-leading-body);
+  color: var(--imp-fg);
+  letter-spacing: var(--imp-tracking-body);
+}
+
+.imp-display { font-family: var(--imp-font-display); font-weight: var(--imp-display-weight); letter-spacing: var(--imp-tracking-display); line-height: var(--imp-leading-display); color: var(--imp-ink); }
+.imp-h1      { font: var(--imp-display-weight) var(--imp-text-4xl) / var(--imp-leading-headline) var(--imp-font-display); letter-spacing: var(--imp-tracking-headline); color: var(--imp-ink); }
+.imp-h2      { font: var(--imp-display-weight) var(--imp-text-3xl) / var(--imp-leading-headline) var(--imp-font-display); letter-spacing: var(--imp-tracking-headline); color: var(--imp-ink); }
+.imp-h3      { font: var(--imp-display-weight) var(--imp-text-2xl) / var(--imp-leading-headline) var(--imp-font-display); letter-spacing: var(--imp-tracking-headline); color: var(--imp-ink); }
+.imp-h4      { font: var(--imp-display-weight) var(--imp-text-xl)  / var(--imp-leading-headline) var(--imp-font-display); color: var(--imp-ink); }
+.imp-lead    { font: var(--imp-body-weight)    var(--imp-text-md)  / var(--imp-leading-body) var(--imp-font-body); color: var(--imp-fg-muted); }
+.imp-body    { font: var(--imp-body-weight)    var(--imp-text-base)/ var(--imp-leading-body) var(--imp-font-body); color: var(--imp-fg); }
+.imp-small   { font: var(--imp-body-weight)    var(--imp-text-sm)  / var(--imp-leading-body) var(--imp-font-body); color: var(--imp-fg-muted); }
+.imp-eyebrow { font: 700 var(--imp-text-xs) / 1.2 var(--imp-font-body); text-transform: uppercase; letter-spacing: var(--imp-tracking-eyebrow); color: var(--imp-purple-500); }
+.imp-num     { font: var(--imp-display-weight) var(--imp-text-3xl) / 1 var(--imp-font-display); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; color: var(--imp-ink); }
+.imp-mono    { font-family: var(--imp-font-mono); font-feature-settings: "tnum"; }
