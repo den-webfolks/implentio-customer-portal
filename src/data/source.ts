@@ -29,11 +29,22 @@ export interface DownloadState {
 /** An outcome row on the tracker's Credit Outcomes tab. */
 export type OutcomeRow = OutcomeGroup & { memoId: string; memoVersion: string }
 
+/** Dispute-draft context for the golden memo's finding groups. */
+export interface DisputeContext {
+  /** Finding-group ids excluded from the current dispute draft. */
+  excludedIds: string[]
+  /** Display date the draft was started, or null when no draft exists. */
+  draftDate: string | null
+  /** Memo-level dispute (findings-unavailable path): 'awaiting' | 'completed'. */
+  memoDisputeStatus: 'awaiting' | 'completed' | null
+}
+
 export interface AppDataSource {
   // ---- queries ----
   listMemos(): Promise<CreditMemoSummary[]>
   getMemoDetail(memoId: string): Promise<MemoDetail | null>
   getDownloadState(): Promise<DownloadState>
+  getDisputeContext(): Promise<DisputeContext>
   listOutcomeRows(): Promise<OutcomeRow[]>
   getAccount(): Promise<AccountSettings>
   getActivity(): Promise<ActivityEntry[]>

@@ -3,7 +3,7 @@
  * per scenario. Mutations change the store (and resolve async like a real
  * backend would); nothing persists across reloads — matching the prototype.
  */
-import type { AppDataSource, DownloadState, OutcomeRow } from '@/data/source'
+import type { AppDataSource, DisputeContext, DownloadState, OutcomeRow } from '@/data/source'
 import type {
   AccountSettings,
   ActivityEntry,
@@ -62,6 +62,14 @@ export class FixtureDataSource implements AppDataSource {
         memoDlEvents: this.store.memoDlEvents,
       }),
     )
+  }
+
+  getDisputeContext(): Promise<DisputeContext> {
+    return Promise.resolve({
+      excludedIds: [...this.store.disputeExcludedIds],
+      draftDate: this.store.disputeDraftDate,
+      memoDisputeStatus: null,
+    })
   }
 
   listOutcomeRows(): Promise<OutcomeRow[]> {

@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router'
 import { AppLayout } from './shell/AppLayout'
 import { PlaceholderPage } from './shell/PlaceholderPage'
 import { TokensPage } from './dev/TokensPage'
+import { TrackerPage } from './features/tracker/TrackerPage'
 
 // Route scheme (see ARCHITECTURE.md): paths carry navigation, major tabs and
 // selected entities; query params carry contextual selections and dev state.
@@ -11,8 +12,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <Navigate to="/tracker/memos" replace /> },
       { path: '/tracker', element: <Navigate to="/tracker/memos" replace /> },
-      { path: '/tracker/memos', element: <PlaceholderPage title="Parcel Credit Tracker — Credit Memos" /> },
-      { path: '/tracker/outcomes', element: <PlaceholderPage title="Parcel Credit Tracker — Credit Outcomes" /> },
+      { path: '/tracker/:tab', element: <TrackerPage /> },
       { path: '/memos/:memoId', element: <PlaceholderPage title="Credit Memo — Summary & Findings" /> },
       { path: '/memos/:memoId/invoices', element: <PlaceholderPage title="Credit Memo — Invoices" /> },
       { path: '/memos/:memoId/activity', element: <PlaceholderPage title="Credit Memo — Activity & exports" /> },
