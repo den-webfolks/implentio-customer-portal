@@ -37,7 +37,7 @@ const METRIC_DEFS: { key: SliceFilter; label: string; color: string }[] = [
   { key: 'denied', label: 'Denied by Biller', color: '#B8756D' },
 ]
 
-function outcomePillStyle(tone: 'success' | 'warn' | 'muted' | 'eligible'): React.CSSProperties {
+export function outcomePillStyle(tone: 'success' | 'warn' | 'muted' | 'eligible'): React.CSSProperties {
   switch (tone) {
     case 'success':
       return { background: 'var(--imp-success-bg)', color: 'var(--imp-success)', borderColor: 'var(--imp-success)' }

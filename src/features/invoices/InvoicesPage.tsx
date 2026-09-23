@@ -11,7 +11,7 @@ import styles from '../tracker/OutcomesTab.module.css'
 const EXCEEDS_TIP =
   'The parcel amount reviewed may exceed the original invoice total when an invoice includes credits or negative adjustments. These reduce the invoice total but are excluded from the parcel review.'
 
-const STATUS_PILL: Record<InvoiceIndexRow['status'], { label: string; style: React.CSSProperties }> = {
+export const STATUS_PILL: Record<InvoiceIndexRow['status'], { label: string; style: React.CSSProperties }> = {
   variance: {
     label: 'Variance identified',
     style: { background: '#FFE9D6', color: 'var(--imp-orange-500)', borderColor: 'var(--imp-orange-300)', textTransform: 'none', letterSpacing: 0, fontWeight: 600 },

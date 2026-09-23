@@ -12,3 +12,4 @@ test-results/
 tests/vrt/**/*-actual.png
 tests/vrt/**/*-diff.png
 .local/
+*.tsbuildinfo

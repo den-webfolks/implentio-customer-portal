@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router'
 import { AppLayout } from './shell/AppLayout'
 import { PlaceholderPage } from './shell/PlaceholderPage'
 import { TokensPage } from './dev/TokensPage'
+import { ComponentGallery } from './dev/ComponentGallery'
 import { TrackerPage } from './features/tracker/TrackerPage'
 import { MemoPage } from './features/memo/MemoPage'
 import { InvoicesPage } from './features/invoices/InvoicesPage'
@@ -23,7 +24,12 @@ export const router = createBrowserRouter([
       { path: '/account', element: <AccountPage /> },
       { path: '/account/:tab', element: <Navigate to="/account" replace /> },
       { path: '/bi', element: <PlaceholderPage title="Logistics Cost Performance" /> },
-      ...(import.meta.env.DEV ? [{ path: '/dev/tokens', element: <TokensPage /> }] : []),
+      ...(import.meta.env.DEV
+        ? [
+            { path: '/dev/tokens', element: <TokensPage /> },
+            { path: '/dev/components', element: <ComponentGallery /> },
+          ]
+        : []),
       { path: '*', element: <PlaceholderPage title="Not found" /> },
     ],
   },

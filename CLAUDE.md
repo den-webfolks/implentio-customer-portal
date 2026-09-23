@@ -20,6 +20,9 @@ decisions, PRODUCT.md for the mined requirements, ROADMAP.md for phases.
   screenshots in `tests/reference-prototype/`
 - `node tools/screenshot.mts <url> <out.png> [w] [h]` — ad-hoc screenshot for
   side-by-side parity review
+- `/dev/components` (component gallery) and `/dev/tokens` — dev-server-only
+  reference pages (`src/dev/`); not routed in production builds. Add a
+  section to `ComponentGallery.tsx` when you add a shared primitive.
 
 ## Hard rules
 
