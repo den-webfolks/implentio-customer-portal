@@ -28,8 +28,17 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['@/demo/*', '**/demo/*'],
-              message: 'Import app data via feature hooks (features/*/api.ts) → data/queries.ts, never from demo/ directly.',
+              group: [
+                '@/demo/fixtures/*',
+                '**/demo/fixtures/*',
+                '@/demo/fixture-source',
+                '**/demo/fixture-source',
+                '@/demo/seed',
+                '**/demo/seed',
+                '@/demo/scenarios',
+                '**/demo/scenarios',
+              ],
+              message: 'Import app data via feature hooks (features/*/api.ts) → data/queries.ts, never from demo fixtures directly.',
             },
           ],
         },
