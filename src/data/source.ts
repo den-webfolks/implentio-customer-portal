@@ -29,6 +29,27 @@ export interface DownloadState {
 /** An outcome row on the tracker's Credit Outcomes tab. */
 export type OutcomeRow = OutcomeGroup & { memoId: string; memoVersion: string }
 
+/** One row on the account-wide invoices index. */
+export interface InvoiceIndexRow {
+  id: string
+  inv: string
+  /** Invoice date, MM/DD/YYYY. */
+  period: string
+  reportPeriod: string | null
+  biller: string
+  carriers: string[]
+  carrierText: string
+  warehouse: string
+  /** Original (full) invoice total. */
+  amountN: number
+  /** Packages on the full invoice. */
+  packages: number | null
+  /** Eligible parcel amount reviewed. */
+  parcelN: number | null
+  status: 'variance' | 'clear' | 'pending' | 'historical'
+  memoId: string | null
+}
+
 /** Dispute-draft context for the golden memo's finding groups. */
 export interface DisputeContext {
   /** Finding-group ids excluded from the current dispute draft. */
@@ -46,6 +67,7 @@ export interface AppDataSource {
   getDownloadState(): Promise<DownloadState>
   getDisputeContext(): Promise<DisputeContext>
   listOutcomeRows(): Promise<OutcomeRow[]>
+  listInvoiceIndex(): Promise<InvoiceIndexRow[]>
   getAccount(): Promise<AccountSettings>
   getActivity(): Promise<ActivityEntry[]>
 

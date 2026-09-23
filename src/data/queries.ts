@@ -38,6 +38,11 @@ export function useOutcomeRows() {
   return useQuery({ queryKey: queryKeys.outcomeRows, queryFn: () => ds.listOutcomeRows() })
 }
 
+export function useInvoiceIndex() {
+  const ds = useDataSource()
+  return useQuery({ queryKey: ['invoiceIndex'], queryFn: () => ds.listInvoiceIndex() })
+}
+
 export function useAccount() {
   const ds = useDataSource()
   return useQuery({ queryKey: queryKeys.account, queryFn: () => ds.getAccount() })

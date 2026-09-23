@@ -3,7 +3,14 @@
  * per scenario. Mutations change the store (and resolve async like a real
  * backend would); nothing persists across reloads — matching the prototype.
  */
-import type { AppDataSource, DisputeContext, DownloadState, OutcomeRow } from '@/data/source'
+import type {
+  AppDataSource,
+  DisputeContext,
+  DownloadState,
+  InvoiceIndexRow,
+  OutcomeRow,
+} from '@/data/source'
+import { classifyInvoice } from '@/domain/memo'
 import type {
   AccountSettings,
   ActivityEntry,
@@ -80,6 +87,62 @@ export class FixtureDataSource implements AppDataSource {
       }
     }
     return Promise.resolve(structuredClone(rows))
+  }
+
+  listInvoiceIndex(): Promise<InvoiceIndexRow[]> {
+    // Ports invoiceIndexData (template ~8121–8147): full-invoice totals are
+    // fabricated from a hash of the invoice number (intentional demo data,
+    // prototype note 96), plus four hand-written placeholder rows.
+    const hash = (s: string, seed: number) => {
+      let h = seed
+      for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
+      return h
+    }
+    const monthNum: Record<string, number> = {
+      January: 1, February: 2, March: 3, April: 4, May: 5, June: 6,
+      July: 7, August: 8, September: 9, October: 10, November: 11, December: 12,
+    }
+    const monthDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    const fullDate = (monthLabel: string, inv: string) => {
+      const m = monthLabel.match(/^([A-Za-z]+)\s+(\d{4})$/)
+      if (!m || !m[1] || !m[2]) return monthLabel
+      const mm = monthNum[m[1]] ?? 0
+      const day = 1 + (hash(inv, 11) % (monthDays[mm - 1] ?? 28))
+      return `${String(mm).padStart(2, '0')}/${String(day).padStart(2, '0')}/${m[2]}`
+    }
+    const golden = this.store.memos.find((m) => m.detailAvailable)
+    const rows: InvoiceIndexRow[] = this.store.invoices.map((r) => {
+      const hasVar = classifyInvoice(r).varN > 0
+      const h = hash(r.inv, 7)
+      return {
+        id: r.id,
+        inv: r.inv,
+        period: fullDate(r.monthLabel, r.inv),
+        reportPeriod: hasVar ? (golden?.period ?? null) : null,
+        biller: golden?.provider ?? 'QuickBox',
+        carriers: r.carriers,
+        carrierText: r.carriers.join(', '),
+        warehouse: r.warehouse,
+        amountN: Math.round(r.invN * (1.9 + (h % 130) / 100) * 100) / 100,
+        packages: Math.max(r.orderCount + 4, Math.round(r.orderCount * (1.7 + (h % 80) / 100))),
+        parcelN: r.invN,
+        status: hasVar ? 'variance' : 'clear',
+        memoId: hasVar ? (golden?.id ?? null) : null,
+      }
+    })
+    const ex = rows.find((r) => r.inv === 'QS3098017')
+    if (ex) {
+      ex.amountN = 2220.3
+      ex.parcelN = 220.3
+      ex.packages = 17
+    }
+    rows.push(
+      { id: 'iv-c1', inv: 'QB3098215', period: '05/14/2026', reportPeriod: null, biller: 'QuickBox', carriers: ['UPS'], carrierText: 'UPS', warehouse: 'Denver', amountN: 8420.17, packages: 186, parcelN: 1180.42, status: 'clear', memoId: 'CM-2026-0517' },
+      { id: 'iv-c2', inv: 'QS3098744', period: '06/09/2026', reportPeriod: null, biller: 'QuickBox', carriers: ['OSM'], carrierText: 'OSM', warehouse: 'New Jersey', amountN: 2964.08, packages: 74, parcelN: 640.75, status: 'clear', memoId: 'CM-2026-0517' },
+      { id: 'iv-p1', inv: 'QB3099102', period: '07/03/2026', reportPeriod: null, biller: 'QuickBox', carriers: ['UPS', 'OSM'], carrierText: 'UPS, OSM', warehouse: 'Denver', amountN: 12108.55, packages: 240, parcelN: null, status: 'pending', memoId: null },
+      { id: 'iv-p2', inv: 'QB3099140', period: '07/17/2026', reportPeriod: null, biller: 'QuickBox', carriers: ['DHL'], carrierText: 'DHL', warehouse: 'New Jersey', amountN: 3874.2, packages: 61, parcelN: null, status: 'historical', memoId: null },
+    )
+    return Promise.resolve(rows)
   }
 
   getAccount(): Promise<AccountSettings> {
