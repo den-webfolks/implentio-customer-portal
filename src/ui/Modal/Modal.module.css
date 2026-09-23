@@ -1,0 +1,75 @@
+/* Prototype modal chrome (template ~2300–2326). */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 940;
+  background: rgba(16, 15, 65, 0.5);
+}
+
+.positioner {
+  position: fixed;
+  inset: 0;
+  z-index: 941;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  pointer-events: none;
+}
+
+.content {
+  pointer-events: auto;
+  position: relative;
+  max-width: 100%;
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  background: #fff;
+  border: 2px solid var(--imp-ink);
+  border-radius: 16px;
+  box-shadow: var(--imp-shadow-lg);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.content:focus {
+  outline: none;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.title {
+  font: 600 17px var(--imp-font-display);
+  color: var(--imp-ink);
+  margin: 0;
+}
+
+.close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--imp-fg-muted);
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px;
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--imp-purple-300);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}

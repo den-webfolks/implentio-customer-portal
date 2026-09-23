@@ -3,6 +3,7 @@ import { RouterProvider } from 'react-router/dom'
 import { useState } from 'react'
 import { router } from './router'
 import { DataSourceProvider } from './data/DataSourceProvider'
+import { ToastProvider } from './ui/Toast/ToastProvider'
 
 export default function App() {
   const [queryClient] = useState(() => new QueryClient())
@@ -12,7 +13,9 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <DataSourceProvider scenarioId={scenarioId}>
-        <RouterProvider router={router} />
+        <ToastProvider>
+          <RouterProvider router={router} />
+        </ToastProvider>
       </DataSourceProvider>
     </QueryClientProvider>
   )
