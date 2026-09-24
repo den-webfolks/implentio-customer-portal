@@ -1,27 +1,37 @@
 /**
- * Modal dialog — Radix Dialog underneath (focus trap, aria wiring, Escape,
- * focus return: the a11y the prototype's inline modals lacked), styled to
- * match the prototype's modal chrome exactly (template ~2300).
+ * Figma ❖ Popup on Radix Dialog (focus trap, aria wiring, Escape, focus
+ * return). Figma guidance: at most 2 stacked modals; content scrolls when it
+ * exceeds the size's max height.
  */
 import { useEffect, useRef, type ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { XMarkIcon } from '@heroicons/react/24/outline'
+import { IconButton } from '../Button/Button'
 import styles from './Modal.module.css'
+
+export type ModalSize = 'medium' | 'large'
 
 export interface ModalProps {
   open: boolean
   onClose: () => void
   /** Accessible title, rendered in the header row. */
   title: ReactNode
-  /** Dialog width in px (prototype modals range 420–1080). */
+  description?: ReactNode
+  size?: ModalSize
+  /** Narrower fixed width (px) for small confirm-style dialogs. */
   width?: number
   children: ReactNode
-  /** Optional footer row (action buttons), right-aligned like the prototype. */
+  /** Primary actions, right-aligned (Figma button-group end). */
   footer?: ReactNode
+  /** Secondary actions pinned left (Figma: Cancel / Back). */
+  footerStart?: ReactNode
+  /** Escape / overlay / close button are ignored while true. */
+  dismissDisabled?: boolean
 }
 
-export function Modal({ open, onClose, title, width = 420, children, footer }: ModalProps) {
+export function Modal({ open, onClose, title, description, size = 'medium', width, children, footer, footerStart, dismissDisabled = false }: ModalProps) {
   // Controlled dialogs have no Radix Trigger, so remember the opener and
-  // return focus to it on close (prototype behavior; a11y baseline).
+  // return focus to it on close.
   const openerRef = useRef<HTMLElement | null>(null)
   useEffect(() => {
     if (open && document.activeElement instanceof HTMLElement) {
@@ -29,34 +39,40 @@ export function Modal({ open, onClose, title, width = 420, children, footer }: M
     }
   }, [open])
   return (
-    <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog.Root open={open} onOpenChange={(o) => !o && !dismissDisabled && onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className={styles.overlay} />
         <div className={styles.positioner}>
           <Dialog.Content
-            className={styles.content}
-            style={{ width }}
+            className={[styles.content, size === 'large' ? styles.large : ''].filter(Boolean).join(' ')}
+            style={width ? { maxWidth: `min(${width}px, 100%)` } : undefined}
+            {...(description ? {} : { 'aria-describedby': undefined })}
             onCloseAutoFocus={(e) => {
               e.preventDefault()
               openerRef.current?.focus()
             }}
             onOpenAutoFocus={(e) => {
-              // Match prototype behavior: focus stays on the dialog, not the
-              // first input, so screen readers announce the title first.
+              // Focus the dialog itself so screen readers announce the title first.
               e.preventDefault()
-              ;(e.currentTarget as HTMLElement | null)?.focus?.()
+              if (e.currentTarget instanceof HTMLElement) e.currentTarget.focus()
             }}
           >
             <div className={styles.head}>
-              <Dialog.Title className={styles.title}>{title}</Dialog.Title>
+              <div>
+                <Dialog.Title className={styles.title}>{title}</Dialog.Title>
+                {description && <Dialog.Description className={styles.description}>{description}</Dialog.Description>}
+              </div>
               <Dialog.Close asChild>
-                <button type="button" aria-label="Close" className={styles.close}>
-                  ×
-                </button>
+                <IconButton className={styles.close} ghost aria-label="Close" icon={<XMarkIcon aria-hidden="true" />} disabled={dismissDisabled} />
               </Dialog.Close>
             </div>
-            {children}
-            {footer && <div className={styles.footer}>{footer}</div>}
+            <div className={styles.body}>{children}</div>
+            {(footer || footerStart) && (
+              <div className={styles.footer}>
+                {footerStart}
+                <div className={styles.footerEnd}>{footer}</div>
+              </div>
+            )}
           </Dialog.Content>
         </div>
       </Dialog.Portal>

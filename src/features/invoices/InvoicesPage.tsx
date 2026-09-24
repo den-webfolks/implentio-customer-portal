@@ -1,33 +1,27 @@
 /** Account-wide Invoices index (template ~1627–1737). */
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { useInvoiceIndex } from '@/data/queries'
 import type { InvoiceIndexRow } from '@/data/source'
 import { fmtMoney } from '@/domain/money'
-import { InfoTip } from '@/ui/InfoTip'
-import { FilterChips, FilterPanel, type FilterFieldDef, type FilterValues } from '@/ui/FilterPanel/FilterPanel'
-import styles from '../tracker/OutcomesTab.module.css'
+import { InfoTip } from '@/ui/Tooltip/Tooltip'
+import { StatusChip, type StatusTone } from '@/ui/Chip/StatusChip'
+import { ActionTab, ActionTabs } from '@/ui/Tabs/Tabs'
+import { TextField } from '@/ui/Form/TextField'
+import { Link } from '@/ui/Link/Link'
+import { EmptyState } from '@/ui/Display/Display'
+import { Table, SortableHeader, nextSort, type SortDirection } from '@/ui/Table/Table'
+import { useFilters, FilterButton, FilterGroup, matchesFilter, type FilterField, type FilterValues } from '@/ui/Filters/Filters'
 
 const EXCEEDS_TIP =
   'The parcel amount reviewed may exceed the original invoice total when an invoice includes credits or negative adjustments. These reduce the invoice total but are excluded from the parcel review.'
 
-export const STATUS_PILL: Record<InvoiceIndexRow['status'], { label: string; style: React.CSSProperties }> = {
-  variance: {
-    label: 'Variance identified',
-    style: { background: '#FFE9D6', color: 'var(--imp-orange-500)', borderColor: 'var(--imp-orange-300)', textTransform: 'none', letterSpacing: 0, fontWeight: 600 },
-  },
-  clear: {
-    label: 'No significant variance',
-    style: { background: 'var(--imp-success-bg)', color: 'var(--imp-success)', borderColor: 'var(--imp-success)', textTransform: 'none', letterSpacing: 0, fontWeight: 600 },
-  },
-  pending: {
-    label: 'Audit not complete',
-    style: { background: 'var(--imp-warning-bg)', color: '#8a5a05', borderColor: 'var(--imp-warning)', textTransform: 'none', letterSpacing: 0, fontWeight: 600 },
-  },
-  historical: {
-    label: 'Historical record',
-    style: { background: 'var(--imp-gray-200)', color: 'var(--imp-fg-muted)', borderColor: 'var(--imp-gray-300)', textTransform: 'none', letterSpacing: 0, fontWeight: 600 },
-  },
+export const STATUS_PILL: Record<InvoiceIndexRow['status'], { label: string; tone: StatusTone }> = {
+  variance: { label: 'Variance identified', tone: 'attention' },
+  clear: { label: 'No significant variance', tone: 'success' },
+  pending: { label: 'Audit not complete', tone: 'info' },
+  historical: { label: 'Historical record', tone: 'muted' },
 }
 
 function periodSortValue(period: string): number {
@@ -36,29 +30,32 @@ function periodSortValue(period: string): number {
   return Number(m[3]) * 10000 + Number(m[1]) * 100 + Number(m[2])
 }
 
+function matchesResult(values: FilterValues, status: InvoiceIndexRow['status']): boolean {
+  const selected = values.ivResult ?? []
+  if (selected.length === 0) return true
+  return selected.some((v) => v === status || (v === 'reviewed' && (status === 'variance' || status === 'clear')))
+}
+
+function matchesCarrier(values: FilterValues, carriers: readonly string[]): boolean {
+  const selected = values.ivCarrier ?? []
+  return selected.length === 0 || carriers.some((c) => selected.includes(c))
+}
+
 export function InvoicesPage() {
   const navigate = useNavigate()
   const rowsQ = useInvoiceIndex()
   const [search, setSearch] = useState('')
   const [metric, setMetric] = useState<'all' | 'variance' | 'clear'>('all')
-  const [filters, setFilters] = useState<FilterValues>({
-    ivBiller: 'all',
-    ivCarrier: 'all',
-    ivResult: 'all',
-    ivMemo: 'all',
-  })
-  const [sort, setSort] = useState<'asc' | 'desc' | null>(null)
+  const [filterValues, setFilterValues] = useState<FilterValues>({ ivBiller: [], ivCarrier: [], ivResult: [], ivMemo: [] })
+  const [sort, setSort] = useState<SortDirection>(null)
 
-  if (!rowsQ.data) return null
-  const all = rowsQ.data
-
-  const filterFields: FilterFieldDef[] = [
-    { key: 'ivBiller', label: 'Biller', allLabel: 'All billers', options: [...new Set(all.map((r) => r.biller))].map((v) => ({ value: v, label: v })) },
-    { key: 'ivCarrier', label: 'Carrier', allLabel: 'All carriers', options: [...new Set(all.flatMap((r) => r.carriers))].sort().map((v) => ({ value: v, label: v })) },
+  const all = rowsQ.data ?? []
+  const filterFields: FilterField[] = [
+    { key: 'ivBiller', label: 'Biller', options: [...new Set(all.map((r) => r.biller))].map((v) => ({ value: v, label: v })) },
+    { key: 'ivCarrier', label: 'Carrier', options: [...new Set(all.flatMap((r) => r.carriers))].sort().map((v) => ({ value: v, label: v })) },
     {
       key: 'ivResult',
       label: 'Parcel review status',
-      allLabel: 'Any review status',
       options: [
         { value: 'variance', label: 'Variance identified' },
         { value: 'clear', label: 'No significant variance identified' },
@@ -70,33 +67,32 @@ export function InvoicesPage() {
     {
       key: 'ivMemo',
       label: 'Included in credit memo',
-      allLabel: 'All invoices',
       options: [
         { value: 'linked', label: 'Yes' },
         { value: 'unlinked', label: 'No' },
       ],
     },
   ]
+  const filters = useFilters(filterFields, filterValues, setFilterValues)
+
+  if (!rowsQ.data) return null
 
   const q = search.trim().toLowerCase()
   let rows = all.filter(
     (r) =>
       (!q || r.inv.toLowerCase().includes(q)) &&
-      (filters.ivBiller === 'all' || r.biller === filters.ivBiller) &&
-      (filters.ivResult === 'all' ||
-        (filters.ivResult === 'reviewed'
-          ? r.status === 'variance' || r.status === 'clear'
-          : r.status === filters.ivResult)) &&
-      (filters.ivCarrier === 'all' || r.carriers.includes(filters.ivCarrier ?? '')) &&
-      (filters.ivMemo === 'all' || (filters.ivMemo === 'linked' ? !!r.memoId : !r.memoId)),
+      matchesFilter(filterValues, 'ivBiller', r.biller) &&
+      matchesResult(filterValues, r.status) &&
+      matchesCarrier(filterValues, r.carriers) &&
+      matchesFilter(filterValues, 'ivMemo', r.memoId ? 'linked' : 'unlinked'),
   )
   if (metric !== 'all') rows = rows.filter((r) => r.status === metric)
   if (sort) rows = [...rows].sort((a, b) => (periodSortValue(a.period) - periodSortValue(b.period)) * (sort === 'desc' ? -1 : 1))
 
   const metricDefs = [
-    { key: 'all' as const, label: 'All invoices', value: all.length, color: 'var(--imp-purple-500)' },
-    { key: 'variance' as const, label: 'Variance identified', value: all.filter((r) => r.status === 'variance').length, color: 'var(--imp-orange-500)' },
-    { key: 'clear' as const, label: 'No significant variance', value: all.filter((r) => r.status === 'clear').length, color: 'var(--imp-ink)' },
+    { key: 'all' as const, label: 'All invoices', value: all.length, type: 'neutral' as const },
+    { key: 'variance' as const, label: 'Variance identified', value: all.filter((r) => r.status === 'variance').length, type: 'negative' as const },
+    { key: 'clear' as const, label: 'No significant variance', value: all.filter((r) => r.status === 'clear').length, type: 'positive' as const },
   ]
 
   return (
@@ -113,53 +109,40 @@ export function InvoicesPage() {
         </p>
       </div>
 
-      <div className={styles.metricGrid}>
+      <ActionTabs ariaLabel="Invoice status">
         {metricDefs.map((md) => (
-          <button
-            key={md.key}
-            type="button"
-            className={styles.metricBtn}
-            aria-pressed={metric === md.key}
-            style={{ borderTop: `3px solid ${metric === md.key ? md.color : 'transparent'}` }}
-            onClick={() => setMetric(md.key)}
-          >
-            <div className="db-kpi-sub">{md.label}</div>
-            <div className={styles.metricNum} style={{ color: md.color }}>
-              {md.value}
-            </div>
-          </button>
+          <ActionTab key={md.key} label={md.label} value={md.value} type={md.type} active={metric === md.key} onClick={() => setMetric(md.key)} />
         ))}
-      </div>
+      </ActionTabs>
 
       <div className="db-card" style={{ padding: 0, gap: 0, overflow: 'visible', minHeight: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1.5px solid var(--imp-gray-200)', flexWrap: 'wrap', flex: 'none' }}>
-          <input className="ia-input" placeholder="Search invoice number" value={search} onChange={(e) => setSearch(e.target.value)} style={{ minWidth: 200 }} />
-          <FilterPanel fields={filterFields} values={filters} onApply={setFilters} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid var(--ds-stroke-disabled)', flexWrap: 'wrap', flex: 'none' }}>
+          <TextField
+            aria-label="Search invoice number"
+            placeholder="Search invoice number"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            iconLeft={<MagnifyingGlassIcon aria-hidden="true" />}
+            style={{ minWidth: 200 }}
+          />
+          <FilterButton filters={filters} />
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }} aria-live="polite">
             <span className="imp-small" style={{ margin: 0 }}>
               Showing {rows.length} of {all.length} invoices
             </span>
           </span>
         </div>
-        <FilterChips fields={filterFields} values={filters} onClear={(key) => setFilters((f) => ({ ...f, [key]: 'all' }))} />
-        <div className="ia-iv-scroll" style={{ overflow: 'auto', maxHeight: 'calc(100vh - 300px)', minHeight: 320 }}>
-          <table className="db-table db-table-compact">
+        {filters.expanded && (
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--ds-stroke-disabled)' }}>
+            <FilterGroup filters={filters} />
+          </div>
+        )}
+        <div style={{ overflow: 'auto', maxHeight: 'calc(100vh - 300px)', minHeight: 320 }}>
+          <Table stickyHeader>
             <thead>
               <tr>
                 <th>Invoice</th>
-                <th aria-sort={sort === 'asc' ? 'ascending' : sort === 'desc' ? 'descending' : 'none'}>
-                  <button
-                    type="button"
-                    className="ia-sort-btn"
-                    onClick={() => setSort((s) => (s === null ? 'asc' : s === 'asc' ? 'desc' : null))}
-                    aria-label="Sort by invoice date"
-                  >
-                    Invoice Date
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flex: 'none', transition: 'transform 120ms ease', opacity: sort ? 1 : 0.45, transform: sort === 'desc' ? 'rotate(180deg)' : 'none' }}>
-                      <path d="M7 10l5 5 5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                </th>
+                <SortableHeader label="Invoice Date" direction={sort} onSort={() => setSort(nextSort)} />
                 <th>Biller</th>
                 <th>Carriers</th>
                 <th>Warehouse</th>
@@ -174,49 +157,42 @@ export function InvoicesPage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
-                  <td style={{ fontWeight: 700 }}>{r.inv}</td>
-                  <td className="db-muted">{r.period}</td>
-                  <td className="db-muted">{r.biller}</td>
+                  <td style={{ fontWeight: 600 }}>{r.inv}</td>
+                  <td className="ds-muted">{r.period}</td>
+                  <td className="ds-muted">{r.biller}</td>
                   <td>{r.carrierText}</td>
-                  <td className="db-muted">{r.warehouse}</td>
+                  <td className="ds-muted">{r.warehouse}</td>
                   <td className="num">{fmtMoney(r.amountN)}</td>
                   <td className="num">
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end' }}>
                       {r.parcelN == null ? '—' : fmtMoney(r.parcelN)}
-                      {r.parcelN != null && r.parcelN > r.amountN && <InfoTip text={EXCEEDS_TIP} down />}
+                      {r.parcelN != null && r.parcelN > r.amountN && <InfoTip text={EXCEEDS_TIP} side="bottom" />}
                     </span>
                   </td>
                   <td className="num">{r.packages == null ? '—' : r.packages.toLocaleString('en-US')}</td>
                   <td>
-                    <span className="ia-pill" style={STATUS_PILL[r.status].style}>
-                      {STATUS_PILL[r.status].label}
-                    </span>
+                    <StatusChip tone={STATUS_PILL[r.status].tone}>{STATUS_PILL[r.status].label}</StatusChip>
                   </td>
                   <td>
                     {r.memoId ? (
-                      <button
-                        onClick={() => navigate(`/memos/${r.memoId}`)}
-                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', font: '700 13px var(--imp-font-body)', color: 'var(--imp-purple-500)' }}
-                      >
+                      <Link variant="accent" bold onClick={() => navigate(`/memos/${r.memoId}`)}>
                         {r.memoId} →
-                      </button>
+                      </Link>
                     ) : (
-                      <span style={{ font: '600 13px var(--imp-font-body)', color: 'var(--imp-fg-muted)' }}>—</span>
+                      <span className="ds-muted">—</span>
                     )}
                   </td>
-                  <td className="db-muted">{r.reportPeriod ?? '—'}</td>
+                  <td className="ds-muted">{r.reportPeriod ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         </div>
         {rows.length === 0 && (
-          <div className="db-empty" style={{ padding: '40px 32px', textAlign: 'center' }}>
-            <h3 className="db-h3">No invoices match these filters</h3>
-            <p className="imp-small" style={{ maxWidth: '46ch', margin: '6px auto 0' }}>
-              Filtering refines this view only. It does not change which invoices Implentio has ingested for your brand.
-            </p>
-          </div>
+          <EmptyState
+            title="No invoices match these filters"
+            subtitle="Filtering refines this view only. It does not change which invoices Implentio has ingested for your brand."
+          />
         )}
       </div>
     </div>

@@ -1,6 +1,6 @@
 /* Sidebar structure — lifted from the prototype's inline styles
    (template ~1047–1151). Shared classes (ia-aside, ia-rail-*, db-nav-*,
-   db-avatar, ia-tip*) come from proto.css. */
+   nav items) come from proto.css until the Phase 2b shell redesign. */
 
 .aside {
   flex: none;
@@ -90,16 +90,7 @@
 }
 
 .profileMenu {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 12px;
-  right: 12px;
-  background: #fff;
-  border: 2px solid var(--imp-ink);
-  border-radius: 12px;
-  box-shadow: var(--imp-shadow-md);
-  overflow: hidden;
-  z-index: 60;
+  width: 212px;
 }
 
 .profileTrigger {

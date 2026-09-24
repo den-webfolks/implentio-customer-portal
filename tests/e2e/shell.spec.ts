@@ -29,11 +29,13 @@ test('profile menu opens, closes on Escape, and logout shows the signed-out card
   page,
 }) => {
   await page.goto('/tracker/memos')
-  await page.getByRole('button', { name: /Tori Matthews/ }).click()
-  await expect(page.getByRole('button', { name: 'Account Settings' })).toBeVisible()
+  const trigger = page.getByRole('button', { name: /Tori Matthews/ })
+  await trigger.click()
+  await expect(page.getByRole('menuitem', { name: 'Account Settings' })).toBeVisible()
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('button', { name: 'Account Settings' })).toHaveCount(0)
-  await page.getByRole('button', { name: /Tori Matthews/ }).click()
-  await page.getByRole('button', { name: 'Log out' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Account Settings' })).toHaveCount(0)
+  await expect(trigger).toBeFocused()
+  await trigger.click()
+  await page.getByRole('menuitem', { name: 'Log out' }).click()
   await expect(page.getByText(/been signed out/)).toBeVisible()
 })

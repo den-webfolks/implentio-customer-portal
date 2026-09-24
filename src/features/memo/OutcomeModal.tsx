@@ -1,18 +1,26 @@
 /** "Update credit memo dispute" modal (template ~5865–6050): per-finding
  *  outcome dropdowns with amount/date/reason drafts, plus bulk apply. */
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { ChevronDownIcon, ChevronRightIcon, ChevronUpIcon } from '@heroicons/react/24/outline'
 import type { CollectionStatus, FindingGroup, MemoDetail } from '@/domain/types'
 import { fmtMoney, r2 } from '@/domain/money'
+import { Modal } from '@/ui/Modal/Modal'
+import { Button, IconButton } from '@/ui/Button/Button'
+import { Link } from '@/ui/Link/Link'
+import { StatusChip } from '@/ui/Chip/StatusChip'
+import { Statistic } from '@/ui/Display/Display'
+import { Select } from '@/ui/Form/Select'
+import { RadioGroup } from '@/ui/Form/Choice'
+import { TextArea, TextField } from '@/ui/Form/TextField'
+import { COLLECTION_TONE, toneColors } from '@/features/status-tones'
 import { useRecordGroupOutcome } from './api'
+import styles from './OutcomeModal.module.css'
 
-const STATUS_META: Record<
-  CollectionStatus,
-  { label: string; pillBg: string; pillFg: string; accent: string }
-> = {
-  awaiting: { label: 'Awaiting outcome', pillBg: '#F2F0FF', pillFg: '#5B4AE6', accent: '#5B4AE6' },
-  full: { label: 'Fully collected', pillBg: '#ECFDF3', pillFg: '#087443', accent: '#087443' },
-  partial: { label: 'Partly collected', pillBg: '#FFF7E6', pillFg: '#B45309', accent: '#B45309' },
-  not_issued: { label: 'Biller declined', pillBg: '#FFF1F0', pillFg: '#B42318', accent: '#B42318' },
+const STATUS_LABEL: Record<CollectionStatus, string> = {
+  awaiting: 'Awaiting outcome',
+  full: 'Fully collected',
+  partial: 'Partly collected',
+  not_issued: 'Biller declined',
 }
 
 const OPTIONS: { value: CollectionStatus; label: string }[] = [
@@ -21,6 +29,13 @@ const OPTIONS: { value: CollectionStatus; label: string }[] = [
   { value: 'partial', label: 'Partly collected' },
   { value: 'not_issued', label: 'Biller declined' },
 ]
+
+const CAPTION_STYLE = {
+  font: 'var(--ds-weight-medium) 12px/1.3 var(--ds-font)',
+  letterSpacing: 'var(--ds-tracking-caption)',
+  color: 'var(--ds-fg-muted)',
+  textTransform: 'uppercase',
+} as const
 
 interface Draft {
   status: CollectionStatus
@@ -36,7 +51,6 @@ export function OutcomeModal({ detail, onClose }: { detail: MemoDetail; onClose:
     [detail.findingGroups],
   )
   const [drafts, setDrafts] = useState<Record<string, Draft>>({})
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [openPanel, setOpenPanel] = useState<string | null>(null)
   const [expanded, setExpanded] = useState(true)
   const [bulkOpen, setBulkOpen] = useState(false)
@@ -62,12 +76,24 @@ export function OutcomeModal({ detail, onClose }: { detail: MemoDetail; onClose:
       : statuses.every((s) => s === 'not_issued')
         ? 'not_issued'
         : 'partial'
-  const overallMeta = STATUS_META[overall]
+  const overallChip = (
+    <StatusChip tone={COLLECTION_TONE[overall]}>
+      {overall === 'partial' ? 'Partially resolved' : STATUS_LABEL[overall]}
+    </StatusChip>
+  )
   const threePl = detail.memo.provider
   const sentDate = pursued[0]?.pursuedAt ?? ''
+  const findingsWord = `finding${pursued.length === 1 ? '' : 's'}`
 
   const setDraft = (g: FindingGroup, patch: Partial<Draft>) =>
     setDrafts((d) => ({ ...d, [g.id]: { ...draftFor(g), ...patch } }))
+
+  const discardDraft = (g: FindingGroup) =>
+    setDrafts((cur) => {
+      const next = { ...cur }
+      delete next[g.id]
+      return next
+    })
 
   const validate = (g: FindingGroup, d: Draft): string => {
     if (d.status !== 'partial') return ''
@@ -96,28 +122,9 @@ export function OutcomeModal({ detail, onClose }: { detail: MemoDetail; onClose:
         history: [],
       },
     })
-    setDrafts((cur) => {
-      const next = { ...cur }
-      delete next[g.id]
-      return next
-    })
+    discardDraft(g)
     setOpenPanel(null)
   }
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      e.stopPropagation()
-      setOpenDropdown((dd) => {
-        if (dd) return null
-        onClose()
-        return dd
-      })
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   const applyBulk = () => {
     if (!bulkStatus) return
@@ -140,312 +147,229 @@ export function OutcomeModal({ detail, onClose }: { detail: MemoDetail; onClose:
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 930, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      {/* Backdrop scrim: click-to-close is supplemental (Escape and Done remain). */}
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(16,15,65,0.5)' }} />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Update credit memo dispute"
-        style={{ position: 'relative', width: 'min(1080px, calc(100vw - 64px))', maxHeight: 'calc(100vh - 48px)', background: '#fff', border: '2px solid var(--imp-ink)', borderRadius: 16, boxShadow: '8px 8px 0 var(--imp-ink)', display: 'flex', flexDirection: 'column' }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, padding: '22px 24px 16px', flex: 'none' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span style={{ font: '600 19px var(--imp-font-display)', color: 'var(--imp-ink)' }}>Update credit memo dispute</span>
-            <span className="imp-small" style={{ margin: 0 }}>
-              Update the outcome for all findings or change them individually.
-            </span>
+    <Modal
+      open
+      onClose={onClose}
+      size="large"
+      width={1080}
+      title="Update credit memo dispute"
+      description="Update the outcome for all findings or change them individually."
+      footer={
+        <Button variant="primary" size="small" onClick={onClose}>
+          Done
+        </Button>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div style={{ border: '1px solid var(--ds-stroke-disabled)', borderRadius: 'var(--ds-radius-large)', boxShadow: 'var(--ds-shadow-disabled)', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 0, flex: '1 1 220px' }}>
+            <div className="ds-heading-small" style={{ color: 'var(--ds-fg-default)' }}>Credit memo dispute</div>
+            <div className="imp-small" style={{ margin: '2px 0 0' }}>
+              {fmtMoney(totalPursued)} pursued across 1 dispute and {pursued.length} {findingsWord}
+            </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--imp-fg-muted)', fontSize: 22, lineHeight: 1, padding: 4, flex: 'none' }}>
-            ×
-          </button>
+          <span style={{ flex: 'none' }}>{overallChip}</span>
+          <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--ds-stroke-disabled)', flex: 'none' }} />
+          <Statistic bare size="small" label="Total collected" value={fmtMoney(totalCollected)} />
+          <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--ds-stroke-disabled)', flex: 'none' }} />
+          <Statistic bare size="small" label="Remaining unresolved" value={fmtMoney(remaining)} />
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0 24px 22px', display: 'flex', flexDirection: 'column', gap: 22 }}>
-          <div style={{ border: '1.5px solid var(--imp-gray-300)', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-            <div style={{ minWidth: 0, flex: '1 1 220px' }}>
-              <div style={{ font: '600 16px var(--imp-font-display)', color: 'var(--imp-ink)' }}>Credit memo dispute</div>
-              <div className="imp-small" style={{ margin: '2px 0 0' }}>
-                {fmtMoney(totalPursued)} pursued across 1 dispute and {pursued.length} finding{pursued.length === 1 ? '' : 's'}
-              </div>
-            </div>
-            <span className="ia-pill" style={{ background: overallMeta.pillBg, color: overallMeta.pillFg, borderColor: 'transparent', textTransform: 'none', letterSpacing: 0, flex: 'none' }}>
-              {overall === 'partial' ? 'Partially resolved' : overallMeta.label}
-            </span>
-            <div style={{ width: 1.5, alignSelf: 'stretch', background: 'var(--imp-gray-300)', flex: 'none' }} />
-            <div style={{ flex: 'none' }}>
-              <div style={{ font: '600 11px var(--imp-font-body)', color: 'var(--imp-fg-muted)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Total collected</div>
-              <div style={{ font: '600 17px var(--imp-font-display)', color: 'var(--imp-ink)', fontVariantNumeric: 'tabular-nums' }}>{fmtMoney(totalCollected)}</div>
-            </div>
-            <div style={{ width: 1.5, alignSelf: 'stretch', background: 'var(--imp-gray-300)', flex: 'none' }} />
-            <div style={{ flex: 'none' }}>
-              <div style={{ font: '600 11px var(--imp-font-body)', color: 'var(--imp-fg-muted)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Remaining unresolved</div>
-              <div style={{ font: '600 17px var(--imp-font-display)', color: 'var(--imp-ink)', fontVariantNumeric: 'tabular-nums' }}>{fmtMoney(remaining)}</div>
-            </div>
-          </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ font: '600 15px var(--imp-font-display)', color: 'var(--imp-ink)' }}>Disputes</div>
-            <div style={{ border: '1.5px solid var(--imp-gray-300)', borderRadius: 14, overflow: 'hidden', flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', flexWrap: 'wrap', background: 'var(--imp-gray-100)' }}>
-                <div style={{ minWidth: 0, flex: '1 1 220px' }}>
-                  <div style={{ font: '600 15px var(--imp-font-display)', color: 'var(--imp-ink)' }}>
-                    {threePl} dispute · {sentDate}
-                  </div>
-                  <div className="imp-small" style={{ margin: '2px 0 0' }}>
-                    {pursued.length} finding{pursued.length === 1 ? '' : 's'} · {fmtMoney(totalPursued)} pursued
-                  </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <h3 className="ds-heading-small" style={{ margin: 0, color: 'var(--ds-fg-default)' }}>Disputes</h3>
+          <div style={{ border: '1px solid var(--ds-stroke-disabled)', borderRadius: 'var(--ds-radius-large)', boxShadow: 'var(--ds-shadow-disabled)', overflow: 'hidden', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', flexWrap: 'wrap', background: 'var(--ds-bg-disabled)' }}>
+              <div style={{ minWidth: 0, flex: '1 1 220px' }}>
+                <div className="ds-heading-tiny" style={{ color: 'var(--ds-fg-default)' }}>
+                  {threePl} dispute · {sentDate}
                 </div>
-                <span className="ia-pill" style={{ background: overallMeta.pillBg, color: overallMeta.pillFg, borderColor: 'transparent', textTransform: 'none', letterSpacing: 0, flex: 'none' }}>
-                  {overall === 'partial' ? 'Partially resolved' : overallMeta.label}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setBulkOpen((o) => !o)}
-                  style={{ flex: 'none', background: '#fff', border: '1.5px solid var(--imp-purple-500)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', font: '600 13px var(--imp-font-body)', color: 'var(--imp-purple-500)' }}
-                >
-                  Apply one outcome to all
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setExpanded((e) => !e)}
-                  aria-label="Toggle dispute"
-                  style={{ flex: 'none', width: 30, height: 30, borderRadius: 8, border: '1.5px solid var(--imp-gray-300)', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease', color: 'var(--imp-ink)' }}>
-                    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-              </div>
-
-              {bulkOpen && (
-                <div style={{ margin: '14px 20px 0', border: '1.5px solid var(--imp-purple-300)', borderRadius: 12, background: 'var(--imp-purple-100)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                    <span style={{ font: '600 13px var(--imp-font-body)', color: 'var(--imp-ink)' }}>
-                      This will update all {pursued.length} finding{pursued.length === 1 ? '' : 's'} sent to {threePl} on {sentDate}, replacing any existing individual outcomes.
-                    </span>
-                    <button type="button" onClick={() => setBulkOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', font: '600 13px var(--imp-font-body)', color: 'var(--imp-purple-500)', textDecoration: 'underline', padding: 0, flex: 'none' }}>
-                      Cancel
-                    </button>
-                  </div>
-                  <div className="ia-om-outcome-grid">
-                    {OPTIONS.map((opt) => {
-                      const sel = bulkStatus === opt.value
-                      const accent = STATUS_META[opt.value].accent
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setBulkStatus(opt.value)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 10px', borderRadius: 9, cursor: 'pointer', font: '600 12.5px var(--imp-font-body)', whiteSpace: 'nowrap', background: '#fff', border: `1.5px solid ${sel ? accent : 'var(--imp-gray-300)'}`, color: sel ? accent : 'var(--imp-fg-muted)' }}
-                        >
-                          {opt.label}
-                        </button>
-                      )
-                    })}
-                  </div>
-                  {bulkStatus === 'not_issued' && (
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <span style={{ font: '600 12px var(--imp-font-body)', color: 'var(--imp-fg-muted)' }}>
-                        Biller response or reason (optional, shared across all findings)
-                      </span>
-                      <textarea
-                        className="ia-input"
-                        rows={2}
-                        placeholder="Add details about why the request was declined"
-                        value={bulkReason}
-                        onChange={(e) => setBulkReason(e.target.value)}
-                        style={{ resize: 'vertical', lineHeight: 1.55, width: '100%', background: '#fff' }}
-                      />
-                    </label>
-                  )}
-                  {bulkStatus && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                      <button type="button" className="db-btn db-btn-primary db-btn-sm" onClick={applyBulk}>
-                        Apply to {pursued.length} finding{pursued.length === 1 ? '' : 's'}
-                      </button>
-                    </div>
-                  )}
+                <div className="imp-small" style={{ margin: '2px 0 0' }}>
+                  {pursued.length} {findingsWord} · {fmtMoney(totalPursued)} pursued
                 </div>
-              )}
+              </div>
+              <span style={{ flex: 'none' }}>{overallChip}</span>
+              <Button variant="emphasis" size="small" aria-expanded={bulkOpen} onClick={() => setBulkOpen((o) => !o)}>
+                Apply one outcome to all
+              </Button>
+              <IconButton
+                size="small"
+                aria-label="Toggle dispute"
+                aria-expanded={expanded}
+                onClick={() => setExpanded((e) => !e)}
+                icon={expanded ? <ChevronUpIcon aria-hidden="true" /> : <ChevronDownIcon aria-hidden="true" />}
+              />
+            </div>
 
-              {expanded && (
-                <div style={{ padding: '6px 20px 16px' }}>
-                  <div className="ia-om-table-head">
-                    <span style={{ font: '600 11px var(--imp-font-body)', color: 'var(--imp-fg-subtle)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Finding</span>
-                    <span style={{ font: '600 11px var(--imp-font-body)', color: 'var(--imp-fg-subtle)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Amount pursued</span>
-                    <span style={{ font: '600 11px var(--imp-font-body)', color: 'var(--imp-fg-subtle)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Outcome</span>
+            {bulkOpen && (
+              <div style={{ margin: '14px 20px 0', border: '1px solid var(--ds-stroke-brand-muted)', borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-bg-brand-disabled)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <span className="ds-body-base" style={{ fontWeight: 'var(--ds-weight-medium)', color: 'var(--ds-fg-default)' }}>
+                    This will update all {pursued.length} {findingsWord} sent to {threePl} on {sentDate}, replacing any existing individual outcomes.
+                  </span>
+                  <Link underline bold onClick={() => setBulkOpen(false)}>
+                    Cancel
+                  </Link>
+                </div>
+                <RadioGroup
+                  aria-label="Outcome for all findings"
+                  bordered
+                  className={styles.outcomeGrid}
+                  optionClassName={styles.outcomeOption}
+                  options={OPTIONS}
+                  value={bulkStatus}
+                  onValueChange={setBulkStatus}
+                />
+                {bulkStatus === 'not_issued' && (
+                  <TextArea
+                    label="Biller response or reason (optional, shared across all findings)"
+                    rows={2}
+                    placeholder="Add details about why the request was declined"
+                    value={bulkReason}
+                    onChange={(e) => setBulkReason(e.target.value)}
+                  />
+                )}
+                {bulkStatus && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <Button variant="primary" size="small" onClick={applyBulk}>
+                      Apply to {pursued.length} {findingsWord}
+                    </Button>
                   </div>
-                  {pursued.map((g) => {
-                    const d = draftFor(g)
-                    const meta = STATUS_META[d.status]
-                    const ddOpen = openDropdown === g.id
-                    const panelOpen = openPanel === g.id
-                    const dirty = !!drafts[g.id]
-                    const error = validate(g, d)
-                    const parsedAmt = parseFloat(d.amount)
-                    const showRemaining = d.status === 'partial' && !isNaN(parsedAmt) && !error
-                    return (
-                      <div key={g.id} style={{ borderTop: '1px solid var(--imp-gray-200)' }}>
-                        <div className="ia-om-row-grid">
-                          <div className="ia-om-c-title">
-                            <span style={{ font: '600 13.5px var(--imp-font-body)', color: 'var(--imp-ink)' }}>{g.title}</span>
+                )}
+              </div>
+            )}
+
+            {expanded && (
+              <div style={{ padding: '6px 20px 16px' }}>
+                <div className="ia-om-table-head">
+                  <span style={CAPTION_STYLE}>Finding</span>
+                  <span style={CAPTION_STYLE}>Amount pursued</span>
+                  <span style={CAPTION_STYLE}>Outcome</span>
+                </div>
+                {pursued.map((g) => {
+                  const d = draftFor(g)
+                  const tone = toneColors(COLLECTION_TONE[d.status])
+                  const toneVars: Record<string, string> = { '--tone-fg': tone.fg, '--tone-bg': tone.bg }
+                  const panelOpen = openPanel === g.id
+                  const dirty = !!drafts[g.id]
+                  const error = validate(g, d)
+                  const parsedAmt = parseFloat(d.amount)
+                  const showRemaining = d.status === 'partial' && !isNaN(parsedAmt) && !error
+                  return (
+                    <div key={g.id} style={{ borderTop: '1px solid var(--ds-stroke-disabled)' }}>
+                      <div className="ia-om-row-grid">
+                        <div className="ia-om-c-title">
+                          <span className="ds-body-base" style={{ fontWeight: 'var(--ds-weight-medium)', color: 'var(--ds-fg-default)' }}>{g.title}</span>
+                        </div>
+                        <span className="ia-om-c-amount ds-body-base" style={{ fontWeight: 'var(--ds-weight-medium)', color: 'var(--ds-fg-default)', fontVariantNumeric: 'tabular-nums' }}>
+                          {fmtMoney(g.varN)}
+                        </span>
+                        <div className="ia-om-c-outcome" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <div className={styles.outcomeCell} style={{ display: 'flex', alignItems: 'center', gap: 8, ...toneVars }}>
+                            <Select
+                              aria-label={`Outcome for ${g.title}`}
+                              size="small"
+                              fullWidth
+                              fieldClassName={styles.outcomeSelect}
+                              className={styles.toneTrigger}
+                              options={OPTIONS}
+                              value={d.status}
+                              onValueChange={(status) => {
+                                setDraft(g, { status })
+                                setOpenPanel(g.id)
+                              }}
+                            />
+                            <IconButton
+                              size="small"
+                              aria-label="Toggle finding"
+                              aria-expanded={panelOpen}
+                              onClick={() => setOpenPanel(panelOpen ? null : g.id)}
+                              icon={panelOpen ? <ChevronDownIcon aria-hidden="true" /> : <ChevronRightIcon aria-hidden="true" />}
+                            />
                           </div>
-                          <span className="ia-om-c-amount" style={{ font: '600 13px var(--imp-font-body)', color: 'var(--imp-ink)', fontVariantNumeric: 'tabular-nums' }}>
-                            {fmtMoney(g.varN)}
-                          </span>
-                          <div className="ia-om-c-outcome" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <div style={{ position: 'relative', flex: '1 1 auto', minWidth: 0 }}>
-                                <button
-                                  type="button"
-                                  onClick={() => setOpenDropdown(ddOpen ? null : g.id)}
-                                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderRadius: 9, cursor: 'pointer', boxSizing: 'border-box', background: meta.pillBg, border: `${ddOpen ? '2px' : '1.5px'} solid ${meta.accent}` }}
-                                >
-                                  <span style={{ font: '600 12.5px var(--imp-font-body)', color: meta.accent, flex: '1 1 auto', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {meta.label}
-                                  </span>
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ flex: 'none', transform: ddOpen ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease', color: meta.accent }}>
-                                    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                </button>
-                                {ddOpen && (
-                                  <>
-                                    {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-                                    <div className="ia-om-overlay" onClick={() => setOpenDropdown(null)} />
-                                    <div className="ia-om-dd-menu" style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, maxHeight: 190 }}>
-                                      {OPTIONS.map((opt) => (
-                                        <button
-                                          key={opt.value}
-                                          type="button"
-                                          className="ia-om-dd-opt"
-                                          onClick={() => {
-                                            setDraft(g, { status: opt.value })
-                                            setOpenDropdown(null)
-                                            setOpenPanel(g.id)
-                                          }}
-                                        >
-                                          <span style={{ width: 16, height: 16, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', border: `1.6px solid ${STATUS_META[opt.value].accent}`, color: STATUS_META[opt.value].accent }} />
-                                          {opt.label}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setOpenPanel(panelOpen ? null : g.id)}
-                                aria-label="Toggle finding"
-                                style={{ flex: 'none', width: 26, height: 26, borderRadius: 7, border: '1.5px solid var(--imp-gray-300)', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                              >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ transform: panelOpen ? 'rotate(90deg)' : 'none', transition: 'transform 150ms ease', color: 'var(--imp-fg-muted)' }}>
-                                  <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                              </button>
+                          {dirty && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5 }}>
+                              <span style={{ width: 6, height: 6, borderRadius: 'var(--ds-radius-full)', background: 'var(--ds-fg-warning)', flex: 'none' }} />
+                              <span className="ds-body-small" style={{ fontWeight: 'var(--ds-weight-medium)', color: 'var(--ds-fg-warning)' }}>Unsaved changes</span>
                             </div>
-                            {dirty && (
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5 }}>
-                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#B45309', flex: 'none' }} />
-                                <span style={{ font: '600 11.5px var(--imp-font-body)', color: '#B45309' }}>Unsaved changes</span>
+                          )}
+                        </div>
+                      </div>
+                      {panelOpen && (
+                        <div style={{ margin: '0 0 14px 20px', borderLeft: '2px solid var(--ds-stroke-brand-muted)', padding: '12px 16px', background: 'var(--ds-bg-disabled)', borderRadius: '0 var(--ds-radius-large) var(--ds-radius-large) 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <div className="ia-om-detail-grid">
+                            {(d.status === 'full' || d.status === 'partial') && (
+                              <TextField
+                                fieldClassName={styles.fieldAmount}
+                                label={d.status === 'partial' ? 'Credit received *' : 'Credit received'}
+                                aria-required={d.status === 'partial' || undefined}
+                                size="small"
+                                inputMode="decimal"
+                                value={d.status === 'full' ? fmtMoney(g.varN) : d.amount}
+                                disabled={d.status === 'full'}
+                                onChange={(e) => setDraft(g, { amount: e.target.value })}
+                                validation={error ? 'invalid' : undefined}
+                                message={error || undefined}
+                              />
+                            )}
+                            {(d.status === 'full' || d.status === 'partial') && (
+                              <TextField
+                                fieldClassName={styles.fieldDate}
+                                label="Date received"
+                                optional
+                                size="small"
+                                type="date"
+                                value={d.date}
+                                onChange={(e) => setDraft(g, { date: e.target.value })}
+                              />
+                            )}
+                            {(d.status === 'partial' || d.status === 'not_issued') && (
+                              <TextField
+                                fieldClassName={styles.fieldReason}
+                                label="Biller response or reason"
+                                optional
+                                size="small"
+                                value={d.reason}
+                                onChange={(e) => setDraft(g, { reason: e.target.value })}
+                              />
+                            )}
+                            {showRemaining && (
+                              <div style={{ flex: '0 0 150px', borderLeft: '1px solid var(--ds-stroke-disabled)', paddingLeft: 16 }}>
+                                <Statistic bare size="small" label="Remains unresolved" value={fmtMoney(Math.max(0, r2(g.varN - parsedAmt)))} />
                               </div>
                             )}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16 }}>
+                            <Link
+                              bold
+                              onClick={() => {
+                                discardDraft(g)
+                                setOpenPanel(null)
+                              }}
+                            >
+                              Cancel
+                            </Link>
+                            <Button variant="primary" size="small" disabled={!!error || !dirty} onClick={() => save(g)}>
+                              Save finding
+                            </Button>
                           </div>
                         </div>
-                        {panelOpen && (
-                          <div style={{ margin: '0 0 14px 20px', borderLeft: '2.5px solid var(--imp-purple-300)', padding: '12px 16px 2px', background: 'var(--imp-gray-100)', borderRadius: '0 8px 8px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            <div className="ia-om-detail-grid">
-                              {(d.status === 'full' || d.status === 'partial') && (
-                                <label style={{ flex: '0 0 140px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                  <span style={{ font: '600 12px var(--imp-font-body)', color: 'var(--imp-fg-muted)', whiteSpace: 'nowrap' }}>
-                                    {d.status === 'partial' ? 'Credit received *' : 'Credit received'}
-                                  </span>
-                                  <input
-                                    className="ia-input"
-                                    type="text"
-                                    inputMode="decimal"
-                                    value={d.status === 'full' ? fmtMoney(g.varN) : d.amount}
-                                    disabled={d.status === 'full'}
-                                    onChange={(e) => setDraft(g, { amount: e.target.value })}
-                                    style={{ width: '100%' }}
-                                  />
-                                </label>
-                              )}
-                              {(d.status === 'full' || d.status === 'partial') && (
-                                <label style={{ flex: '0 0 160px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                  <span style={{ font: '600 12px var(--imp-font-body)', color: 'var(--imp-fg-muted)', whiteSpace: 'nowrap' }}>Date received (optional)</span>
-                                  <input className="ia-input" type="date" value={d.date} onChange={(e) => setDraft(g, { date: e.target.value })} style={{ width: '100%' }} />
-                                </label>
-                              )}
-                              {(d.status === 'partial' || d.status === 'not_issued') && (
-                                <label style={{ flex: '1 1 240px', minWidth: 200, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                  <span style={{ font: '600 12px var(--imp-font-body)', color: 'var(--imp-fg-muted)', whiteSpace: 'nowrap' }}>Biller response or reason (optional)</span>
-                                  <input className="ia-input" type="text" value={d.reason} onChange={(e) => setDraft(g, { reason: e.target.value })} style={{ width: '100%', textOverflow: 'ellipsis' }} />
-                                </label>
-                              )}
-                              {showRemaining && (
-                                <div style={{ flex: '0 0 150px', display: 'flex', flexDirection: 'column', gap: 6, borderLeft: '1.5px solid var(--imp-gray-300)', paddingLeft: 16 }}>
-                                  <span style={{ font: '600 12px var(--imp-font-body)', color: 'var(--imp-fg-muted)', whiteSpace: 'nowrap' }}>Remains unresolved</span>
-                                  <span style={{ font: '600 15px var(--imp-font-display)', color: 'var(--imp-ink)', fontVariantNumeric: 'tabular-nums' }}>
-                                    {fmtMoney(Math.max(0, r2(g.varN - parsedAmt)))}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                            {error && (
-                              <p className="imp-small" style={{ margin: 0, color: 'var(--imp-error)' }}>
-                                {error}
-                              </p>
-                            )}
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16 }}>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setDrafts((cur) => {
-                                    const next = { ...cur }
-                                    delete next[g.id]
-                                    return next
-                                  })
-                                  setOpenPanel(null)
-                                }}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', font: '600 13px var(--imp-font-body)', color: 'var(--imp-purple-500)', padding: 0 }}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                className="db-btn db-btn-primary db-btn-sm"
-                                disabled={!!error || !dirty}
-                                style={!!error || !dirty ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
-                                onClick={() => save(g)}
-                              >
-                                Save finding
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                  <div style={{ borderTop: '1.5px solid var(--imp-gray-300)', padding: '12px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 20, flexWrap: 'wrap' }}>
-                    <span style={{ font: '600 13px var(--imp-font-body)', color: 'var(--imp-fg-muted)' }}>
-                      Collected <strong style={{ color: 'var(--imp-ink)', fontVariantNumeric: 'tabular-nums', marginLeft: 6 }}>{fmtMoney(totalCollected)}</strong>
-                    </span>
-                    <span style={{ font: '600 13px var(--imp-font-body)', color: 'var(--imp-fg-muted)' }}>
-                      Unresolved <strong style={{ color: 'var(--imp-ink)', fontVariantNumeric: 'tabular-nums', marginLeft: 6 }}>{fmtMoney(remaining)}</strong>
-                    </span>
-                  </div>
+                      )}
+                    </div>
+                  )
+                })}
+                <div style={{ borderTop: '1px solid var(--ds-stroke-muted)', padding: '12px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 20, flexWrap: 'wrap' }}>
+                  <span className="ds-body-base" style={{ fontWeight: 'var(--ds-weight-medium)', color: 'var(--ds-fg-muted)' }}>
+                    Collected <strong style={{ fontWeight: 'var(--ds-weight-semi)', color: 'var(--ds-fg-default)', fontVariantNumeric: 'tabular-nums', marginLeft: 6 }}>{fmtMoney(totalCollected)}</strong>
+                  </span>
+                  <span className="ds-body-base" style={{ fontWeight: 'var(--ds-weight-medium)', color: 'var(--ds-fg-muted)' }}>
+                    Unresolved <strong style={{ fontWeight: 'var(--ds-weight-semi)', color: 'var(--ds-fg-default)', fontVariantNumeric: 'tabular-nums', marginLeft: 6 }}>{fmtMoney(remaining)}</strong>
+                  </span>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16, padding: '14px 24px', borderTop: '1.5px solid var(--imp-gray-300)', flex: 'none' }}>
-          <button type="button" className="db-btn db-btn-primary db-btn-sm" onClick={onClose}>
-            Done
-          </button>
-        </div>
       </div>
-    </div>
+    </Modal>
   )
 }

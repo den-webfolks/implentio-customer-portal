@@ -1,16 +1,17 @@
-/* Prototype modal chrome (template ~2300–2326). */
+/* Figma ❖ Popup (4533:25) — medium: max-w 668, max-h 644, padding 24;
+   large: max-w 1320, max-h 712, padding 32. Content scrolls past max-h. */
 
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 940;
-  background: rgba(16, 15, 65, 0.5);
+  z-index: var(--ds-z-overlay);
+  background: var(--ds-overlay);
 }
 
 .positioner {
   position: fixed;
   inset: 0;
-  z-index: 941;
+  z-index: calc(var(--ds-z-overlay) + 1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -21,17 +22,24 @@
 .content {
   pointer-events: auto;
   position: relative;
-  max-width: 100%;
-  max-height: calc(100vh - 48px);
-  overflow: auto;
-  background: #fff;
-  border: 2px solid var(--imp-ink);
-  border-radius: 16px;
-  box-shadow: var(--imp-shadow-lg);
-  padding: 22px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
+  width: 100%;
+  max-width: min(668px, 100%);
+  max-height: min(644px, calc(100vh - 48px));
+  padding: 24px;
+  border-radius: var(--ds-radius-xlarge);
+  background: var(--ds-bg-default);
+  box-shadow: var(--ds-shadow-disabled);
+  color: var(--ds-fg-default);
+}
+
+.large {
+  gap: 28px;
+  max-width: min(1320px, 100%);
+  max-height: min(712px, calc(100vh - 48px));
+  padding: 32px;
 }
 
 .content:focus {
@@ -41,35 +49,46 @@
 .head {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
 }
 
 .title {
-  font: 600 17px var(--imp-font-display);
-  color: var(--imp-ink);
   margin: 0;
+  font: var(--ds-weight-semi) 21px/1.32 var(--ds-font);
+  letter-spacing: var(--ds-tracking-heading);
+  color: var(--ds-fg-default);
+}
+
+.description {
+  margin: 4px 0 0;
+  font: var(--ds-weight-regular) 14px/1.46 var(--ds-font);
+  color: var(--ds-fg-muted);
 }
 
 .close {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--imp-fg-muted);
-  font-size: 20px;
-  line-height: 1;
-  padding: 4px;
+  margin: -6px -6px 0 0;
 }
 
-.close:focus-visible {
-  outline: 2px solid var(--imp-purple-300);
-  outline-offset: 2px;
-  border-radius: 4px;
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  overflow: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
 }
 
 .footer {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
+}
+
+.footerEnd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }

@@ -1,0 +1,147 @@
+/* Figma ❖ Select & Filters — Filter-Group (1544:1160), Filter Field
+   (1549:1756), filter-chip (110:179), .on-remove (109:161). */
+
+.trigger[aria-expanded='true'],
+.triggerOpen {
+  border-color: var(--ds-stroke-focus);
+  box-shadow: inset 0 0 0 1px var(--ds-stroke-focus);
+}
+
+.count {
+  color: var(--ds-fg-brand-emphasis);
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 7px;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-bg-default);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  min-height: 28px;
+  padding: 3px 7px 3px 11px;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-medium);
+  background: var(--ds-bg-brand-disabled);
+  color: var(--ds-fg-default);
+  font: var(--ds-weight-regular) 12px/1.64 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+}
+
+.chip:hover {
+  border-color: var(--ds-stroke-emphasis);
+  box-shadow: var(--ds-shadow-disabled);
+}
+
+.chip:has([data-state='open']) {
+  border-color: var(--ds-stroke-brand-emphasis);
+  box-shadow: var(--ds-shadow-disabled);
+}
+
+.chipMain {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.chipMain:focus-visible,
+.remove:focus-visible,
+.add:focus-visible {
+  outline: 2px solid var(--ds-stroke-focus);
+  outline-offset: 2px;
+  border-radius: var(--ds-radius-small);
+}
+
+.chipLabel {
+  font-weight: var(--ds-weight-medium);
+  white-space: nowrap;
+}
+
+.chipValue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 280px;
+}
+
+.chipMain svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  color: var(--ds-icon-muted);
+}
+
+.remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 2px;
+  border: none;
+  border-radius: var(--ds-radius-small);
+  background: none;
+  color: var(--ds-icon-muted);
+  cursor: pointer;
+}
+
+.remove:hover {
+  background: var(--ds-bg-default);
+  color: var(--ds-icon-default);
+}
+
+.remove:active {
+  color: var(--ds-icon-brand-emphasis);
+}
+
+.remove svg {
+  width: 12px;
+  height: 12px;
+}
+
+.add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 3px 7px;
+  border: 1px dashed var(--ds-stroke-brand-muted);
+  border-radius: var(--ds-radius-medium);
+  background: var(--ds-bg-default);
+  color: var(--ds-fg-brand-emphasis);
+  font: var(--ds-weight-medium) 12px/1.64 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  cursor: pointer;
+}
+
+.add:hover {
+  border-color: var(--ds-stroke-brand-emphasis);
+}
+
+.add svg {
+  width: 12px;
+  height: 12px;
+  color: var(--ds-icon-muted);
+}
+
+.clear {
+  margin-left: auto;
+}

@@ -1,0 +1,263 @@
+/* Figma ❖ Stepper (415:*), ❖ Avatar (174:12264), ❖ Stat Summary —
+   statistic (350:2450) / statistic.text-group (1979:55288), ❖ Tables —
+   empty-state (4551:42588). Spinner has no Figma source (token-built). */
+
+/* ---------- Stepper ---------- */
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+  padding: 11px 15px;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-large);
+  list-style: none;
+}
+
+.stepperBare {
+  padding: 0;
+  border: none;
+}
+
+.stepItem {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.stepItem:not(:last-child) {
+  flex: 1;
+}
+
+.stepItem:not(:last-child)::after {
+  content: '';
+  flex: 1;
+  min-width: 16px;
+  height: 1px;
+  background: var(--ds-stroke-disabled);
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  color: var(--ds-fg-muted);
+  font: var(--ds-weight-medium) 16px/1.5 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  white-space: nowrap;
+}
+
+.stage {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-bg-default);
+  font: var(--ds-weight-medium) 14px/1 var(--ds-font);
+}
+
+.stage svg {
+  width: 16px;
+  height: 16px;
+}
+
+.stepActive {
+  color: var(--ds-fg-brand-emphasis);
+}
+
+.stepActive .stage {
+  border-color: var(--ds-stroke-brand-emphasis);
+}
+
+.stepPassed {
+  color: var(--ds-fg-default);
+}
+
+.stepPassed .stage {
+  border-color: var(--ds-bg-success-emphasis);
+  background: var(--ds-bg-success-emphasis);
+  color: var(--ds-icon-reverse);
+}
+
+/* ---------- Avatar ---------- */
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  overflow: hidden;
+  border-radius: var(--ds-radius-small);
+  background: var(--ds-bg-muted);
+  color: var(--ds-fg-reverse);
+  font-weight: var(--ds-weight-medium);
+  letter-spacing: var(--ds-tracking-body);
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarSmall {
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+}
+
+.avatarLarge {
+  width: 36px;
+  height: 36px;
+  font-size: 14px;
+}
+
+.avatarHuge {
+  width: 64px;
+  height: 64px;
+  font-size: 21px;
+}
+
+/* ---------- Statistic ---------- */
+
+.statGroup {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-bg-default);
+}
+
+.statGroup > .stat {
+  flex: 1;
+}
+
+.statDivider {
+  flex: none;
+  width: 1px;
+  height: 40px;
+  background: var(--ds-stroke-disabled);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.statBare {
+  padding: 0;
+}
+
+.statLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ds-fg-muted);
+  font: var(--ds-weight-medium) 10px/1.16 var(--ds-font);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.statValue {
+  color: var(--ds-fg-default);
+  font: var(--ds-weight-semi) 21px/1.32 var(--ds-font);
+  letter-spacing: var(--ds-tracking-heading);
+  font-variant-numeric: tabular-nums;
+}
+
+.statSmall .statValue {
+  font-size: 17px;
+  line-height: 1.3;
+}
+
+.statTiny .statValue {
+  font: var(--ds-weight-medium) 14px/1.46 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  overflow-wrap: anywhere;
+}
+
+.statLarge .statValue {
+  font-size: 30px;
+}
+
+.statPositive .statValue {
+  color: var(--ds-fg-success);
+}
+
+.statNegative .statValue {
+  color: var(--ds-fg-danger);
+}
+
+.statAccent .statValue {
+  color: var(--ds-fg-accent);
+}
+
+.statSub {
+  color: var(--ds-fg-muted);
+  font: var(--ds-weight-regular) 12px/1.64 var(--ds-font);
+}
+
+/* ---------- Empty state ---------- */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.emptyText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 56ch;
+}
+
+.emptyTitle {
+  margin: 0;
+  color: var(--ds-fg-default);
+  font: var(--ds-weight-semi) 14px/1.16 var(--ds-font);
+  letter-spacing: var(--ds-tracking-heading);
+}
+
+.emptySubtitle {
+  margin: 0;
+  color: var(--ds-fg-muted);
+  font: var(--ds-weight-regular) 12px/1.64 var(--ds-font);
+}
+
+/* ---------- Spinner ---------- */
+
+.spinner {
+  display: inline-block;
+  flex: none;
+  border: 2px solid var(--ds-neutral-300);
+  border-top-color: var(--ds-bg-brand-emphasis);
+  border-radius: var(--ds-radius-full);
+  animation: ds-spin 0.9s linear infinite;
+}
+
+@keyframes ds-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.4s;
+  }
+}

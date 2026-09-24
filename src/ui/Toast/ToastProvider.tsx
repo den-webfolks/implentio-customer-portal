@@ -1,11 +1,13 @@
 /**
- * Toast — ports the prototype's bottom-right toast (template ~7221,
- * showToast ~13793): one toast at a time, ok/warn dot, 3.6s auto-clear.
+ * Figma ❖ Toast: one toast at a time, bottom-right, 3.6s auto-clear
+ * (timing unchanged from the prototype).
  */
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { XMarkIcon } from '@heroicons/react/24/outline'
 import styles from './Toast.module.css'
 
-export type ToastKind = 'ok' | 'warn'
+/** Figma types: neutral, danger (system errors), positive. */
+export type ToastKind = 'neutral' | 'danger' | 'positive'
 
 interface ToastState {
   kind: ToastKind
@@ -36,9 +38,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={show}>
       {children}
       {toast && (
-        <div className={styles.toast} role="status">
-          <span className={toast.kind === 'warn' ? styles.dotWarn : styles.dotOk} />
+        <div className={`${styles.toast} ${styles[toast.kind]}`} role={toast.kind === 'danger' ? 'alert' : 'status'}>
           <span className={styles.msg}>{toast.msg}</span>
+          <button type="button" className={styles.close} aria-label="Dismiss" onClick={() => setToast(null)}>
+            <XMarkIcon aria-hidden="true" />
+          </button>
         </div>
       )}
     </ToastContext.Provider>

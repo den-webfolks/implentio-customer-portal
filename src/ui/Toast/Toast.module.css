@@ -1,37 +1,73 @@
+/* Figma ❖ Toast (2847:5966): neutral / danger / positive, close icon. */
+
 .toast {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  z-index: 1000;
+  z-index: var(--ds-z-toast);
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: var(--imp-ink);
-  color: #fff;
-  padding: 12px 16px;
-  border-radius: 10px;
-  box-shadow: var(--imp-shadow-md);
-  animation: imp-toast-in 0.24s ease;
-  max-width: 400px;
+  gap: 8px;
+  max-width: 420px;
+  padding: 10px 12px 10px 16px;
+  border-radius: var(--ds-radius-medium);
+  box-shadow: var(--ds-shadow-muted);
+  color: var(--ds-fg-reverse);
+  font: var(--ds-weight-medium) 14px/1.46 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  animation: toast-in 0.24s var(--ds-ease-out);
 }
 
-.dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  flex: none;
+.neutral {
+  background: var(--ds-bg-emphasis);
 }
 
-.dotOk {
-  composes: dot;
-  background: var(--imp-success);
+.danger {
+  background: var(--ds-bg-danger-emphasis);
 }
 
-.dotWarn {
-  composes: dot;
-  background: var(--imp-warning);
+.positive {
+  background: var(--ds-bg-success-emphasis);
 }
 
 .msg {
-  font: 600 13px var(--imp-font-body);
+  flex: 1;
+  min-width: 0;
+}
+
+.close {
+  display: inline-flex;
+  flex: none;
+  padding: 2px;
+  border: none;
+  border-radius: var(--ds-radius-small);
+  background: none;
+  color: var(--ds-icon-reverse);
+  cursor: pointer;
+}
+
+.close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--ds-stroke-focus);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
 }

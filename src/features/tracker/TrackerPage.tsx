@@ -1,7 +1,7 @@
 /** Parcel Credit Tracker (template ~1196–1624). Tabs live in the path:
  *  /tracker/memos and /tracker/outcomes. */
 import { useNavigate, useParams } from 'react-router'
-import { UnderlineTabs } from '@/ui/Tabs/UnderlineTabs'
+import { Tabs } from '@/ui/Tabs/Tabs'
 import { MemosTab } from './MemosTab'
 import { OutcomesTab } from './OutcomesTab'
 
@@ -40,7 +40,7 @@ export function TrackerPage() {
         </p>
       </div>
 
-      <UnderlineTabs tabs={TABS} active={active} onSelect={(k) => navigate(`/tracker/${k}`)} />
+      <Tabs tabs={TABS} active={active} onSelect={(k) => navigate(`/tracker/${k}`)} ariaLabel="Parcel Credit Tracker views" />
 
       {active === 'memos' ? <MemosTab /> : <OutcomesTab />}
     </div>

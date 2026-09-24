@@ -1,0 +1,88 @@
+/* Figma ❖ Toast page — banner (5720:14750): tinted header (icon + title,
+   optional close), optional white description and actions. */
+
+.banner {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-bg-default);
+}
+
+.header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 12px;
+  background: var(--banner-tint);
+  color: var(--ds-fg-default);
+  font: var(--ds-weight-medium) 14px/1.46 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+}
+
+.dismissible {
+  padding-right: 48px;
+}
+
+.icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--banner-icon);
+}
+
+.icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+}
+
+.close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.body {
+  padding: 12px;
+  color: var(--ds-fg-default);
+  font: var(--ds-weight-regular) 14px/1.46 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.header + .actions {
+  padding-top: 12px;
+}
+
+.info {
+  --banner-tint: var(--ds-bg-brand-disabled);
+  --banner-icon: var(--ds-bg-emphasis);
+}
+
+.success {
+  --banner-tint: var(--ds-bg-success-muted);
+  --banner-icon: var(--ds-icon-success);
+}
+
+.warning {
+  --banner-tint: var(--ds-bg-warning-muted);
+  --banner-icon: var(--ds-icon-warning);
+}
+
+.error {
+  --banner-tint: var(--ds-bg-danger-muted);
+  --banner-icon: var(--ds-icon-danger);
+}

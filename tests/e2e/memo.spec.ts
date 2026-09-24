@@ -47,17 +47,16 @@ test('outcome modal records a partial outcome with validation', async ({ page })
   await page.goto(`${MEMO}?scenario=dispute-awaiting&demo=1`)
   await page.getByRole('button', { name: 'Update dispute outcomes' }).first().click()
   await expect(page.getByRole('dialog', { name: 'Update credit memo dispute' })).toBeVisible()
-  const row = page.locator('div').filter({ hasText: /^Awaiting outcome$/ }).first()
-  void row
-  // Open the first finding's dropdown and pick "Partly collected".
-  await page.getByRole('button', { name: 'Awaiting outcome' }).first().click()
-  await page.getByRole('button', { name: 'Partly collected' }).first().click()
+  // Open the first finding's outcome select and pick "Partly collected".
+  const outcome = page.getByRole('combobox', { name: /^Outcome for / }).first()
+  await outcome.click()
+  await page.getByRole('option', { name: 'Partly collected' }).click()
   const amount = page.getByLabel(/Credit received/)
   await amount.fill('999999')
   await expect(page.getByText(/cannot exceed the amount pursued/)).toBeVisible()
   await amount.fill('100')
   await page.getByRole('button', { name: 'Save finding' }).click()
-  await expect(page.getByRole('button', { name: 'Partly collected' }).first()).toBeVisible()
+  await expect(outcome).toHaveText(/Partly collected/)
   await page.getByRole('button', { name: 'Done' }).click()
 })
 

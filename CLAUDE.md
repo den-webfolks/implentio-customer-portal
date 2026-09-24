@@ -1,8 +1,9 @@
 # Claude Code guide — implentio-customer-app
 
-Production parity rebuild of the Implentio customer app (billing-audit &
-recovery for e-commerce brands). Phase 1 is **parity first**: same product as
-the prototype in `prototype/`, better implementation. See ARCHITECTURE.md for
+Production rebuild of the Implentio customer app (billing-audit & recovery
+for e-commerce brands). Phase 1 rebuilt the prototype in `prototype/` at
+parity; Phase 2a aligns the shared components with the Figma design library
+(DESIGN-SYSTEM.md); Phase 2b will restyle page layouts. See ARCHITECTURE.md for
 decisions, PRODUCT.md for the mined requirements, ROADMAP.md for phases.
 
 ## Commands
@@ -20,9 +21,9 @@ decisions, PRODUCT.md for the mined requirements, ROADMAP.md for phases.
   screenshots in `tests/reference-prototype/`
 - `node tools/screenshot.mts <url> <out.png> [w] [h]` — ad-hoc screenshot for
   side-by-side parity review
-- `/dev/components` (component gallery) and `/dev/tokens` — dev-server-only
-  reference pages (`src/dev/`); not routed in production builds. Add a
-  section to `ComponentGallery.tsx` when you add a shared primitive.
+- `/dev/components` — dev-server-only component gallery (`src/dev/`), incl.
+  the Figma foundations; not routed in production builds. Add a section to
+  `ComponentGallery.tsx` when you add or change a shared component.
 
 ## Hard rules
 
@@ -35,12 +36,16 @@ decisions, PRODUCT.md for the mined requirements, ROADMAP.md for phases.
    `Date.now()` (lint-enforced); read time via `lib/clock.ts`. Fixture mode
    freezes "now" at `DEMO_NOW` (Sep 17, 2026) so the 2026 demo deadlines
    render as designed and VRT stays deterministic.
-3. **Tokens only:** colors/spacing/type come from `src/styles/tokens.css`
-   (`--imp-*`) and the ported prototype classes in `proto.css`. Don't invent
-   new hex values; the Figma design system replaces styling in Phase 2.
-4. **Parity first:** don't "improve" copy, layout, spacing, or flows in
-   Phase 1. Invisible a11y fixes (focus traps, labels) are in-spirit; visible
-   changes are not. Log design debt for later phases instead.
+3. **Figma is the UI source of truth:** Figma library `oUoO45rZLwUB0rNJpIAyrX`
+   (mapping in DESIGN-SYSTEM.md). Use the shared components in `src/ui/` and
+   the `--ds-*` tokens / `ds-*` text classes from `src/styles/tokens.css`;
+   never new hex values, never `--imp-*` (deprecated aliases) in new code.
+   Fix a shared component rather than adding per-screen overrides. Icons are
+   Heroicons (`@heroicons/react`).
+4. **Components now, layouts later:** until Phase 2b, don't redesign page
+   layout, grids, section spacing, page headers, or the sidebar. Don't change
+   copy or flows unless Figma guidance requires it — record such changes in
+   DESIGN-SYSTEM.md.
 5. The prototype in `prototype/` is a frozen reference — never edit it.
 
 ## Demo/scenario harness (temporary infrastructure)

@@ -23,13 +23,14 @@ test('invite modal traps focus and returns it on close', async ({ page }) => {
   await expect(trigger).toBeFocused()
 })
 
-test('escape closes the filter panel and returns focus to its trigger', async ({ page }) => {
+test('escape closes the filter menu and returns focus to its trigger', async ({ page }) => {
   await page.goto('/tracker/memos')
-  const trigger = page.getByRole('button', { name: /Filters/ })
+  const trigger = page.getByRole('button', { name: 'Filter', exact: true })
   await trigger.click()
-  await expect(page.getByRole('dialog', { name: 'Filters' })).toBeVisible()
+  const menu = page.getByRole('menu')
+  await expect(menu).toBeVisible()
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('dialog', { name: 'Filters' })).toHaveCount(0)
+  await expect(menu).toHaveCount(0)
   await expect(trigger).toBeFocused()
 })
 
@@ -38,11 +39,11 @@ test('escape closes only the top layer at a time', async ({ page }) => {
   await page.getByRole('button', { name: 'Update dispute outcomes' }).first().click()
   const modal = page.getByRole('dialog', { name: 'Update credit memo dispute' })
   await expect(modal).toBeVisible()
-  await page.getByRole('button', { name: 'Awaiting outcome' }).first().click()
-  await expect(page.locator('.ia-om-dd-menu')).toBeVisible()
-  // First Escape closes the dropdown, the second closes the modal.
+  await page.getByRole('combobox', { name: /^Outcome for / }).first().click()
+  await expect(page.getByRole('listbox')).toBeVisible()
+  // First Escape closes the select menu, the second closes the modal.
   await page.keyboard.press('Escape')
-  await expect(page.locator('.ia-om-dd-menu')).toHaveCount(0)
+  await expect(page.getByRole('listbox')).toHaveCount(0)
   await expect(modal).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(modal).toHaveCount(0)

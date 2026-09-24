@@ -8,14 +8,15 @@ test('memos tab renders the executive summary and all memo cards', async ({ page
   await expect(page.getByText('8 credit memos', { exact: true })).toBeVisible()
 })
 
-test('tracker filters narrow the memo list with staged apply', async ({ page }) => {
+test('tracker filters narrow the memo list immediately (Figma filter group)', async ({ page }) => {
   await page.goto('/tracker/memos')
-  await page.getByRole('button', { name: /Filters/ }).click()
-  await page.getByRole('dialog', { name: 'Filters' }).getByRole('combobox').first().selectOption('ShipBob')
-  await page.getByRole('button', { name: 'Apply filters' }).click()
+  await page.getByRole('button', { name: 'Filter', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Biller' }).click()
+  await page.getByRole('menuitemcheckbox', { name: 'ShipBob' }).click()
+  await page.keyboard.press('Escape')
   await expect(page.getByText('3 credit memos', { exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'CM-2026-0630' })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Remove filter' }).click()
+  await page.getByRole('button', { name: 'Remove Biller filter' }).click()
   await expect(page.getByText('8 credit memos', { exact: true })).toBeVisible()
 })
 

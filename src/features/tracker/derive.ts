@@ -10,6 +10,7 @@ import { fmtMoney, r2 } from '@/domain/money'
 import { fmtDateShort } from '@/domain/dates'
 import { deriveReportState } from '@/domain/memo'
 import { groupExpired } from '@/domain/outcomes'
+import { TONE_CHART_COLOR } from '@/features/status-tones'
 
 const DASH = '—'
 
@@ -380,10 +381,10 @@ export interface DonutData {
 }
 
 const DONUT_DEFS: { key: DispositionKey; label: string; color: string }[] = [
-  { key: 'eligible', label: 'Eligible to pursue', color: 'var(--imp-purple-500)' },
-  { key: 'awaiting', label: 'Awaiting outcome', color: 'var(--imp-orange-500)' },
-  { key: 'collected', label: 'Collected', color: 'var(--imp-success)' },
-  { key: 'denied', label: 'Denied by Biller', color: '#B8756D' },
+  { key: 'eligible', label: 'Eligible to pursue', color: TONE_CHART_COLOR.neutral },
+  { key: 'awaiting', label: 'Awaiting outcome', color: TONE_CHART_COLOR.info },
+  { key: 'collected', label: 'Collected', color: TONE_CHART_COLOR.success },
+  { key: 'denied', label: 'Denied by Biller', color: TONE_CHART_COLOR.danger },
 ]
 
 export function dispositionDonut(rows: readonly OutcomeRow[]): DonutData {

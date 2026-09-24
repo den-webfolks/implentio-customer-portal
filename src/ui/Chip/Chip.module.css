@@ -1,0 +1,78 @@
+/* Figma ❖ Chips — status-chip (110:226), tag-chip (111:339). */
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 8px;
+  border-radius: var(--ds-radius-medium);
+  background: var(--chip-bg);
+  color: var(--chip-fg);
+  font: var(--ds-weight-medium) 12px/20px var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.status svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Text-only chip (filled?=false): no fill, body/base medium. */
+.textOnly {
+  padding: 0;
+  background: none;
+  font-size: 14px;
+}
+
+.neutral {
+  --chip-bg: var(--ds-status-neutral-bg);
+  --chip-fg: var(--ds-status-neutral-fg);
+}
+
+.success {
+  --chip-bg: var(--ds-status-success-bg);
+  --chip-fg: var(--ds-status-success-fg);
+}
+
+.attention {
+  --chip-bg: var(--ds-status-attention-bg);
+  --chip-fg: var(--ds-status-attention-fg);
+}
+
+.danger {
+  --chip-bg: var(--ds-status-danger-bg);
+  --chip-fg: var(--ds-status-danger-fg);
+}
+
+.info {
+  --chip-bg: var(--ds-status-info-bg);
+  --chip-fg: var(--ds-status-info-fg);
+}
+
+.muted {
+  --chip-bg: var(--ds-status-muted-bg);
+  --chip-fg: var(--ds-status-muted-fg);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-bg-default);
+  color: var(--ds-fg-default);
+  font: var(--ds-weight-regular) 12px/20px var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  white-space: nowrap;
+}

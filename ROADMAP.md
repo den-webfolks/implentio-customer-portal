@@ -15,13 +15,17 @@ marked unavailable, report assets are already extracted). They reuse the
 tracker/outcomes patterns and the report-dispute lifecycle already modeled
 in `reportDisputes`.
 
-## Phase 2 — Figma design-system migration
+## Phase 2 — Figma design-system alignment
 
-The in-progress Figma system becomes authoritative for tokens, components,
-and styling. Work lands in `tokens.css` + component styles behind the same
-markup; consider Tailwind only if the Figma tokens arrive Tailwind-mapped.
-Also the moment to fix logged design debt (e.g. color contrast excluded from
-axe in Phase 1).
+**2a — components (in progress).** Figma foundations (Inter, semantic colour
+variables, radii, effects, text styles) and the shared components the app
+uses are rebuilt to the Figma library and adopted by every screen; unused
+Figma components stay out of scope. Mapping, decisions and status live in
+DESIGN-SYSTEM.md.
+
+**2b — layouts.** Page shells, grids, containers, page headings, sidebar,
+section spacing and responsive composition move to the Figma design
+language. Also the moment to re-enable axe colour-contrast checks.
 
 ## Phase 3 — Supabase + auth
 

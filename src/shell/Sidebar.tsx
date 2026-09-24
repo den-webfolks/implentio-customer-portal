@@ -1,5 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
+import { ArrowRightStartOnRectangleIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpDownIcon, Cog6ToothIcon } from '@heroicons/react/24/outline'
+import { Avatar } from '@/ui/Display/Display'
+import { Tooltip } from '@/ui/Tooltip/Tooltip'
+import { Menu, MenuItem, MenuSeparator } from '@/ui/Menu/Menu'
 import styles from './Sidebar.module.css'
 
 /** Whether the BI nav item is visible (shell parity); flip off for
@@ -119,7 +123,6 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
   const [profileOpen, setProfileOpen] = useState(false)
   const navigate = useNavigate()
   const isActive = useIsActive()
-  const footerRef = useRef<HTMLDivElement>(null)
 
   const toggleNav = () => {
     setCollapsed((c) => {
@@ -133,24 +136,6 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
     writeNavPref(false)
     setProfileOpen(true)
   }
-
-  useEffect(() => {
-    if (!profileOpen) return
-    const onDocClick = (e: MouseEvent) => {
-      if (footerRef.current && e.target instanceof Node && !footerRef.current.contains(e.target)) {
-        setProfileOpen(false)
-      }
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setProfileOpen(false)
-    }
-    document.addEventListener('click', onDocClick)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('click', onDocClick)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [profileOpen])
 
   const groups = NAV_GROUPS.filter(
     (g) => SHOW_BI_NAV || g.items.some((i) => i.key !== 'bi'),
@@ -170,15 +155,7 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
             aria-expanded={false}
             aria-label="Expand navigation"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M10 7l5 5-5 5"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <ChevronRightIcon width={18} height={18} aria-hidden="true" />
           </button>
         </div>
         <div className={styles.railNav}>
@@ -188,54 +165,41 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
                 {g.initial}
               </div>
               {g.items.map((item) => (
-                <span key={item.key} className="ia-tip ia-tip-right" style={{ justifyContent: 'center' }}>
+                <Tooltip key={item.key} content={item.label} side="right">
                   <button
                     type="button"
                     className="ia-rail-btn"
                     onClick={() => navigate(item.to)}
                     aria-label={item.label}
                     aria-current={isActive(item) ? 'page' : undefined}
-                    style={{ background: isActive(item) ? 'var(--imp-purple-100)' : 'transparent' }}
+                    style={{ background: isActive(item) ? 'var(--ds-bg-brand-disabled)' : 'transparent' }}
                   >
                     <img src={item.icon} alt="" style={{ width: 20, height: 20 }} />
                   </button>
-                  <span className="ia-tip-bub">{item.label}</span>
-                </span>
+                </Tooltip>
               ))}
             </div>
           ))}
           <div className="ia-rail-init" aria-hidden="true">
             R
           </div>
-          <span className="ia-tip ia-tip-right" style={{ justifyContent: 'center' }}>
-            <span
-              className="ia-rail-btn"
-              role="link"
-              aria-disabled="true"
-              tabIndex={0}
-              aria-label="Rate Cards — Future"
-            >
-              <img
-                src="/brand/nav-ratecards.svg"
-                alt=""
-                style={{ width: 20, height: 20, opacity: 0.32 }}
-              />
+          <Tooltip content="Rate Cards — Future" side="right">
+            <span className="ia-rail-btn" role="link" aria-disabled="true" tabIndex={0} aria-label="Rate Cards — Future">
+              <img src="/brand/nav-ratecards.svg" alt="" style={{ width: 20, height: 20, opacity: 0.32 }} />
             </span>
-            <span className="ia-tip-bub">Rate Cards — Future</span>
-          </span>
+          </Tooltip>
         </div>
         <div className={styles.railFooter}>
-          <span className="ia-tip ia-tip-right">
+          <Tooltip content="Tori Matthews · Implentio Operations" side="right">
             <button
               type="button"
               onClick={expandToProfile}
               aria-label="Tori Matthews, Implentio Operations — expand navigation"
               className={styles.railAvatarBtn}
             >
-              <div className="db-avatar">TM</div>
+              <Avatar name="Tori Matthews" />
             </button>
-            <span className="ia-tip-bub">Tori Matthews · Implentio Operations</span>
-          </span>
+          </Tooltip>
         </div>
       </aside>
     )
@@ -255,15 +219,7 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
           aria-label="Collapse navigation"
           style={{ marginLeft: 'auto' }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M14 7l-5 5 5 5"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <ChevronLeftIcon width={18} height={18} aria-hidden="true" />
         </button>
       </div>
       {groups.map((g, gi) => (
@@ -274,7 +230,7 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
               key={item.key}
               className={isActive(item) ? 'db-nav-item is-active' : 'db-nav-item'}
               onClick={() => navigate(item.to)}
-              style={{ color: 'var(--imp-ink)' }}
+              style={{ color: 'var(--ds-fg-default)' }}
             >
               <img
                 className="db-nav-icon"
@@ -293,57 +249,32 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
           <span>Rate Cards</span>
         </div>
       </div>
-      <div ref={footerRef} className="db-side-footer" style={{ marginTop: 'auto', position: 'relative' }}>
-        {profileOpen && (
-          <div className={styles.profileMenu}>
-            <button
-              type="button"
-              className="ia-profile-item"
-              onClick={() => {
-                setProfileOpen(false)
-                navigate('/account/profile')
-              }}
-            >
-              Account Settings
+      <div className="db-side-footer" style={{ marginTop: 'auto' }}>
+        <Menu
+          open={profileOpen}
+          onOpenChange={setProfileOpen}
+          side="top"
+          align="start"
+          className={styles.profileMenu}
+          trigger={
+            <button type="button" className={styles.profileTrigger}>
+              <Avatar name="Tori Matthews" />
+              <div style={{ minWidth: 0 }}>
+                <div className="db-side-user-name">Tori Matthews</div>
+                <div className="db-side-user-org">Implentio Operations</div>
+              </div>
+              <ChevronUpDownIcon width={16} height={16} aria-hidden="true" className={styles.profileChevron} />
             </button>
-            <button
-              type="button"
-              className="ia-profile-item"
-              style={{ color: 'var(--imp-error)', borderTop: '1.5px solid var(--imp-gray-200)' }}
-              onClick={() => {
-                setProfileOpen(false)
-                onLogout()
-              }}
-            >
-              Log out
-            </button>
-          </div>
-        )}
-        <button
-          type="button"
-          className={styles.profileTrigger}
-          onClick={(e) => {
-            e.stopPropagation()
-            setProfileOpen((o) => !o)
-          }}
-          aria-expanded={profileOpen}
-          aria-haspopup="menu"
+          }
         >
-          <div className="db-avatar">TM</div>
-          <div style={{ minWidth: 0 }}>
-            <div className="db-side-user-name">Tori Matthews</div>
-            <div className="db-side-user-org">Implentio Operations</div>
-          </div>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className={styles.profileChevron}>
-            <path
-              d="M7 10l5 5 5-5"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
+          <MenuItem icon={<Cog6ToothIcon aria-hidden="true" />} onSelect={() => navigate('/account/profile')}>
+            Account Settings
+          </MenuItem>
+          <MenuSeparator />
+          <MenuItem danger icon={<ArrowRightStartOnRectangleIcon aria-hidden="true" />} onSelect={onLogout}>
+            Log out
+          </MenuItem>
+        </Menu>
       </div>
     </aside>
   )

@@ -1,0 +1,129 @@
+/* Figma ❖ Row & Cols — table-label (1956:16676), table-row.bg
+   (5512:24100), value-difference (5616:22908); sticky header guidance. */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--ds-fg-default);
+  font: var(--ds-weight-regular) 14px/1.46 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  font-variant-numeric: tabular-nums;
+}
+
+.table thead th {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ds-stroke-disabled);
+  background: var(--ds-bg-default);
+  color: var(--ds-fg-muted);
+  font-weight: var(--ds-weight-regular);
+  text-align: left;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.table tbody td {
+  height: 44px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ds-stroke-disabled);
+  background: var(--ds-bg-default);
+  vertical-align: middle;
+}
+
+.table tbody tr:hover > td {
+  background: var(--ds-bg-disabled);
+}
+
+.table :global(.num) {
+  text-align: right;
+}
+
+.table thead th:global(.num) > button {
+  margin-left: auto;
+}
+
+.table td:global(.neg) {
+  color: var(--ds-fg-danger);
+  font-weight: var(--ds-weight-medium);
+}
+
+.table td:global(.pos) {
+  color: var(--ds-fg-success);
+  font-weight: var(--ds-weight-medium);
+}
+
+/* Figma "summary / highlight" row — static tables only. */
+.table tr:global(.total-row) > td,
+.table tr:global(.total-row):hover > td {
+  background: var(--ds-bg-disabled);
+  font-weight: var(--ds-weight-semi);
+}
+
+.sticky thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  box-shadow: inset 0 -1px 0 var(--ds-stroke-disabled);
+}
+
+/* ---------- Sortable column label ---------- */
+
+.sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: -4px -8px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: var(--ds-radius-small);
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.sort:hover,
+.sortActive {
+  background: var(--ds-bg-brand-disabled);
+}
+
+.sort:focus-visible {
+  outline: 2px solid var(--ds-stroke-focus);
+  outline-offset: 0;
+}
+
+.sort svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ds-icon-muted);
+}
+
+/* ---------- Value difference ---------- */
+
+.diff {
+  display: inline-block;
+  padding: 0 8px;
+  border-radius: var(--ds-radius-small);
+  color: var(--ds-fg-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.diffNegative {
+  background: var(--ds-bg-danger-muted);
+  color: var(--ds-fg-danger);
+}
+
+.diffPositive {
+  background: var(--ds-bg-success-muted);
+  color: var(--ds-fg-success);
+}
+
+/* Figma ❖ Truncated: a single long value is cropped with an ellipsis. */
+.truncate {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,5 +1,4 @@
-/* Global base styles — mirrors the prototype's base element rules.
-   Tokens: tokens.css · Fonts: fonts.css · Component styles: CSS Modules. */
+/* Global base styles. Tokens: tokens.css · Component styles: CSS Modules. */
 
 * {
   box-sizing: border-box;
@@ -9,9 +8,39 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--imp-gray-100);
-  color: var(--imp-ink);
-  font-family: var(--imp-font-body);
-  font-weight: 500;
+  background: var(--ds-neutral-100);
+  color: var(--ds-fg-default);
+  font-family: var(--ds-font);
+  font-weight: var(--ds-weight-regular);
+  letter-spacing: var(--ds-tracking-body);
   -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  letter-spacing: inherit;
+}
+
+a {
+  color: var(--ds-fg-brand-emphasis);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--ds-fg-dark-brand-emphasis);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
