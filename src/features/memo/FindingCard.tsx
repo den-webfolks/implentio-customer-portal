@@ -24,6 +24,7 @@ import {
   serviceLabel,
   titleCase,
 } from './derive'
+import { plural } from '@/domain/plural'
 
 const SVC_TIP =
   'Packages are grouped by carrier service level so you can review where this variance is concentrated. Amounts are complete package totals for the packages in each service level.'
@@ -82,10 +83,10 @@ export function FindingCard({
   const disputeLocked = g.pursuit === 'pursued' || groupExpired(g, now)
   const disputeControlLabel =
     g.pursuit === 'pursued'
-      ? 'Included in dispute package'
+      ? 'Included in dispute'
       : excludedIds.includes(g.id)
-        ? 'Add variance group to dispute package'
-        : 'Included in dispute package'
+        ? 'Add to dispute'
+        : 'Included in dispute'
 
   const q = search.trim().toLowerCase()
   const pkgMatch = (o: FindingGroup['services'][number]['pkgs'][number]) =>
@@ -130,8 +131,8 @@ export function FindingCard({
               </span>
             </div>
             <div className="ds-body-small ds-muted" style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-              <span>{g.invoices} invoices</span>
-              <span>{g.packages} packages</span>
+              <span>{plural(g.invoices, 'invoice')}</span>
+              <span>{plural(g.packages, 'package')}</span>
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: '78ch' }}>
@@ -159,13 +160,13 @@ export function FindingCard({
             </Link>
 
             {explOpen && (
-              <div style={{ animation: 'imp-fade-in 0.2s ease', marginTop: 10 }}>
+              <div style={{ marginTop: 10 }}>
                 <Banner type="info" title="How we calculated this finding">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div>
                       <div className="ds-body-base ds-w-semi">What was billed</div>
                       <p className="imp-small" style={{ margin: '3px 0 0' }}>
-                        {provider} billed {fmtMoney(g.invoicedN)} in total charges across the {g.packages.toLocaleString('en-US')} packages assigned to this finding.
+                        {provider} billed {fmtMoney(g.invoicedN)} in total charges across the {plural(g.packages, 'package')} assigned to this finding.
                       </p>
                     </div>
                     <div>
@@ -187,7 +188,7 @@ export function FindingCard({
                       </p>
                     </div>
                     {exampleText(g) && (
-                      <div style={{ border: '1px solid var(--ds-stroke-disabled)', borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-bg-disabled)', padding: '12px 14px' }}>
+                      <div style={{ border: '1px solid var(--ds-stroke-disabled)', borderRadius: 'var(--ds-radius-small)', background: 'var(--ds-bg-disabled)', padding: '12px 14px' }}>
                         <div className="db-eyebrow" style={{ margin: '0 0 4px' }}>
                           Example package
                         </div>
@@ -253,7 +254,7 @@ export function FindingCard({
       </div>
 
       {expanded && (
-        <div style={{ animation: 'imp-fade-in 0.2s ease' }}>
+        <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
             <div className="db-eyebrow" style={{ margin: 0 }}>
               Affected service levels

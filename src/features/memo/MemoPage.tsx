@@ -12,6 +12,7 @@ import { useDownloadState, useMemoDetail, useRecordMemoDownload } from './api'
 import { SummaryTab } from './SummaryTab'
 import { MemoInvoicesTab } from './MemoInvoicesTab'
 import { ActivityTab } from './ActivityTab'
+import { usePageTitle } from '@/shell/usePageTitle'
 
 const CADENCE_TIP =
   'Audit cadence is based on your reporting cadence with each biller and may vary by carrier. To request a change, contact your Implentio customer representative.'
@@ -31,6 +32,7 @@ export function MemoPage({ tab }: { tab: MemoTabKey }) {
   const detailQ = useMemoDetail(memoId ?? '')
   const dlQ = useDownloadState()
   const recordDownload = useRecordMemoDownload()
+  usePageTitle(memoId, TABS.find((t) => t.key === tab)?.label)
 
   if (!detailQ.data || !dlQ.data) {
     if (detailQ.isFetched && detailQ.data === null) {

@@ -215,12 +215,29 @@ and changes copy — each item below is a deliberate deviation or behaviour chan
 - Sentence case for table headers, tabs, buttons and chips ("Credit memos", "Download credit
   memo", "Ready to dispute"); status/eyebrow strings stored in natural case, uppercased by CSS.
 
+**Second pass (same day):**
+- Dispute vocabulary: the object is a "dispute" (not request / package), the selectable items
+  are "variance groups", the attachment is the "evidence package"; every step advances with
+  "Continue" and the flow ends with "Done" (now also shown after the manual path).
+- Wizard errors say how to recover ("Unable to send dispute… reconnect your email in Account
+  settings", copy and download failures); ActivityTab no longer offers a "Review summary"
+  button that always failed — it says the preview isn't available for superseded versions.
+- Filter empty states offer "Clear filters"; the Memos empty state names the real filters.
+- Counts pluralise through `plural()` (src/domain/plural.ts): "1 invoice", "1 package".
+- Skip link to `<main>`; per-route `document.title` (`usePageTitle`); row-specific names on
+  Account "Edit" buttons; the placeholder page no longer nests a second `<main>`.
+- `text-wrap: balance` on headings, `pretty` on body/description classes.
+- Scaled-down outline icons get a CSS stroke width (2 at 16px, 2.5 at 12px); per-call
+  `strokeWidth` props removed.
+- The finding disclosure fade is gone (instant toggle); the nav drawer animates in and out
+  only under `prefers-reduced-motion: no-preference`; the finding flash is a steady ring under
+  reduced motion.
+- Inner boxes nested in 8px surfaces use `--ds-radius-small`.
+
 ## Follow-ups
 
-- Remaining review items (not yet done): dispute-wizard vocabulary ("dispute" / "request" /
-  "package"), wizard failure copy, filter empty states with a Clear action, count pluralisation,
-  skip link + per-route page titles, row-specific "Edit" names, text-wrap balance/pretty,
-  icon stroke at 12–16px, FindingCard/drawer keyframes → transitions with exits, inner-box radii.
+- Colour meaning: brand purple on some static text (eyebrows, next-step lines) and orange
+  carrying money / "new" stripe / in-progress; Banner mixes 20/solid and 24/outline icons.
 - Dark-navy primary button (Figma primary, emphasis off) has no documented use — not built.
 - Phase 2b: page headers, section spacing, remaining `proto.css` layout classes, the remaining
   `--imp-*` aliases.

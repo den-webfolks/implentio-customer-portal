@@ -57,8 +57,11 @@ export function AppLayout() {
 
   return (
     <div className={compact ? `${styles.shell} ${styles.shellCompact}` : styles.shell}>
+      <a className={styles.skipLink} href="#main">
+        Skip to content
+      </a>
       {compact ? <CompactNav onLogout={() => setLoggedOut(true)} /> : <Sidebar onLogout={() => setLoggedOut(true)} />}
-      <main className={styles.main}>
+      <main id="main" tabIndex={-1} className={styles.main}>
         {demo && (
           <Suspense fallback={null}>
             <HarnessBar activeScenarioId={searchParams.get('scenario') ?? ''} />

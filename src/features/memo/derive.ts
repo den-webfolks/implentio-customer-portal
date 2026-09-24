@@ -238,7 +238,7 @@ export function nextStepCard(input: {
     eyebrow: 'Next step',
     heading: `Prepare your dispute for ${provider}`,
     lines: [line('prep', `${fmtMoney(eligibleAmt)} eligible across ${fmtCount(eligible.length)}`)],
-    description: 'Select the findings to include, then review and send your dispute package.',
+    description: 'Select the findings to include, then review and send your dispute.',
     actions: [action('prep', 'primary', 'Prepare dispute for Biller')],
   })
 }

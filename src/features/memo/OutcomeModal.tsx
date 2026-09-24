@@ -201,7 +201,7 @@ export function OutcomeModal({ detail, onClose }: { detail: MemoDetail; onClose:
             </div>
 
             {bulkOpen && (
-              <div style={{ margin: '14px 20px 0', border: '1px solid var(--ds-stroke-brand-muted)', borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-bg-brand-disabled)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ margin: '14px 20px 0', border: '1px solid var(--ds-stroke-brand-muted)', borderRadius: 'var(--ds-radius-small)', background: 'var(--ds-bg-brand-disabled)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                   <span className="ds-body-base" style={{ fontWeight: 'var(--ds-weight-medium)', color: 'var(--ds-fg-default)' }}>
                     This will update all {pursued.length} {findingsWord} sent to {threePl} on {sentDate}, replacing any existing individual outcomes.

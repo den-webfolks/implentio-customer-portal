@@ -64,6 +64,8 @@
 }
 
 .stage svg {
+  /* 24px outline icons scaled down keep a legible ~1.3px stroke. */
+  stroke-width: 2;
   width: 16px;
   height: 16px;
 }

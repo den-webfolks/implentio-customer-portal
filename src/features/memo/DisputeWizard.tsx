@@ -28,6 +28,7 @@ import {
   useSetDisputeDraft,
 } from './api'
 import { titleCase } from './derive'
+import { plural } from '@/domain/plural'
 
 type SendPhase = 'idle' | 'processing' | 'sent' | 'failed'
 type ZipPhase = 'ready' | 'preparing' | 'failed'
@@ -123,11 +124,11 @@ function DisputeWizardInner({
   const noSelection = !detail.findingsUnavailable && selGroups.length === 0
 
   const lockedText = detail.findingsUnavailable
-    ? `Implentio reviewed the applicable parcel charges and identified ${fmtMoney(memo.netN ?? 0)} in variance being pursued across ${(memo.orders ?? 0).toLocaleString('en-US')} packages on ${memo.invoices ?? 0} invoices.\n\nPlease review the findings and confirm which adjustments will be approved.\n\nThank you,\nTori Matthews\nImplentio`
-    : `Implentio reviewed the applicable parcel charges and identified ${fmtMoney(selAmount)} in variance being pursued across ${pkgSet.size.toLocaleString('en-US')} packages on ${invSet.size} invoices.\n\n` +
+    ? `Implentio reviewed the applicable parcel charges and identified ${fmtMoney(memo.netN ?? 0)} in variance being pursued across ${plural(memo.orders ?? 0, 'package')} on ${plural(memo.invoices ?? 0, 'invoice')}.\n\nPlease review the findings and confirm which adjustments will be approved.\n\nThank you,\nTori Matthews\nImplentio`
+    : `Implentio reviewed the applicable parcel charges and identified ${fmtMoney(selAmount)} in variance being pursued across ${plural(pkgSet.size, 'package')} on ${plural(invSet.size, 'invoice')}.\n\n` +
       (complete
         ? 'The attached Complete Excel Evidence package includes all published variance groups, affected invoices, package-level details, calculations, and available supporting source references.'
-        : `The attached Selected Variance Evidence package includes the ${selGroups.length} variance groups being pursued, with their affected invoices, package-level details, calculations, and available supporting source references.`) +
+        : `The attached Selected Variance Evidence package includes the ${plural(selGroups.length, 'variance group')} being pursued, with their affected invoices, package-level details, calculations, and available supporting source references.`) +
       '\n\nPlease review the findings and confirm which adjustments will be approved.\n\nThank you,\nTori Matthews\nImplentio'
 
   const toggleGroup = (g: FindingGroup, selected: boolean) => {
@@ -187,14 +188,14 @@ function DisputeWizardInner({
     const text = `To: ${to}\nCC: ${cc}\nSubject: ${subject}\n\n${intro}\n\n${lockedText}`
     void navigator.clipboard?.writeText(text).then(
       () => showToast('positive', 'Email text copied to clipboard'),
-      () => showToast('danger', 'Could not copy the email text'),
+      () => showToast('danger', 'Unable to copy. Select the message text and copy it manually.'),
     )
   }
 
   const downloadEvidence = () => {
     saveFile(`/demo-assets/${encodeURIComponent(detail.file)}`, filename)
       .then(() => showToast('positive', `Downloading ${filename}`))
-      .catch(() => showToast('danger', 'The evidence package could not be downloaded.'))
+      .catch(() => showToast('danger', 'Unable to download the evidence package. Try again, or contact your Implentio customer representative.'))
   }
 
   const confirmManualSent = () => {
@@ -225,7 +226,7 @@ function DisputeWizardInner({
     <>
       {step === 1 && (
         <Button variant="primary" disabled={noSelection} onClick={() => setStep(2)}>
-          Continue to email
+          Continue
         </Button>
       )}
       {step === 2 && (
@@ -233,7 +234,7 @@ function DisputeWizardInner({
           Continue
         </Button>
       )}
-      {step === 3 && sendPhase === 'sent' && <Button onClick={onClose}>Close</Button>}
+      {step === 3 && (sendPhase === 'sent' || (!emailAccount && manualSentDone)) && <Button onClick={onClose}>Done</Button>}
       {step === 3 && emailAccount && sendPhase !== 'sent' && (
         <>
           <span className="imp-small" style={{ margin: 0, whiteSpace: 'nowrap' }}>
@@ -258,7 +259,7 @@ function DisputeWizardInner({
               Review what will be shared with {memo.provider}
             </h2>
             <p className="imp-small" style={{ margin: '8px 0 0', maxWidth: '72ch' }}>
-              Review the findings and choose the variance groups you want to pursue with {memo.provider}. Your request summary and evidence package will update to reflect your selections.
+              Choose the variance groups you want to pursue with {memo.provider}. Your dispute summary and evidence package update to match your selections.
             </p>
           </div>
 
@@ -282,7 +283,7 @@ function DisputeWizardInner({
               <div>
                 <span className="db-eyebrow">Select variance groups to pursue</span>
                 <p className="imp-small" style={{ margin: '6px 0 0', maxWidth: '70ch' }}>
-                  Choose the findings you want to include in this request to your biller. Your dispute summary and evidence package will reflect your selections.
+                  Choose the variance groups to include in this dispute. Your dispute summary and evidence package update to match your selections.
                 </p>
               </div>
               <Button size="small" onClick={toggleSelectAll}>
@@ -308,7 +309,7 @@ function DisputeWizardInner({
                               {g.title}
                             </span>
                             <span className="imp-small" style={{ display: 'block', marginTop: 2 }}>
-                              {pkgCount.toLocaleString('en-US')} packages · {invCount} invoices
+                              {plural(pkgCount, 'package')} · {plural(invCount, 'invoice')}
                             </span>
                           </span>
                           <span className="ds-w-semi" style={{ flex: 'none', fontVariantNumeric: 'tabular-nums', color: 'var(--ds-fg-accent-text)' }}>
@@ -323,7 +324,7 @@ function DisputeWizardInner({
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: cellBorder, paddingTop: 12 }}>
               <span className="db-eyebrow" style={{ color: 'var(--ds-fg-muted)' }}>
-                Selected for this request
+                Selected for this dispute
               </span>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px 18px' }}>
                 <Statistic bare size="small" label="Variance groups" value={selGroups.length} />
@@ -333,7 +334,7 @@ function DisputeWizardInner({
               </div>
               {noSelection && (
                 <p className="ds-body-small" role="alert" style={{ margin: 0, color: 'var(--ds-fg-danger)' }}>
-                  Select at least one variance group to prepare this request.
+                  Select at least one variance group to prepare this dispute.
                 </p>
               )}
             </div>
@@ -414,7 +415,7 @@ function DisputeWizardInner({
                   <span className="ds-w-medium" style={{ color: 'var(--ds-fg-brand-emphasis)' }}>
                     Implentio Support · {supportEmail}
                   </span>
-                  <span>Include your Customer Success Manager and Implentio Support for help answering questions about the findings and supporting your credit request.</span>
+                  <span>Include your Customer Success Manager and Implentio Support for help answering questions about the findings and supporting your dispute.</span>
                 </span>
               }
             />
@@ -444,7 +445,7 @@ function DisputeWizardInner({
             </div>
             {!complete && !detail.findingsUnavailable && (
               <p className="imp-small" style={{ margin: 0 }}>
-                Includes {selGroups.length} selected variance-group Excel files
+                Includes {plural(selGroups.length, 'selected variance-group Excel file')}
               </p>
             )}
             {zipPhase === 'preparing' && (
@@ -470,7 +471,7 @@ function DisputeWizardInner({
           ) : (
             <div>
               <h2 className="ds-heading-medium" style={{ margin: 0 }}>
-                Your dispute package is ready
+                Your dispute is ready to send
               </h2>
               <p className="imp-small" style={{ margin: '8px 0 0', maxWidth: '74ch' }}>
                 Copy the prepared email and download the supporting files, then send them from your company email account.
@@ -490,13 +491,13 @@ function DisputeWizardInner({
                   {sendPhase === 'processing' && (
                     <div className="ds-body-base ds-w-medium" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <Spinner />
-                      Sending your request…
+                      Sending your dispute…
                     </div>
                   )}
                   {sendPhase === 'sent' && sentInfo && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <span className="ds-heading-tiny" style={{ color: 'var(--ds-fg-success)' }}>
-                        Request submitted from {sentInfo.email}
+                        Dispute sent from {sentInfo.email}
                       </span>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px 18px' }}>
                         <Statistic bare size="tiny" label="Recipient" value={to} />
@@ -509,8 +510,12 @@ function DisputeWizardInner({
                     </div>
                   )}
                   {sendPhase === 'failed' && (
-                    <Banner type="error" title="We couldn’t send this request" actions={<Button size="small" variant="primary" onClick={doSend}>Try again</Button>}>
-                      Your prepared message and evidence selection have been kept. Try again, reconnect your email, or continue manually below.
+                    <Banner type="error" title="Unable to send dispute" actions={<Button size="small" variant="primary" onClick={doSend}>Try again</Button>}>
+                      Your message and evidence selection are saved. Try again, or reconnect your email in{' '}
+                      <Link to="/account" variant="accent" size="small" bold>
+                        Account settings
+                      </Link>
+                      .
                     </Banner>
                   )}
                 </div>
@@ -518,7 +523,7 @@ function DisputeWizardInner({
 
               <div className="db-card" style={{ gap: 0 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '190px 1fr' }}>
-                  <SummaryRow l="Included in this request" v={`${selGroups.length} variance groups · ${fmtMoney(selAmount)} · ${pkgSet.size.toLocaleString('en-US')} packages · ${invSet.size} invoices`} />
+                  <SummaryRow l="Included in this dispute" v={`${plural(selGroups.length, 'variance group')} · ${fmtMoney(selAmount)} · ${plural(pkgSet.size, 'package')} · ${plural(invSet.size, 'invoice')}`} />
                   <SummaryRow l="To" v={to} />
                   <SummaryRow l="CC" v={cc || '—'} />
                   <SummaryRow l="Subject" v={subject} />
@@ -546,7 +551,7 @@ function DisputeWizardInner({
 
           {!emailAccount &&
             (manualSentDone ? (
-              <Banner type="success" title={`Findings marked pursued with ${memo.provider}.`} />
+              <Banner type="success" title={`Variance groups marked pursued with ${memo.provider}.`} />
             ) : (
               <>
                 <div className="db-card" style={{ gap: 0 }}>

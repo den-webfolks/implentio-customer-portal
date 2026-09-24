@@ -23,6 +23,7 @@ import type { CreditMemoSummary } from '@/domain/types'
 import { useDownloadState, useGoldenCta, useMemos, useRecordMemoDownload } from './api'
 import { execSummary, memoCardView, type CtaKind, type MemoCardView } from './derive'
 import { fmtMoney } from '@/domain/money'
+import { Button } from '@/ui/Button/Button'
 
 const VARIANCE_TIP =
   'These amounts include only packages with significant variance—not all invoices and spend reviewed during this audit period.'
@@ -423,7 +424,12 @@ export function MemosTab() {
         <div className="db-card" style={{ padding: 0 }}>
           <EmptyState
             title="No credit memos match these filters"
-            subtitle="Adjust the filters above to see credit memos for other periods, statuses, or carriers."
+            subtitle="Try other billers, report statuses, or reporting periods."
+            action={
+              <Button size="small" onClick={filters.clear}>
+                Clear filters
+              </Button>
+            }
           />
         </div>
       )}

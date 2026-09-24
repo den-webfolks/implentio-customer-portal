@@ -4,6 +4,7 @@ import { useParams } from 'react-router'
 import { Tabs } from '@/ui/Tabs/Tabs'
 import { MemosTab } from './MemosTab'
 import { OutcomesTab } from './OutcomesTab'
+import { usePageTitle } from '@/shell/usePageTitle'
 
 const TABS = [
   { key: 'memos', label: 'Credit memos' },
@@ -15,6 +16,7 @@ type TabKey = (typeof TABS)[number]['key']
 export function TrackerPage() {
   const { tab } = useParams()
   const active: TabKey = tab === 'outcomes' ? 'outcomes' : 'memos'
+  usePageTitle(TABS.find((t) => t.key === active)?.label, 'Parcel Credit Tracker')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>

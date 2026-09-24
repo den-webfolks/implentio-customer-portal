@@ -2,7 +2,6 @@
 import { useState } from 'react'
 import { ArrowDownTrayIcon, DocumentTextIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
 import type { MemoDetail } from '@/domain/types'
-import { useToast } from '@/ui/Toast/ToastProvider'
 import { Button } from '@/ui/Button/Button'
 import { RadioGroup } from '@/ui/Form/Choice'
 import { StatusChip } from '@/ui/Chip/StatusChip'
@@ -33,7 +32,6 @@ export function ActivityTab({
   onDownloadExcel: () => void
 }) {
   const memo = detail.memo
-  const showToast = useToast()
   const activityQ = useActivity()
   const [filter, setFilter] = useState<ActivityFilter>('all')
 
@@ -75,13 +73,15 @@ export function ActivityTab({
                     {v.note}
                   </p>
                 )}
-                <div style={{ display: 'flex', gap: 'var(--ds-space-3)', flexWrap: 'wrap' }}>
+                {/* The summary preview isn't available for superseded versions; say so
+                    instead of offering a button that always fails. */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ds-space-3)', flexWrap: 'wrap' }}>
                   <Button size="small" onClick={onDownloadExcel}>
                     Download credit memo
                   </Button>
-                  <Button size="small" onClick={() => showToast('danger', 'Superseded version preview is not available in this release.')}>
-                    Review summary
-                  </Button>
+                  <span className="imp-small" style={{ margin: 0 }}>
+                    Summary preview isn’t available for superseded versions.
+                  </span>
                 </div>
               </div>
             ))}

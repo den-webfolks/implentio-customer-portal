@@ -12,6 +12,8 @@ import { Link } from '@/ui/Link/Link'
 import { EmptyState } from '@/ui/Display/Display'
 import { Table, TableScroll, SortableHeader, nextSort, type SortDirection } from '@/ui/Table/Table'
 import { useFilters, FilterButton, FilterGroup, matchesFilter, type FilterField, type FilterValues } from '@/ui/Filters/Filters'
+import { Button } from '@/ui/Button/Button'
+import { usePageTitle } from '@/shell/usePageTitle'
 
 const EXCEEDS_TIP =
   'The parcel amount reviewed may exceed the original invoice total when an invoice includes credits or negative adjustments. These reduce the invoice total but are excluded from the parcel review.'
@@ -42,6 +44,7 @@ function matchesCarrier(values: FilterValues, carriers: readonly string[]): bool
 
 export function InvoicesPage() {
   const rowsQ = useInvoiceIndex()
+  usePageTitle('Invoices')
   const [search, setSearch] = useState('')
   const [metric, setMetric] = useState<'all' | 'variance' | 'clear'>('all')
   const [filterValues, setFilterValues] = useState<FilterValues>({ ivBiller: [], ivCarrier: [], ivResult: [], ivMemo: [] })
@@ -191,6 +194,18 @@ export function InvoicesPage() {
           <EmptyState
             title="No invoices match these filters"
             subtitle="Filtering refines this view only. It does not change which invoices Implentio has ingested for your brand."
+            action={
+              <Button
+                size="small"
+                onClick={() => {
+                  filters.clear()
+                  setSearch('')
+                  setMetric('all')
+                }}
+              >
+                Clear filters
+              </Button>
+            }
           />
         )}
       </div>

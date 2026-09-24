@@ -11,6 +11,7 @@ import { fmtDateShort } from '@/domain/dates'
 import { deriveReportState } from '@/domain/memo'
 import { groupExpired } from '@/domain/outcomes'
 import { TONE_CHART_COLOR } from '@/features/status-tones'
+import { plural } from '@/domain/plural'
 
 const DASH = '—'
 
@@ -120,7 +121,7 @@ export function trackerDisputeCta(input: {
       key: 'completed',
       statusLabel: 'Dispute completed',
       color: 'green',
-      supporting: `${pursued.length} of ${pursued.length} findings finalized.`,
+      supporting: `${pursued.length} of ${plural(pursued.length, 'finding')} finalized.`,
       primaryKind: 'view',
       primaryLabel: 'View dispute details',
     }
@@ -129,7 +130,7 @@ export function trackerDisputeCta(input: {
       key: 'partial',
       statusLabel: 'Outcomes partly recorded',
       color: 'amber',
-      supporting: `${finalizedCount} of ${pursued.length} findings finalized.`,
+      supporting: `${finalizedCount} of ${plural(pursued.length, 'finding')} finalized.`,
       primaryKind: 'outcome',
       primaryLabel: 'Update dispute outcomes',
     }
@@ -260,7 +261,7 @@ export function memoCardView(
         : null,
     preparedText: m.versionNum && m.versionNum > 1 ? null : prepared,
     over: m.netN == null ? DASH : fmtMoney(m.netN),
-    overSub: `${m.orders == null ? DASH : m.orders.toLocaleString('en-US')} affected packages on ${m.invoices == null ? DASH : m.invoices} invoices`,
+    overSub: `${m.orders == null ? `${DASH} affected packages` : plural(m.orders, 'affected package')} on ${m.invoices == null ? `${DASH} invoices` : plural(m.invoices, 'invoice')}`,
     billedSub: `${m.invoicedN == null ? DASH : fmtMoney(m.invoicedN)} billed · ${
       m.expectedN != null
         ? fmtMoney(m.expectedN)

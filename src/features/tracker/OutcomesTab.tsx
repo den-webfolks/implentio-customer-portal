@@ -176,6 +176,12 @@ export function OutcomesTab() {
   const activeCount = activeFilterCount(filterValues) + (disposition !== 'all' ? 1 : 0)
   const groupClearVisible = filters.expanded && activeFilterCount(shownValues) > 0
   const showClearAll = activeCount > 0 && !groupClearVisible
+  const clearAll = () => {
+    setFilterValues(EMPTY_FILTERS)
+    setDisposition('all')
+    setSelectedSlice(null)
+    setOpenNotesId(null)
+  }
 
 
   return (
@@ -207,7 +213,15 @@ export function OutcomesTab() {
           See where identified billing variance currently sits across all of your parcel credit memos.
         </p>
         {donut.empty ? (
-          <EmptyState title="No credit outcomes match these filters" subtitle="Adjust your filters to view another set of credit outcomes." />
+          <EmptyState
+            title="No credit outcomes match these filters"
+            subtitle="Adjust your filters to view another set of credit outcomes."
+            action={
+              <Button size="small" onClick={clearAll}>
+                Clear filters
+              </Button>
+            }
+          />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
             <div style={{ position: 'relative', width: 220, height: 220, flex: 'none' }}>
@@ -282,12 +296,7 @@ export function OutcomesTab() {
             <Button
               size="small"
               style={{ marginInlineStart: 'auto' }}
-              onClick={() => {
-                setFilterValues(EMPTY_FILTERS)
-                setDisposition('all')
-                setSelectedSlice(null)
-                setOpenNotesId(null)
-              }}
+              onClick={clearAll}
             >
               Clear all
             </Button>

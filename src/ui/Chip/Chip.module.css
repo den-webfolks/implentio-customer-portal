@@ -16,6 +16,8 @@
 }
 
 .status svg {
+  /* 24px outline icons scaled down keep a legible ~1.3px stroke. */
+  stroke-width: 2.5;
   flex: none;
   width: 12px;
   height: 12px;

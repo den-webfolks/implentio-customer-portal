@@ -68,7 +68,7 @@ export function MenuCheckboxItem({ children, checked, onCheckedChange, disabled 
     >
       <span className={styles.indicator} aria-hidden="true">
         <DropdownMenu.ItemIndicator>
-          <CheckIcon strokeWidth={3} />
+          <CheckIcon />
         </DropdownMenu.ItemIndicator>
       </span>
       {children}

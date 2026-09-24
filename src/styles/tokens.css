@@ -233,6 +233,9 @@
 .ds-body-small { font: var(--ds-weight-regular) 12px/1.64 var(--ds-font); letter-spacing: var(--ds-tracking-body); }
 .ds-caption-small { font: var(--ds-weight-medium) 12px/1.3 var(--ds-font); letter-spacing: var(--ds-tracking-caption); }
 .ds-caption-tiny { font: var(--ds-weight-medium) 10px/1.16 var(--ds-font); letter-spacing: var(--ds-tracking-caption); }
+/* Headings balance their lines; descriptions avoid a lone last word. */
+.ds-heading-huge, .ds-heading-xlarge, .ds-heading-large, .ds-heading-medium, .ds-heading-small, .ds-heading-tiny { text-wrap: balance; }
+.ds-body-medium, .ds-body-base, .ds-body-small, .imp-small, .imp-body { text-wrap: pretty; }
 .ds-w-medium { font-weight: var(--ds-weight-medium); }
 .ds-w-semi { font-weight: var(--ds-weight-semi); }
 .ds-muted { color: var(--ds-fg-muted); }

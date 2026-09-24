@@ -26,7 +26,7 @@ export function Stepper({ steps, current, bare = false, ariaLabel = 'Progress' }
               aria-current={state === 'active' ? 'step' : undefined}
             >
               <span className={styles.stage} aria-hidden="true">
-                {state === 'passed' ? <CheckIcon strokeWidth={2.5} /> : i + 1}
+                {state === 'passed' ? <CheckIcon /> : i + 1}
               </span>
               {label}
               {state === 'passed' && <span className="visually-hidden"> (completed)</span>}

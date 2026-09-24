@@ -15,6 +15,7 @@ import { Checkbox } from '@/ui/Form/Choice'
 import { StatusChip, type StatusTone } from '@/ui/Chip/StatusChip'
 import styles from './AccountPage.module.css'
 import { Avatar, Spinner } from '@/ui/Display/Display'
+import { usePageTitle } from '@/shell/usePageTitle'
 
 const EMAIL_TONE: Record<EmailAccount['status'], StatusTone> = {
   connected: 'success',
@@ -45,6 +46,7 @@ function KeyValue({ label, children, wrapAnywhere = false }: { label: string; ch
 
 export function AccountPage() {
   const accountQ = useAccount()
+  usePageTitle('Account settings')
   const m = useAccountMutations()
   const clock = useClock()
   const showToast = useToast()
@@ -152,7 +154,7 @@ export function AccountPage() {
         </div>
         {status === 'connected' && (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px 18px', background: 'var(--ds-bg-disabled)', borderRadius: 'var(--ds-radius-large)', padding: '12px 14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px 18px', background: 'var(--ds-bg-disabled)', borderRadius: 'var(--ds-radius-small)', padding: '12px 14px' }}>
               <KeyValue label="Connected email" wrapAnywhere>
                 {acct.address}
               </KeyValue>
@@ -285,6 +287,7 @@ export function AccountPage() {
                   <StatusChip tone={c.active ? 'success' : 'muted'}>{c.active ? 'Active' : 'Inactive'}</StatusChip>
                   <Button
                     size="small"
+                    aria-label={`Edit ${c.biller} contact`}
                     onClick={() => {
                       setContactIsNew(false)
                       setContactEdit({ ...c })
@@ -561,7 +564,7 @@ function MemberRow({ member, onEdit }: { member: TeamMember; onEdit: () => void 
         <StatusChip tone={member.status === 'Active' ? 'success' : 'muted'}>{member.status}</StatusChip>
       </div>
       <div className={styles.memberEdit} style={{ ...cell, paddingBlock: 12, paddingInline: '16px 0', textAlign: 'end' }}>
-        <Button size="small" onClick={onEdit}>
+        <Button size="small" aria-label={`Edit ${member.name}`} onClick={onEdit}>
           Edit
         </Button>
       </div>

@@ -108,7 +108,7 @@ export function groupStatusLine(
     return {
       key: 'eligible',
       label: STATUS_LABELS.eligible,
-      secondary: `Included in dispute package · ${deadlineText}`,
+      secondary: `Included in dispute · ${deadlineText}`,
       showAction: false,
     }
   }

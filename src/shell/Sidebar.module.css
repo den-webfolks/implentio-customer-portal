@@ -150,27 +150,27 @@
   overflow-y: auto;
   background: var(--ds-neutral-0);
   box-shadow: var(--ds-shadow-popover);
-  animation: drawer-in 200ms var(--ds-ease-out);
 }
 
 .drawer:focus {
   outline: none;
 }
 
-@keyframes drawer-in {
-  from { transform: translateX(-100%); }
-  to { transform: none; }
+/* Radix keeps the drawer mounted until its exit animation ends, so both
+   directions animate (Presence tracks animations, not transitions). Motion
+   is opt-in; under reduced motion the drawer simply appears and disappears. */
+@media (prefers-reduced-motion: no-preference) {
+  .drawer[data-state='open'] { animation: drawer-in 200ms var(--ds-ease-out); }
+  .drawer[data-state='closed'] { animation: drawer-out 160ms var(--ds-ease-out); }
+  .drawer[data-state='open']:dir(rtl) { animation-name: drawer-in-rtl; }
+  .drawer[data-state='closed']:dir(rtl) { animation-name: drawer-out-rtl; }
+  .drawerOverlay[data-state='open'] { animation: overlay-in 200ms var(--ds-ease-out); }
+  .drawerOverlay[data-state='closed'] { animation: overlay-out 160ms var(--ds-ease-out); }
 }
 
-@keyframes drawer-in-rtl {
-  from { transform: translateX(100%); }
-  to { transform: none; }
-}
-
-.drawer:dir(rtl) {
-  animation-name: drawer-in-rtl;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .drawer { animation: none; }
-}
+@keyframes drawer-in { from { transform: translateX(-100%); } }
+@keyframes drawer-out { to { transform: translateX(-100%); } }
+@keyframes drawer-in-rtl { from { transform: translateX(100%); } }
+@keyframes drawer-out-rtl { to { transform: translateX(100%); } }
+@keyframes overlay-in { from { opacity: 0; } }
+@keyframes overlay-out { to { opacity: 0; } }

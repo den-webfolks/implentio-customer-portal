@@ -20,6 +20,7 @@ import { FindingCard } from './FindingCard'
 import { DisputeWizard } from './DisputeWizard'
 import { ReportPreviewModal } from './ReportPreviewModal'
 import { OutcomeModal } from './OutcomeModal'
+import { plural } from '@/domain/plural'
 
 const VARIANCE_TIP =
   'These amounts include only packages with significant variance—not all invoices and spend reviewed during this audit period.'
@@ -165,11 +166,11 @@ export function SummaryTab({
               {memo.netN == null ? '—' : fmtMoney(memo.netN)}
             </div>
             <div className="ds-body-base ds-muted">
-              Found across {memo.orders?.toLocaleString('en-US') ?? '—'} packages on {memo.invoices ?? '—'} invoices
+              Found across {memo.orders != null ? plural(memo.orders, 'package') : '— packages'} on {memo.invoices != null ? plural(memo.invoices, 'invoice') : '— invoices'}
             </div>
             {memo.invoicesNoVariance != null && memo.invoicesNoVariance > 0 && (
               <div className="ds-body-small" style={{ color: 'var(--ds-fg-muted)' }}>
-                {auditedInvoices} invoices audited · {memo.invoicesNoVariance} had no significant variance
+                {plural(auditedInvoices, 'invoice')} audited · {memo.invoicesNoVariance} had no significant variance
               </div>
             )}
             {recovery && (
@@ -263,12 +264,12 @@ export function SummaryTab({
               <CheckCircleIcon width={20} height={20} aria-hidden="true" style={{ flex: 'none' }} />
               <span style={{ ...EYEBROW_ACCENT, color: 'var(--ds-fg-success)' }}>No significant variance identified</span>
             </div>
-            <div className="ds-heading-xlarge">{auditedInvoices} invoices audited</div>
+            <div className="ds-heading-xlarge">{plural(auditedInvoices, 'invoice')} audited</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6, padding: '22px 26px', background: 'var(--ds-bg-default)', borderInlineStart: SURFACE_BORDER }}>
             <div className="ds-heading-tiny">All clear</div>
             <p className="imp-small" style={{ margin: 0 }}>
-              All {auditedInvoices} invoices in this audit were reviewed and were within the significant-variance threshold.
+              All {plural(auditedInvoices, 'invoice')} in this audit were reviewed and were within the significant-variance threshold.
             </p>
           </div>
         </div>
@@ -367,7 +368,7 @@ export function SummaryTab({
               </span>
             }
             title="No significant variance identified"
-            subtitle={`All ${auditedInvoices} invoices in this audit were reviewed and were within the significant-variance threshold.`}
+            subtitle={`All ${plural(auditedInvoices, 'invoice')} in this audit were reviewed and were within the significant-variance threshold.`}
           />
         </div>
       )}
@@ -400,6 +401,11 @@ export function SummaryTab({
           <EmptyState
             title="No findings match these filters"
             subtitle="Filtering refines this view only. It does not change which findings belong to the credit memo or recalculate its Total variance."
+            action={
+              <Button size="small" onClick={filters.clear}>
+                Clear filters
+              </Button>
+            }
           />
         </div>
       )}

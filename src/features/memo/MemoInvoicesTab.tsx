@@ -13,6 +13,7 @@ import { EmptyState } from '@/ui/Display/Display'
 import { Table, TableScroll, SortableHeader, nextSort, type SortDirection } from '@/ui/Table/Table'
 import { useFilters, FilterButton, FilterGroup, matchesFilter, type FilterField, type FilterValues } from '@/ui/Filters/Filters'
 import { STATUS_PILL } from '../invoices/InvoicesPage'
+import { Button } from '@/ui/Button/Button'
 
 interface Row {
   id: string
@@ -187,7 +188,23 @@ export function MemoInvoicesTab({ detail }: { detail: MemoDetail }) {
             </tbody>
           </Table>
         </TableScroll>
-        {rows.length === 0 && <EmptyState title="No results match these filters" />}
+        {rows.length === 0 && (
+          <EmptyState
+            title="No invoices match these filters"
+            action={
+              <Button
+                size="small"
+                onClick={() => {
+                  filters.clear()
+                  setSearch('')
+                  setMetric('all')
+                }}
+              >
+                Clear filters
+              </Button>
+            }
+          />
+        )}
       </div>
     </div>
   )
