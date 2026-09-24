@@ -5,7 +5,9 @@
 import type { FindingGroup, MemoDetail, PackageRecord } from '@/domain/types'
 import { fmtMoney, posMoney, r2 } from '@/domain/money'
 import { excelDate } from '@/domain/dates'
-import { groupExpired, groupStatusLine, type GroupStatusKey } from '@/domain/outcomes'
+import { groupExpired, groupStatusLine } from '@/domain/outcomes'
+import { matchesFilter, type FilterValues } from '@/ui/Filters/Filters'
+import { TONE_CHART_COLOR } from '@/features/status-tones'
 
 const DASH = '—'
 
@@ -19,17 +21,6 @@ export const CHARGE_DEFS = [
 ] as const
 
 export type ChargeField = (typeof CHARGE_DEFS)[number][0]
-
-// ---------- status box colors (per GroupStatusKey) --------------------------
-
-export const STATUS_COLORS: Record<GroupStatusKey, { fg: string; bg: string }> = {
-  eligible: { fg: '#4338CA', bg: '#EEF2FF' },
-  awaiting_outcome: { fg: '#5B4AE6', bg: '#F2F0FF' },
-  fully_collected: { fg: '#087443', bg: '#ECFDF3' },
-  partly_collected: { fg: '#B45309', bg: '#FFF7E6' },
-  declined: { fg: '#B42318', bg: '#FFF1F0' },
-  not_pursued: { fg: 'var(--imp-fg-muted)', bg: 'var(--imp-gray-100)' },
-}
 
 // ---------- recovery donut ---------------------------------------------------
 
@@ -70,10 +61,10 @@ export function recoveryStatus(groups: readonly FindingGroup[], now: Date): Reco
     } else awaiting += g.varN || 0
   }
   const cats = [
-    { label: 'Collected', color: 'var(--imp-success)', amt: collected },
-    { label: 'Biller declined', color: 'var(--imp-error)', amt: declined },
-    { label: 'Awaiting outcome', color: 'var(--imp-orange-500)', amt: awaiting },
-    { label: 'Eligible to pursue', color: 'var(--imp-purple-500)', amt: eligible },
+    { label: 'Collected', color: TONE_CHART_COLOR.success, amt: collected },
+    { label: 'Biller declined', color: TONE_CHART_COLOR.danger, amt: declined },
+    { label: 'Awaiting outcome', color: TONE_CHART_COLOR.info, amt: awaiting },
+    { label: 'Eligible to pursue', color: TONE_CHART_COLOR.neutral, amt: eligible },
   ]
   const CIRC = 2 * Math.PI * 50
   let cum = 0
@@ -90,7 +81,7 @@ export function recoveryStatus(groups: readonly FindingGroup[], now: Date): Reco
     return seg
   })
   const resolved = awaiting <= 0.005 && eligible <= 0.005 && collected + declined > 0
-  return { total: fmtMoney(total), slices, eyebrow: resolved ? 'RESOLVED' : 'RECOVERY STATUS' }
+  return { total: fmtMoney(total), slices, eyebrow: resolved ? 'Resolved' : 'Recovery status' }
 }
 
 // ---------- next-step card ---------------------------------------------------
@@ -138,7 +129,7 @@ export function nextStepCard(input: {
   if (findingsUnavailable) {
     if (!memoDisputeStatus)
       return card({
-        eyebrow: 'NEXT STEP',
+        eyebrow: 'Next step',
         heading: `Prepare your dispute for ${provider}`,
         lines: [],
         description:
@@ -147,14 +138,14 @@ export function nextStepCard(input: {
       })
     if (memoDisputeStatus === 'awaiting')
       return card({
-        eyebrow: 'NEXT STEP',
+        eyebrow: 'Next step',
         heading: `Track your dispute with ${provider}`,
         lines: [line('clock', 'Awaiting a response from your biller')],
         description: '',
         actions: [action('outcome', 'primary', 'Update dispute outcomes')],
       })
     return card({
-      eyebrow: 'RESOLVED',
+      eyebrow: 'Resolved',
       heading: `Your dispute with ${provider} is complete`,
       lines: [line('check', 'Dispute finalized')],
       description: '',
@@ -192,7 +183,7 @@ export function nextStepCard(input: {
     const actions = [action('prep', 'primary', prepLabel)]
     if (awaitingAmt > 0.005) actions.push(action('outcome', 'secondary', 'Update dispute outcomes'))
     return card({
-      eyebrow: 'NEXT STEPS',
+      eyebrow: 'Next steps',
       heading: `Continue your work with ${provider}`,
       lines: [
         line('prep', `${fmtMoney(eligibleAmt)} across ${fmtCount(eligible.length)} remains eligible for another dispute`),
@@ -216,7 +207,7 @@ export function nextStepCard(input: {
     )
     if (fullyResolved)
       return card({
-        eyebrow: 'RESOLVED',
+        eyebrow: 'Resolved',
         heading: `Your dispute with ${provider} is complete`,
         lines: [line('check', `${fmtCount(pursued.length)} finalized · ${fmtMoney(collected)} collected`)],
         description: 'All findings have a final outcome.',
@@ -224,7 +215,7 @@ export function nextStepCard(input: {
         resolvedTreatment: true,
       })
     return card({
-      eyebrow: 'NEXT STEP',
+      eyebrow: 'Next step',
       heading: `Track your dispute with ${provider}`,
       lines: [line('clock', `${fmtMoney(awaitingAmt)} across ${fmtCount(awaitingCount)} awaiting an outcome`)],
       description: 'Record collection outcomes as your biller responds.',
@@ -236,7 +227,7 @@ export function nextStepCard(input: {
     const selected = eligible.filter((g) => !excludedIds.includes(g.id))
     const selAmt = selected.reduce((s, g) => s + (g.varN || 0), 0)
     return card({
-      eyebrow: 'NEXT STEP',
+      eyebrow: 'Next step',
       heading: `Continue preparing your dispute for ${provider}`,
       lines: [line('prep', `${fmtMoney(selAmt)} selected across ${fmtCount(selected.length)}`)],
       description: 'Your dispute draft has not been sent yet.',
@@ -244,10 +235,10 @@ export function nextStepCard(input: {
     })
   }
   return card({
-    eyebrow: 'NEXT STEP',
+    eyebrow: 'Next step',
     heading: `Prepare your dispute for ${provider}`,
     lines: [line('prep', `${fmtMoney(eligibleAmt)} eligible across ${fmtCount(eligible.length)}`)],
-    description: 'Select the findings to include, then review and send your dispute package.',
+    description: 'Select the findings to include, then review and send your dispute.',
     actions: [action('prep', 'primary', 'Prepare dispute for Biller')],
   })
 }
@@ -271,19 +262,12 @@ export const initialGroupUi: GroupUiState = {
   pkgLimit: 10,
 }
 
-export interface FindingFilters {
-  fCarrier: string
-  fService: string
-  fCategory: string
-  fDisputeStatus: string
-}
-
-export const INITIAL_FINDING_FILTERS: FindingFilters = {
-  fCarrier: 'all',
-  fService: 'all',
-  fCategory: 'all',
-  fDisputeStatus: 'all',
-}
+/** Finding filter keys (multi-select; empty = all). */
+export const FINDING_FILTER_KEYS = {
+  carrier: 'carrier',
+  service: 'service',
+  disputeStatus: 'disputeStatus',
+} as const
 
 export function serviceList(g: FindingGroup): string[] {
   return [...new Set(g.services.map((s) => s.service))]
@@ -307,21 +291,23 @@ export function serviceLabel(g: FindingGroup): string {
 
 export function filterGroups(
   groups: readonly FindingGroup[],
-  filters: FindingFilters,
+  filters: FilterValues,
   excludedIds: readonly string[],
   provider: string,
   now: Date,
 ): FindingGroup[] {
+  const anyMatch = (key: string, candidates: readonly string[]) =>
+    (filters[key]?.length ?? 0) === 0 || candidates.some((c) => matchesFilter(filters, key, c))
   return groups.filter((g) => {
-    if (filters.fCarrier !== 'all' && !g.carriers.includes(filters.fCarrier)) return false
-    if (filters.fService !== 'all' && !serviceList(g).includes(filters.fService)) return false
-    if (filters.fDisputeStatus !== 'all') {
+    if (!anyMatch(FINDING_FILTER_KEYS.carrier, g.carriers)) return false
+    if (!anyMatch(FINDING_FILTER_KEYS.service, serviceList(g))) return false
+    if ((filters[FINDING_FILTER_KEYS.disputeStatus]?.length ?? 0) > 0) {
       const inDisputeSel = !excludedIds.includes(g.id)
       const sl = groupStatusLine(
         { ...g, amountN: g.varN, threePl: provider, inDisputeSel },
         now,
       )
-      if (sl.key !== filters.fDisputeStatus) return false
+      if (!matchesFilter(filters, FINDING_FILTER_KEYS.disputeStatus, sl.key)) return false
     }
     return true
   })
@@ -381,17 +367,6 @@ export function packageHighlighted(o: PackageRecord, hl: string): boolean {
   const def = CHARGE_DEFS.find((c) => c[0] === hl)
   if (!def) return false
   return Math.abs(r2(o[def[0]][0] - o[def[0]][1])) > 0.005
-}
-
-export function reconcileText(o: PackageRecord, cells: ChargeCell[]): string {
-  const unf = cells.filter((c) => c.diff !== DASH && !c.diffNegative).map((c) => `${c.label.toLowerCase()} ${c.diff}`)
-  const fav = cells.filter((c) => c.diffNegative).map((c) => `${c.label.toLowerCase()} ${c.diff.slice(1)}`)
-  return (
-    'Charge differences reconcile to the package result: ' +
-    (unf.length ? unf.join(', ') + ' unfavourable' : 'no unfavourable charge difference') +
-    (fav.length ? `, offset by ${fav.join(', ')} favourable` : '') +
-    `, netting to ${posMoney(o.tv)} for this package.`
-  )
 }
 
 export { excelDate, DASH }

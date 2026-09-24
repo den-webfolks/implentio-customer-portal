@@ -1,0 +1,106 @@
+/* Figma ❖ Select & Filters — action-list (1226:31576), action-list.item
+   (1226:31523), select-menu (1514:10535). */
+
+.menu {
+  z-index: var(--ds-z-popover);
+  min-width: 160px;
+  max-height: min(var(--radix-dropdown-menu-content-available-height, 360px), 360px);
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-medium);
+  background: var(--ds-bg-default);
+  box-shadow: var(--ds-shadow-popover);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 6px 8px;
+  border-radius: var(--ds-radius-medium);
+  color: var(--ds-fg-default);
+  font: var(--ds-weight-regular) 14px/1.46 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+
+.item[data-highlighted] {
+  background: var(--ds-bg-brand-disabled);
+}
+
+.item[data-disabled] {
+  color: var(--ds-fg-disabled);
+  cursor: not-allowed;
+}
+
+.item svg {
+  /* 24px outline icons scaled down keep a legible ~1.3px stroke. */
+  stroke-width: 2;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ds-icon-muted);
+}
+
+.danger,
+.danger svg {
+  color: var(--ds-fg-danger);
+}
+
+.label {
+  padding: 6px 8px 4px;
+  color: var(--ds-fg-muted);
+  font: var(--ds-weight-medium) 12px/1.3 var(--ds-font);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.separator {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--ds-stroke-disabled);
+}
+
+/* Checkbox / radio indicator drawn like Figma's checkbox and radio. */
+.indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--ds-stroke-emphasis);
+  border-radius: var(--ds-radius-small);
+  background: var(--ds-bg-default);
+}
+
+.item[data-highlighted] .indicator {
+  border-color: var(--ds-stroke-brand-muted);
+}
+
+.item[data-state='checked'] .indicator {
+  border-color: var(--ds-bg-brand-emphasis);
+  background: var(--ds-bg-brand-emphasis);
+}
+
+.item[data-state='checked'] .indicator svg {
+  /* 24px outline icons scaled down keep a legible ~1.3px stroke. */
+  stroke-width: 2.5;
+  width: 12px;
+  height: 12px;
+  color: var(--ds-icon-reverse);
+}
+
+.radioIndicator {
+  border-radius: var(--ds-radius-full);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-bg-default);
+}

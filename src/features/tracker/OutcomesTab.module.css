@@ -1,37 +1,23 @@
-/* Credit Outcomes KPI segment row (template ~1408–1414). */
-
-.metricGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 1.5px;
-  background: var(--imp-gray-200);
-  border: 1.5px solid var(--imp-gray-200);
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.metricBtn {
-  text-align: left;
+/* Status breakdown legend entries (buttons mirroring the donut slices). */
+.legendBtn {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
   border: none;
-  cursor: pointer;
+  border-radius: var(--ds-radius-large);
+  background: transparent;
   font: inherit;
-  appearance: none;
-  border-radius: 0;
-  background: #fff;
-  padding: 16px 18px;
+  text-align: start;
+  color: inherit;
+  cursor: pointer;
 }
 
-.metricBtn:hover {
-  background: var(--imp-gray-100);
+.legendBtnActive {
+  background: var(--ds-neutral-100);
 }
 
-.metricBtn:focus-visible {
-  outline: 2px solid var(--imp-purple-300);
-  outline-offset: -2px;
-}
-
-.metricNum {
-  font: 600 22px var(--imp-font-display);
-  font-variant-numeric: tabular-nums;
-  margin-top: 4px;
+.legendBtn:focus-visible {
+  outline: 2px solid var(--ds-stroke-focus);
+  outline-offset: 2px;
 }

@@ -1,0 +1,27 @@
+/* Account page grids. Queries target AppLayout's `page` container, so the
+   tables rearrange when the page column (not the viewport) gets narrow. */
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: minmax(96px, min(180px, 35%)) minmax(0, 1fr);
+  border-top: 1px solid var(--ds-stroke-disabled);
+}
+
+.teamGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
+  border-top: 1px solid var(--ds-stroke-disabled);
+}
+
+@container page (max-width: 520px) {
+  /* Name · status · edit on one line, email on its own line beneath. */
+  .teamGrid {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-auto-flow: row dense;
+  }
+  .teamHead { display: none; }
+  .memberName { grid-column: 1; padding-bottom: 2px !important; }
+  .memberStatus { grid-column: 2; }
+  .memberEdit { grid-column: 3; }
+  .memberEmail { grid-column: 1 / -1; border-top: none !important; padding-top: 0 !important; }
+}

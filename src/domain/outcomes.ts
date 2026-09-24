@@ -108,7 +108,7 @@ export function groupStatusLine(
     return {
       key: 'eligible',
       label: STATUS_LABELS.eligible,
-      secondary: `Included in dispute package · ${deadlineText}`,
+      secondary: `Included in dispute · ${deadlineText}`,
       showAction: false,
     }
   }
@@ -164,9 +164,10 @@ export function disputePill(g: Groupish, now: Date): DisputePill {
 
 // ---------- Collection pill -------------------------------------------------
 
+/** Tones follow the design-system status mapping (DESIGN-SYSTEM.md). */
 export interface CollectionPill {
   label: string
-  tone: 'success' | 'warn' | 'muted'
+  tone: 'info' | 'attention' | 'success' | 'danger'
   sub: string
 }
 
@@ -177,19 +178,19 @@ export function collectionPill(
   if (g.pursuit !== 'pursued' || !c?.status) return null
   switch (c.status) {
     case 'awaiting':
-      return { label: 'Awaiting outcome', tone: 'warn', sub: '' }
+      return { label: 'Awaiting outcome', tone: 'info', sub: '' }
     case 'full':
       return { label: 'Fully collected', tone: 'success', sub: `Collected on ${fmtDateLong(c.date)}` }
     case 'partial':
       return {
-        label: 'Partially collected',
-        tone: 'warn',
+        label: 'Partly collected',
+        tone: 'attention',
         sub: `${fmtMoney(c.amountN ?? 0)} collected · ${fmtMoney(r2((g.amountN ?? 0) - (c.amountN ?? 0)))} remaining · ${fmtDateLong(c.date)}`,
       }
     case 'not_issued':
       return {
-        label: 'Denied by Biller',
-        tone: 'muted',
+        label: 'Biller declined',
+        tone: 'danger',
         sub: c.date ? `Reported ${fmtDateLong(c.date)}` : '',
       }
   }

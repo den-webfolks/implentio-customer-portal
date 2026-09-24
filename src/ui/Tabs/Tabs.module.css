@@ -1,32 +1,138 @@
-.underlineRow {
+/* Figma ❖ Tab — tab (111:963) + tab-group; actionTab (5960:624). */
+
+.row {
   display: flex;
-  gap: 8px;
-  border-bottom: 1.5px solid var(--imp-gray-300);
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--ds-stroke-disabled);
 }
 
-.underlineTab {
-  background: none;
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: -1px;
+  padding: 0;
   border: none;
-  border-bottom: 2.5px solid transparent;
-  color: var(--imp-fg-muted);
-  font: 600 14px var(--imp-font-body);
-  padding: 10px 4px;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--ds-fg-muted);
+  font: var(--ds-weight-medium) 16px/1.5 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
   cursor: pointer;
-  margin-bottom: -1.5px;
+  text-decoration: none;
 }
 
-.underlineTab:hover {
-  color: var(--imp-ink);
+.tabLabel {
+  padding: 4px 12px;
+  border-radius: var(--ds-radius-medium);
+  margin-bottom: 6px;
 }
 
-.underlineTab:focus-visible {
-  outline: 2px solid var(--imp-purple-300);
+.tab:hover {
+  color: var(--ds-fg-default);
+}
+
+.tab:focus-visible {
+  outline: none;
+}
+
+.tab:focus-visible .tabLabel {
+  box-shadow: inset 0 0 0 2px var(--ds-stroke-focus);
+}
+
+.active,
+.active:hover {
+  color: var(--ds-fg-brand-emphasis);
+  border-bottom-color: var(--ds-stroke-brand-emphasis);
+}
+
+.tab:disabled {
+  color: var(--ds-fg-disabled);
+  cursor: not-allowed;
+}
+
+/* ---------- Action tab ---------- */
+
+.actionGroup {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.action {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 11px 15px;
+  border: 1px solid var(--ds-stroke-emphasis);
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-bg-default);
+  color: var(--ds-fg-muted);
+  text-align: start;
+  cursor: pointer;
+}
+
+.action:hover,
+.actionActive {
+  padding: 10px 14px;
+  border: 2px solid var(--ds-stroke-brand-emphasis);
+}
+
+.action:hover {
+  color: var(--ds-fg-default);
+}
+
+.action:focus-visible {
+  outline: 2px solid var(--ds-stroke-focus);
   outline-offset: 2px;
-  border-radius: 4px;
 }
 
-.underlineTabOn {
-  composes: underlineTab;
-  border-bottom-color: var(--imp-purple-500);
-  color: var(--imp-ink);
+.actionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font: var(--ds-weight-medium) 14px/1.46 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+}
+
+.counter {
+  font: var(--ds-weight-semi) 14px/1.16 var(--ds-font);
+  letter-spacing: var(--ds-tracking-heading);
+}
+
+.stats {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  color: var(--ds-fg-muted);
+  font: var(--ds-weight-regular) 14px/1.46 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+}
+
+.statValue {
+  font-variant-numeric: tabular-nums;
+}
+
+.actionActive,
+.actionActive:hover {
+  color: var(--ds-fg-brand-emphasis);
+}
+
+.actionActive .actionHead {
+  font-weight: var(--ds-weight-semi);
+}
+
+.actionActive.negative .stats {
+  color: var(--ds-fg-danger);
+}
+
+.actionActive.positive .stats {
+  color: var(--ds-fg-success);
+}
+
+.actionActive.special .stats {
+  color: var(--ds-fg-warning);
 }

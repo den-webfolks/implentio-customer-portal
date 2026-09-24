@@ -1,184 +1,249 @@
 /* ==========================================================================
-   Implentio — canonical design tokens
-   Ported verbatim from the Phase-1 prototype (source of truth there:
-   source/BRAND-GUIDELINES.pdf, Aug 2025). Font faces live in fonts.css.
-   The Figma design system (in progress) becomes authoritative in Phase 2.
+   Implentio design tokens — source of truth: Figma "Implentio Library"
+   (variables: Base Colors, Colors, Functional; text + effect styles).
+   `--ds-*` mirror Figma names (typos corrected; see DESIGN-SYSTEM.md).
+   `--imp-*` are prototype-era aliases kept only until their last user is
+   migrated — do not use them in new code.
    ========================================================================== */
 
 :root {
-  /* ---------- Brand purple (primary, 100–500) ---------------------------- */
-  --imp-purple-100: #E3E1FA;
-  --imp-purple-200: #DAD8FF;
-  --imp-purple-300: #ABA6EF;
-  --imp-purple-400: #8174DF;
-  --imp-purple-500: #5642CE;   /* primary brand accent */
+  /* ---------- Base colors (Figma: Base Colors) -------------------------- */
+  --ds-purple-700: #34287c;
+  --ds-purple-600: #4535a5;
+  --ds-purple-500: #5642ce;
+  --ds-purple-300: #bbb3eb;
+  --ds-purple-100: #eeecfa;
 
-  /* ---------- Brand orange (secondary, 100–500) ------------------------- */
-  --imp-orange-100: #FFCA98;
-  --imp-orange-200: #FFB16A;
-  --imp-orange-300: #FFA450;
-  --imp-orange-400: #FF8B4A;
-  --imp-orange-500: #F25E0A;   /* secondary brand accent */
+  --ds-orange-700: #913806;
+  --ds-orange-500: #f25e0a;
+  --ds-orange-100: #feefe6;
 
-  /* ---------- Grayscale (cool/purple-tinted, 100–900) ------------------- */
-  --imp-gray-100: #F6F4FF;
-  --imp-gray-200: #ECEAFC;
-  --imp-gray-300: #D6D4E8;
-  --imp-gray-400: #CCCADE;
-  --imp-gray-500: #BBB8D3;
-  --imp-gray-600: #9B98BA;
-  --imp-gray-700: #625F8E;
-  --imp-gray-800: #3A3766;
-  --imp-gray-900: #100F41;     /* darkest neutral — used in shadows + ink */
+  --ds-neutral-900: #10103e;
+  --ds-neutral-800: #393863;
+  --ds-neutral-700: #61608b;
+  --ds-neutral-600: #9a98b7;
+  --ds-neutral-500: #bab8d1;
+  --ds-neutral-400: #cccadc;
+  --ds-neutral-300: #e0dfec;
+  --ds-neutral-200: #eceafa;
+  --ds-neutral-100: #f6f4fe;
+  --ds-neutral-50: #f7f6f9;
+  --ds-neutral-0: #ffffff;
+  --ds-neutral-900-a10: rgba(16, 16, 62, 0.1);
+  --ds-neutral-900-a16: rgba(16, 16, 62, 0.16);
+  --ds-neutral-900-a24: rgba(16, 16, 62, 0.24);
 
-  /* Pure black/white available but rarely the right call. */
-  --imp-white: #FFFFFF;
-  --imp-ink:   #100F41;        /* alias for gray-900, the brand "ink" */
-  --imp-paper: #FBF5EB;        /* warm cream surface — the brand "paper" */
+  --ds-red-500: #aa261b;
+  --ds-red-100: #fbd8d6;
+  --ds-green-500: #3a802f;
+  --ds-green-100: #d3edce;
+  --ds-yellow-500: #9c6d11;
+  --ds-yellow-100: #ffeac2;
+  --ds-blue-800: #1f4366;
+  --ds-blue-500: #477db2;
+  --ds-blue-300: #9dcaf5;
+  --ds-blue-100: #d9ecff;
 
-  /* ---------- Semantic state colors (proposed; verify with brand) ------- */
-  --imp-success: #1F8A4C;      /* deep green — distinct from brand */
-  --imp-success-bg: #DDF1E3;
-  --imp-warning: #F2A20A;      /* amber — distinct from brand orange-500 */
-  --imp-warning-bg: #FFF1CF;
-  --imp-error:   #C8341A;      /* deep red, not pink */
-  --imp-error-bg: #FBDED7;
-  --imp-info:    var(--imp-purple-400);
-  --imp-info-bg: var(--imp-purple-100);
+  /* ---------- Semantic (Figma: Colors) ---------------------------------- */
+  --ds-bg-emphasis: var(--ds-neutral-900);
+  --ds-bg-muted: var(--ds-neutral-700);
+  --ds-bg-default: var(--ds-neutral-0);
+  --ds-bg-disabled: var(--ds-neutral-50);
+  --ds-bg-brand-emphasis: var(--ds-purple-500);
+  --ds-bg-dark-brand-emphasis: var(--ds-purple-600);
+  --ds-bg-accent-emphasis: var(--ds-orange-500);
+  --ds-bg-dark-accent-emphasis: var(--ds-orange-700);
+  --ds-bg-brand-disabled: var(--ds-purple-100);
+  --ds-bg-brand-muted: var(--ds-purple-300);
+  --ds-bg-success-emphasis: var(--ds-green-500);
+  --ds-bg-success-muted: var(--ds-green-100);
+  --ds-bg-warning-emphasis: var(--ds-yellow-500);
+  --ds-bg-warning-muted: var(--ds-yellow-100);
+  --ds-bg-danger-emphasis: var(--ds-red-500);
+  --ds-bg-danger-muted: var(--ds-red-100);
 
-  /* ---------- Money sentiment (Implentio is a money app) ---------------- */
-  --imp-positive: var(--imp-success);   /* recouped / saved $$ */
-  --imp-negative: var(--imp-error);     /* overcharge / variance */
-  --imp-pending:  var(--imp-orange-400);
+  --ds-fg-default: var(--ds-neutral-900);
+  --ds-fg-muted: var(--ds-neutral-700);
+  --ds-fg-disabled: var(--ds-neutral-600);
+  --ds-fg-reverse: var(--ds-neutral-0);
+  --ds-fg-brand-emphasis: var(--ds-purple-500);
+  --ds-fg-dark-brand-emphasis: var(--ds-purple-600);
+  --ds-fg-brand-muted: var(--ds-purple-300);
+  --ds-fg-brand-disabled: var(--ds-purple-100);
+  --ds-fg-success: var(--ds-green-500);
+  --ds-fg-warning: var(--ds-yellow-500);
+  --ds-fg-danger: var(--ds-red-500);
+  --ds-fg-info: var(--ds-blue-500);
+  --ds-fg-accent: var(--ds-orange-500);
+  /* Accent as readable text (money amounts at text sizes). orange-500 is
+     3.29:1 on white / 2.93:1 on orange-100 — fails AA; orange-700 is
+     7.58:1 / 6.75:1. Pending Figma confirmation (DESIGN-SYSTEM.md). Keep
+     --ds-fg-accent for fills and display numbers on dark surfaces. */
+  --ds-fg-accent-text: var(--ds-orange-700);
 
-  /* ---------- Surfaces (LIGHT mode default) ----------------------------- */
-  --imp-bg:        var(--imp-white);
-  --imp-surface:   var(--imp-gray-100);
-  --imp-elevated:  var(--imp-white);
-  --imp-border:    var(--imp-gray-300);
-  --imp-border-strong: var(--imp-ink);          /* hero "stroke" border */
+  --ds-stroke-strong: var(--ds-neutral-900);
+  --ds-stroke-emphasis: var(--ds-neutral-900-a24);
+  --ds-stroke-muted: var(--ds-neutral-900-a16);
+  --ds-stroke-disabled: var(--ds-neutral-900-a10);
+  --ds-stroke-focus: var(--ds-blue-300);
+  --ds-stroke-brand-emphasis: var(--ds-purple-500);
+  --ds-stroke-brand-muted: var(--ds-purple-300);
+  --ds-stroke-brand-disabled: var(--ds-purple-100);
+  --ds-stroke-invalid: var(--ds-red-500);
+  --ds-stroke-warning: var(--ds-yellow-500);
+  --ds-stroke-success: var(--ds-green-500);
 
-  --imp-fg:         var(--imp-gray-900);        /* primary text */
-  --imp-fg-muted:   var(--imp-gray-700);        /* secondary text */
-  --imp-fg-subtle:  var(--imp-gray-600);        /* tertiary / captions */
-  --imp-fg-on-dark: var(--imp-white);
-  --imp-fg-on-purple: var(--imp-white);
-  --imp-fg-on-orange: var(--imp-ink);
+  --ds-icon-default: var(--ds-neutral-900);
+  --ds-icon-muted: var(--ds-neutral-700);
+  --ds-icon-disabled: var(--ds-neutral-500);
+  --ds-icon-reverse: var(--ds-neutral-0);
+  --ds-icon-brand-emphasis: var(--ds-purple-500);
+  --ds-icon-brand-disabled: var(--ds-purple-300);
+  --ds-icon-danger: var(--ds-red-500);
+  --ds-icon-success: var(--ds-green-500);
+  --ds-icon-warning: var(--ds-yellow-500);
 
-  /* ---------- Type families & weights ---------------------------------- */
-  --imp-font-display: "Sora", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --imp-font-body:    "Montserrat", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --imp-font-mono:    ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  /* Status chips (Figma: status/*) */
+  --ds-status-neutral-fg: var(--ds-fg-brand-emphasis);
+  --ds-status-neutral-bg: var(--ds-bg-brand-disabled);
+  /* Success/attention chip text darkened 20% toward neutral-900: the
+     Figma pairs measure 3.89:1 / 3.86:1 (fail AA); these are 5.17:1 /
+     5.24:1. Pending Figma confirmation (DESIGN-SYSTEM.md). */
+  --ds-status-success-fg: color-mix(in srgb, var(--ds-fg-success) 80%, var(--ds-neutral-900));
+  --ds-status-success-bg: var(--ds-bg-success-muted);
+  --ds-status-attention-fg: color-mix(in srgb, var(--ds-fg-warning) 80%, var(--ds-neutral-900));
+  --ds-status-attention-bg: var(--ds-bg-warning-muted);
+  --ds-status-danger-fg: var(--ds-fg-danger);
+  --ds-status-danger-bg: var(--ds-bg-danger-muted);
+  --ds-status-info-fg: var(--ds-blue-800);
+  --ds-status-info-bg: var(--ds-blue-100);
+  --ds-status-muted-fg: var(--ds-fg-muted);
+  --ds-status-muted-bg: var(--ds-bg-disabled);
 
-  --imp-display-weight: 600;     /* Sora SemiBold */
-  --imp-body-weight:    500;     /* Montserrat Medium */
-  --imp-body-weight-strong: 700; /* Montserrat Bold for emphasis */
+  /* ---------- Radius (Figma: Functional) -------------------------------- */
+  --ds-radius-small: 4px;
+  --ds-radius-medium: 6px;
+  --ds-radius-large: 8px;
+  --ds-radius-xlarge: 12px;
+  --ds-radius-full: 1000px;
 
-  /* ---------- Type scale (1.25 modular, 16px base) --------------------- */
-  --imp-text-xs:    12px;        /* metadata, micro labels */
-  --imp-text-sm:    14px;        /* secondary copy, table cells */
-  --imp-text-base:  16px;        /* body */
-  --imp-text-md:    18px;        /* lead */
-  --imp-text-lg:    20px;
-  --imp-text-xl:    24px;
-  --imp-text-2xl:   30px;        /* h3 */
-  --imp-text-3xl:   38px;        /* h2 */
-  --imp-text-4xl:   48px;        /* h1 */
-  --imp-text-5xl:   64px;        /* hero */
-  --imp-text-6xl:   80px;        /* marketing hero */
+  /* ---------- Effects (Figma effect styles) ----------------------------- */
+  --ds-shadow-disabled: 0 1px 0 rgba(27, 31, 35, 0.04);
+  --ds-shadow-muted: 0 1px 0 rgba(27, 31, 35, 0.12);
+  /* Figma's popover style also has an inset hairline that its own inner
+     fills cover; a 1px stroke-disabled border stands in for it. */
+  --ds-shadow-popover: 0 1px 0 rgba(27, 31, 35, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+  --ds-inner-pressed-emphasis: inset 0 2px 0 rgba(20, 70, 32, 0.2);
+  --ds-inner-pressed-muted: inset 0 2px 0 rgba(20, 70, 32, 0.08);
+  /* Figma focus = 2px stroke/focus border + inner/focus (4px white inset). */
+  --ds-focus-ring: inset 0 0 0 2px var(--ds-stroke-focus);
+  --ds-focus-ring-filled: inset 0 0 0 2px var(--ds-stroke-focus), inset 0 0 0 4px var(--ds-neutral-0);
+  --ds-overlay: rgba(16, 16, 62, 0.4);
 
-  /* ---------- Line heights -------------------------------------------- */
-  --imp-leading-display: 1.05;
-  --imp-leading-headline: 1.15;
-  --imp-leading-body:   1.55;
-  --imp-leading-tight:  1.3;
+  /* ---------- Typography (Figma text styles: Inter) --------------------- */
+  --ds-font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ds-font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+  --ds-weight-regular: 400;
+  --ds-weight-medium: 500;
+  --ds-weight-semi: 600;
+  --ds-tracking-heading: -0.03em;
+  --ds-tracking-body: -0.01em;
+  --ds-tracking-caption: 0.05em;
 
-  /* ---------- Letter spacing ------------------------------------------ */
-  --imp-tracking-display: -0.02em;
-  --imp-tracking-headline: -0.01em;
-  --imp-tracking-body:    0em;
-  --imp-tracking-eyebrow: 0.08em;     /* uppercase eyebrows */
+  /* ---------- Spacing (no Figma scale; 4px grid) ------------------------ */
+  --ds-space-0: 0;
+  --ds-space-1: 4px;
+  --ds-space-2: 8px;
+  --ds-space-3: 12px;
+  --ds-space-4: 16px;
+  --ds-space-5: 24px;
+  --ds-space-6: 32px;
+  --ds-space-7: 48px;
+  --ds-space-8: 64px;
 
-  /* ---------- Body max width ------------------------------------------ */
-  --imp-prose-max: 68ch;
+  /* ---------- Motion & layers ------------------------------------------- */
+  --ds-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ds-dur-fast: 120ms;
+  --ds-z-sticky: 100;
+  --ds-z-overlay: 940;
+  --ds-z-popover: 960;
+  --ds-z-toast: 1000;
 
-  /* ---------- Spacing (8pt baseline + 4px half-step) ------------------ */
-  --imp-space-0:  0;
-  --imp-space-1:  4px;
-  --imp-space-2:  8px;
-  --imp-space-3:  12px;
-  --imp-space-4:  16px;
-  --imp-space-5:  24px;
-  --imp-space-6:  32px;
-  --imp-space-7:  48px;
-  --imp-space-8:  64px;
-  --imp-space-9:  96px;
-  --imp-space-10: 128px;
-
-  /* ---------- Radii --------------------------------------------------- */
-  --imp-radius-sm:   4px;
-  --imp-radius-md:   8px;
-  --imp-radius-lg:   16px;
-  --imp-radius-xl:   24px;
-  --imp-radius-pill: 999px;
-
-  /* ---------- Strokes (the brand uses BOLD strokes, not 1px hairlines) - */
-  --imp-stroke-thin:   1px;
-  --imp-stroke:        2px;     /* default border width */
-  --imp-stroke-bold:   3px;     /* hero / emphasis */
-
-  /* ---------- Bold dark offset shadows (NOT soft blur) ---------------- */
-  --imp-shadow-xs:  2px 2px 0 var(--imp-ink);
-  --imp-shadow-sm:  3px 3px 0 var(--imp-ink);
-  --imp-shadow-md:  5px 5px 0 var(--imp-ink);
-  --imp-shadow-lg:  8px 8px 0 var(--imp-ink);
-  --imp-shadow-xl: 12px 12px 0 var(--imp-ink);
-
-  /* Soft shadows are reserved for product UI surfaces where the
-     hard offset would feel too marketing-y (e.g. dropdowns over data). */
-  --imp-shadow-soft-sm: 0 1px 2px rgba(16, 15, 65, 0.08), 0 1px 1px rgba(16, 15, 65, 0.04);
-  --imp-shadow-soft-md: 0 6px 16px rgba(16, 15, 65, 0.10), 0 2px 4px rgba(16, 15, 65, 0.06);
-  --imp-shadow-soft-lg: 0 16px 40px rgba(16, 15, 65, 0.16), 0 4px 8px rgba(16, 15, 65, 0.08);
-
-  /* ---------- Motion -------------------------------------------------- */
-  --imp-ease-out:  cubic-bezier(0.22, 1, 0.36, 1);
-  --imp-ease-in:   cubic-bezier(0.55, 0, 1, 0.45);
-  --imp-ease-snap: cubic-bezier(0.34, 1.56, 0.64, 1); /* slight overshoot */
-  --imp-dur-fast:   120ms;
-  --imp-dur-base:   200ms;
-  --imp-dur-slow:   320ms;
-
-  /* ---------- Z-layers ------------------------------------------------ */
-  --imp-z-base: 0;
-  --imp-z-sticky: 100;
-  --imp-z-overlay: 800;
-  --imp-z-modal: 900;
-  --imp-z-toast: 1000;
+  /* ======================================================================
+     Deprecated prototype aliases (--imp-*) → Figma tokens.
+     ====================================================================== */
+  --imp-purple-100: var(--ds-purple-100);
+  --imp-purple-200: var(--ds-purple-100);
+  --imp-purple-300: var(--ds-purple-300);
+  --imp-purple-400: var(--ds-purple-500);
+  --imp-purple-500: var(--ds-purple-500);
+  --imp-orange-100: var(--ds-orange-100);
+  --imp-orange-200: var(--ds-orange-100);
+  --imp-orange-300: var(--ds-orange-500);
+  --imp-orange-400: var(--ds-orange-500);
+  --imp-orange-500: var(--ds-orange-500);
+  --imp-gray-100: var(--ds-neutral-100);
+  --imp-gray-200: var(--ds-neutral-200);
+  --imp-gray-300: var(--ds-neutral-300);
+  --imp-gray-400: var(--ds-neutral-400);
+  --imp-gray-500: var(--ds-neutral-500);
+  --imp-gray-600: var(--ds-neutral-600);
+  --imp-gray-700: var(--ds-neutral-700);
+  --imp-gray-800: var(--ds-neutral-800);
+  --imp-gray-900: var(--ds-neutral-900);
+  --imp-white: var(--ds-neutral-0);
+  --imp-ink: var(--ds-neutral-900);
+  --imp-success: var(--ds-green-500);
+  --imp-success-bg: var(--ds-green-100);
+  --imp-warning: var(--ds-yellow-500);
+  --imp-warning-bg: var(--ds-yellow-100);
+  --imp-error: var(--ds-red-500);
+  --imp-error-bg: var(--ds-red-100);
+  --imp-info: var(--ds-blue-500);
+  --imp-info-bg: var(--ds-blue-100);
+  --imp-border: var(--ds-stroke-disabled);
+  --imp-fg: var(--ds-fg-default);
+  --imp-fg-muted: var(--ds-fg-muted);
+  --imp-fg-subtle: var(--ds-fg-disabled);
+  --imp-font-display: var(--ds-font);
+  --imp-font-body: var(--ds-font);
+  --imp-font-mono: var(--ds-font-mono);
+  --imp-display-weight: var(--ds-weight-semi);
+  --imp-body-weight: var(--ds-weight-regular);
+  --imp-radius-sm: var(--ds-radius-small);
+  --imp-radius-md: var(--ds-radius-medium);
+  --imp-radius-lg: var(--ds-radius-large);
+  --imp-shadow-xs: var(--ds-shadow-muted);
+  --imp-shadow-sm: var(--ds-shadow-muted);
+  --imp-shadow-md: var(--ds-shadow-popover);
+  --imp-shadow-lg: var(--ds-shadow-popover);
+  --imp-shadow-soft-sm: var(--ds-shadow-muted);
+  --imp-shadow-soft-md: var(--ds-shadow-popover);
 }
 
-/* ============================================================================
-   Semantic element styles — opt in by adding class="imp-prose" to a wrapper,
-   or by using these classes directly. Kept as classes (not raw tag selectors)
-   so the system doesn't fight host stylesheets.
-   ============================================================================ */
+/* ---------- Text styles (Figma) ------------------------------------------ */
+.ds-heading-huge { font: var(--ds-weight-semi) 36px/1.32 var(--ds-font); letter-spacing: var(--ds-tracking-heading); }
+.ds-heading-xlarge { font: var(--ds-weight-semi) 30px/1.32 var(--ds-font); letter-spacing: var(--ds-tracking-heading); }
+.ds-heading-large { font: var(--ds-weight-semi) 25px/1.3 var(--ds-font); letter-spacing: var(--ds-tracking-heading); }
+.ds-heading-medium { font: var(--ds-weight-semi) 21px/1.32 var(--ds-font); letter-spacing: var(--ds-tracking-heading); }
+.ds-heading-small { font: var(--ds-weight-semi) 17px/1.3 var(--ds-font); letter-spacing: var(--ds-tracking-heading); }
+.ds-heading-tiny { font: var(--ds-weight-semi) 14px/1.16 var(--ds-font); letter-spacing: var(--ds-tracking-heading); }
+.ds-body-medium { font: var(--ds-weight-regular) 16px/1.5 var(--ds-font); letter-spacing: var(--ds-tracking-body); }
+.ds-body-base { font: var(--ds-weight-regular) 14px/1.46 var(--ds-font); letter-spacing: var(--ds-tracking-body); }
+.ds-body-small { font: var(--ds-weight-regular) 12px/1.64 var(--ds-font); letter-spacing: var(--ds-tracking-body); }
+.ds-caption-small { font: var(--ds-weight-medium) 12px/1.3 var(--ds-font); letter-spacing: var(--ds-tracking-caption); }
+.ds-caption-tiny { font: var(--ds-weight-medium) 10px/1.16 var(--ds-font); letter-spacing: var(--ds-tracking-caption); }
+/* Headings balance their lines; descriptions avoid a lone last word. */
+.ds-heading-huge, .ds-heading-xlarge, .ds-heading-large, .ds-heading-medium, .ds-heading-small, .ds-heading-tiny { text-wrap: balance; }
+.ds-body-medium, .ds-body-base, .ds-body-small, .imp-small, .imp-body { text-wrap: pretty; }
+.ds-w-medium { font-weight: var(--ds-weight-medium); }
+.ds-w-semi { font-weight: var(--ds-weight-semi); }
+.ds-muted { color: var(--ds-fg-muted); }
 
-.imp-prose {
-  font-family: var(--imp-font-body);
-  font-weight: var(--imp-body-weight);
-  font-size: var(--imp-text-base);
-  line-height: var(--imp-leading-body);
-  color: var(--imp-fg);
-  letter-spacing: var(--imp-tracking-body);
-}
-
-.imp-display { font-family: var(--imp-font-display); font-weight: var(--imp-display-weight); letter-spacing: var(--imp-tracking-display); line-height: var(--imp-leading-display); color: var(--imp-ink); }
-.imp-h1      { font: var(--imp-display-weight) var(--imp-text-4xl) / var(--imp-leading-headline) var(--imp-font-display); letter-spacing: var(--imp-tracking-headline); color: var(--imp-ink); }
-.imp-h2      { font: var(--imp-display-weight) var(--imp-text-3xl) / var(--imp-leading-headline) var(--imp-font-display); letter-spacing: var(--imp-tracking-headline); color: var(--imp-ink); }
-.imp-h3      { font: var(--imp-display-weight) var(--imp-text-2xl) / var(--imp-leading-headline) var(--imp-font-display); letter-spacing: var(--imp-tracking-headline); color: var(--imp-ink); }
-.imp-h4      { font: var(--imp-display-weight) var(--imp-text-xl)  / var(--imp-leading-headline) var(--imp-font-display); color: var(--imp-ink); }
-.imp-lead    { font: var(--imp-body-weight)    var(--imp-text-md)  / var(--imp-leading-body) var(--imp-font-body); color: var(--imp-fg-muted); }
-.imp-body    { font: var(--imp-body-weight)    var(--imp-text-base)/ var(--imp-leading-body) var(--imp-font-body); color: var(--imp-fg); }
-.imp-small   { font: var(--imp-body-weight)    var(--imp-text-sm)  / var(--imp-leading-body) var(--imp-font-body); color: var(--imp-fg-muted); }
-.imp-eyebrow { font: 700 var(--imp-text-xs) / 1.2 var(--imp-font-body); text-transform: uppercase; letter-spacing: var(--imp-tracking-eyebrow); color: var(--imp-purple-500); }
-.imp-num     { font: var(--imp-display-weight) var(--imp-text-3xl) / 1 var(--imp-font-display); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; color: var(--imp-ink); }
-.imp-mono    { font-family: var(--imp-font-mono); font-feature-settings: "tnum"; }
+/* Prototype-era typography classes, now rendered with Figma styles. */
+.imp-h2 { font: var(--ds-weight-semi) 30px/1.32 var(--ds-font); letter-spacing: var(--ds-tracking-heading); color: var(--ds-fg-default); }
+.imp-h4 { font: var(--ds-weight-semi) 21px/1.32 var(--ds-font); letter-spacing: var(--ds-tracking-heading); color: var(--ds-fg-default); }
+.imp-body { font: var(--ds-weight-regular) 16px/1.5 var(--ds-font); letter-spacing: var(--ds-tracking-body); color: var(--ds-fg-default); }
+.imp-small { font: var(--ds-weight-regular) 14px/1.46 var(--ds-font); letter-spacing: var(--ds-tracking-body); color: var(--ds-fg-muted); }
+.imp-eyebrow { font: var(--ds-weight-semi) 12px/1.3 var(--ds-font); letter-spacing: var(--ds-tracking-caption); text-transform: uppercase; color: var(--ds-fg-brand-emphasis); }
+.imp-num { font: var(--ds-weight-semi) 30px/1 var(--ds-font); font-variant-numeric: tabular-nums; letter-spacing: var(--ds-tracking-heading); color: var(--ds-fg-default); }

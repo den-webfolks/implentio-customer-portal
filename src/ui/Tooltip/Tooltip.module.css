@@ -1,0 +1,40 @@
+/* Figma ❖ Tooltip (132:1278): dark bubble, 4px radius, pointer on any side. */
+
+.content {
+  z-index: var(--ds-z-toast);
+  max-width: 260px;
+  padding: 4px 6px;
+  border-radius: var(--ds-radius-small);
+  background: var(--ds-bg-emphasis);
+  color: var(--ds-fg-reverse);
+  font: var(--ds-weight-regular) 12px/1.64 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  text-transform: none;
+  white-space: normal;
+}
+
+.arrow {
+  fill: var(--ds-bg-emphasis);
+}
+
+.infoTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ds-icon-muted);
+  cursor: help;
+  border-radius: var(--ds-radius-full);
+}
+
+.infoTrigger:hover {
+  color: var(--ds-icon-brand-emphasis);
+}
+
+.infoTrigger:focus-visible {
+  outline: 2px solid var(--ds-stroke-focus);
+  outline-offset: 1px;
+}

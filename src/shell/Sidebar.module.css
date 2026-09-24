@@ -1,11 +1,13 @@
 /* Sidebar structure — lifted from the prototype's inline styles
    (template ~1047–1151). Shared classes (ia-aside, ia-rail-*, db-nav-*,
-   db-avatar, ia-tip*) come from proto.css. */
+   nav items) come from proto.css until the Phase 2b shell redesign.
+   Below COMPACT_SHELL_QUERY the same nav renders in an off-canvas drawer
+   opened from a top bar (useCompactShell.ts). */
 
 .aside {
   flex: none;
-  background: var(--imp-white);
-  border-right: 1.5px solid var(--imp-gray-300);
+  background: var(--ds-neutral-0);
+  border-inline-end: 1.5px solid var(--ds-neutral-300);
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -30,7 +32,7 @@
   align-items: center;
   gap: 8px;
   padding: 4px 6px 16px;
-  border-bottom: 1.5px solid var(--imp-gray-300);
+  border-bottom: 1.5px solid var(--ds-neutral-300);
 }
 
 .brandRowCollapsed {
@@ -39,13 +41,17 @@
   align-items: center;
   gap: 8px;
   padding: 0 0 12px;
-  border-bottom: 1.5px solid var(--imp-gray-300);
+  border-bottom: 1.5px solid var(--ds-neutral-300);
 }
 
 .brandLink {
   display: flex;
   align-items: center;
   text-decoration: none;
+}
+
+.brandAction {
+  margin-inline-start: auto;
 }
 
 .railNav {
@@ -61,7 +67,7 @@
   display: flex;
   justify-content: center;
   padding-top: 12px;
-  border-top: 1.5px solid var(--imp-gray-300);
+  border-top: 1.5px solid var(--ds-neutral-300);
 }
 
 .railAvatarBtn {
@@ -78,28 +84,19 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--imp-fg-muted);
+  color: var(--ds-fg-muted);
 }
 
 .navDisabled {
   cursor: default;
   pointer-events: none;
-  color: var(--imp-gray-500);
+  color: var(--ds-neutral-500);
   flex-wrap: wrap;
   gap: 8px;
 }
 
 .profileMenu {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 12px;
-  right: 12px;
-  background: #fff;
-  border: 2px solid var(--imp-ink);
-  border-radius: 12px;
-  box-shadow: var(--imp-shadow-md);
-  overflow: hidden;
-  z-index: 60;
+  width: 212px;
 }
 
 .profileTrigger {
@@ -111,11 +108,69 @@
   background: none;
   border: none;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
 }
 
 .profileChevron {
-  margin-left: auto;
+  margin-inline-start: auto;
   flex: none;
-  color: var(--imp-fg-subtle);
+  color: var(--ds-fg-disabled);
 }
+
+/* ---------- Compact shell: top bar + navigation drawer ---------- */
+
+.topBar {
+  position: sticky;
+  top: 0;
+  z-index: var(--ds-z-sticky);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--ds-neutral-0);
+  border-bottom: 1.5px solid var(--ds-neutral-300);
+}
+
+.drawerOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ds-z-overlay);
+  background: var(--ds-overlay);
+}
+
+.drawer {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  z-index: calc(var(--ds-z-overlay) + 1);
+  display: flex;
+  flex-direction: column;
+  width: min(280px, calc(100vw - 48px));
+  padding: 16px 14px calc(16px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  background: var(--ds-neutral-0);
+  box-shadow: var(--ds-shadow-popover);
+}
+
+.drawer:focus {
+  outline: none;
+}
+
+/* Radix keeps the drawer mounted until its exit animation ends, so both
+   directions animate (Presence tracks animations, not transitions). Motion
+   is opt-in; under reduced motion the drawer simply appears and disappears. */
+@media (prefers-reduced-motion: no-preference) {
+  .drawer[data-state='open'] { animation: drawer-in 200ms var(--ds-ease-out); }
+  .drawer[data-state='closed'] { animation: drawer-out 160ms var(--ds-ease-out); }
+  .drawer[data-state='open']:dir(rtl) { animation-name: drawer-in-rtl; }
+  .drawer[data-state='closed']:dir(rtl) { animation-name: drawer-out-rtl; }
+  .drawerOverlay[data-state='open'] { animation: overlay-in 200ms var(--ds-ease-out); }
+  .drawerOverlay[data-state='closed'] { animation: overlay-out 160ms var(--ds-ease-out); }
+}
+
+@keyframes drawer-in { from { transform: translateX(-100%); } }
+@keyframes drawer-out { to { transform: translateX(-100%); } }
+@keyframes drawer-in-rtl { from { transform: translateX(100%); } }
+@keyframes drawer-out-rtl { to { transform: translateX(100%); } }
+@keyframes overlay-in { from { opacity: 0; } }
+@keyframes overlay-out { to { opacity: 0; } }

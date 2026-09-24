@@ -1,0 +1,84 @@
+/* Figma ❖ Link (140:113): default / accent / muted × small / medium / large,
+   optional bold + underline, optional icons. */
+
+.link {
+  --link-fg: var(--ds-fg-default);
+  --link-fg-hover: var(--ds-fg-brand-emphasis);
+
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--link-fg);
+  font: var(--ds-weight-regular) 14px/1.46 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.link:hover {
+  color: var(--link-fg-hover);
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--ds-stroke-focus);
+  outline-offset: 2px;
+  border-radius: var(--ds-radius-small);
+}
+
+.link:disabled,
+.link[aria-disabled='true'] {
+  color: var(--ds-fg-disabled);
+  cursor: not-allowed;
+}
+
+.accent {
+  --link-fg: var(--ds-fg-brand-emphasis);
+  --link-fg-hover: var(--ds-fg-dark-brand-emphasis);
+}
+
+.muted {
+  --link-fg: var(--ds-fg-muted);
+  --link-fg-hover: var(--ds-fg-default);
+}
+
+.small {
+  font-size: 12px;
+  line-height: 1.64;
+}
+
+.large {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.bold {
+  font-weight: var(--ds-weight-medium);
+}
+
+.underline {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.icon svg {
+  /* 24px outline icons scaled down keep a legible ~1.3px stroke. */
+  stroke-width: 2;
+  width: 16px;
+  height: 16px;
+}
+
+.small .icon svg {
+  /* 24px outline icons scaled down keep a legible ~1.3px stroke. */
+  stroke-width: 2.5;
+  width: 12px;
+  height: 12px;
+}

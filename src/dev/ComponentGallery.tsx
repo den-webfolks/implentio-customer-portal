@@ -1,30 +1,43 @@
-/* Dev-only component gallery: every shared UI primitive rendered in
-   isolation. Uses the real components/classes; demo state stays local. */
+/* Dev-only component gallery: every shared UI component rendered in
+   isolation with its variants and states. Demo state stays local. */
 import { useState, type ReactNode } from 'react'
+import { ArrowDownTrayIcon, EnvelopeIcon, MagnifyingGlassIcon, PaperAirplaneIcon, PlusIcon, TrashIcon, XMarkIcon, ChevronDownIcon, CheckIcon, NoSymbolIcon, ClockIcon, ListBulletIcon } from '@heroicons/react/24/outline'
+import { Button, ButtonLink, IconButton } from '@/ui/Button/Button'
+import { Link } from '@/ui/Link/Link'
+import { TextField, TextArea } from '@/ui/Form/TextField'
+import { Select } from '@/ui/Form/Select'
+import { Checkbox, RadioGroup } from '@/ui/Form/Choice'
+import { StatusChip, Tag } from '@/ui/Chip/StatusChip'
+import { Tooltip, InfoTip } from '@/ui/Tooltip/Tooltip'
+import { Menu, MenuItem, MenuSeparator, MenuLabel } from '@/ui/Menu/Menu'
 import { Modal } from '@/ui/Modal/Modal'
 import { useToast } from '@/ui/Toast/ToastProvider'
-import { UnderlineTabs, SecNav } from '@/ui/Tabs/UnderlineTabs'
-import { FilterPanel, FilterChips, activeFilterCount, type FilterFieldDef, type FilterValues } from '@/ui/FilterPanel/FilterPanel'
-import { InfoTip } from '@/ui/InfoTip'
-import { outcomePillStyle } from '@/features/tracker/OutcomesTab'
-import { STATUS_PILL } from '@/features/invoices/InvoicesPage'
-import metricStyles from '@/features/tracker/OutcomesTab.module.css'
+import { Banner } from '@/ui/Banner/Banner'
+import { Tabs, ActionTab, ActionTabs } from '@/ui/Tabs/Tabs'
+import { Stepper, Avatar, Statistic, StatisticGroup, EmptyState, Spinner } from '@/ui/Display/Display'
+import { Table, TableScroll, SortableHeader, ValueDiff, nextSort, type SortDirection } from '@/ui/Table/Table'
+import { useFilters, FilterButton, FilterGroup, matchesFilter, type FilterField, type FilterValues } from '@/ui/Filters/Filters'
 
 const SECTIONS = [
-  ['buttons', 'Buttons & links'],
-  ['inputs', 'Inputs, select, textarea, checkbox'],
-  ['tabs', 'Tabs'],
-  ['pills', 'Pills, badges, chips'],
-  ['cards', 'Cards'],
-  ['kpis', 'KPI tiles'],
-  ['tooltips', 'Tooltips'],
-  ['modals', 'Modals'],
-  ['toasts', 'Toasts'],
+  ['foundations', 'Foundations'],
+  ['buttons', 'Button & IconButton'],
+  ['links', 'Link'],
+  ['inputs', 'TextField & TextArea'],
+  ['select', 'Select'],
+  ['choices', 'Checkbox & RadioGroup'],
+  ['chips', 'StatusChip & Tag'],
+  ['tabs', 'Tabs & ActionTab'],
+  ['statistic', 'Statistic'],
+  ['stepper', 'Stepper'],
+  ['avatar', 'Avatar'],
+  ['tooltip', 'Tooltip & InfoTip'],
+  ['menu', 'Menu'],
+  ['banner', 'Banner'],
+  ['toast', 'Toast'],
+  ['modal', 'Modal'],
   ['filters', 'Filters'],
-  ['tables', 'Table primitives'],
-  ['empty', 'Empty states'],
-  ['assets', 'Icons & brand assets'],
-  ['absent', 'Not in the codebase'],
+  ['table', 'Table primitives'],
+  ['empty', 'EmptyState & Spinner'],
 ] as const
 
 type SectionId = (typeof SECTIONS)[number][0]
@@ -34,12 +47,14 @@ function Section({ id, source, note, children }: { id: SectionId; source: string
   return (
     <section id={id} className="db-card" style={{ scrollMarginTop: 16 }}>
       <div>
-        <h2 className="db-h3">{title}</h2>
-        <code className="db-tnum" style={{ overflowWrap: 'anywhere' }}>
+        <h2 className="ds-heading-small" style={{ margin: 0 }}>
+          {title}
+        </h2>
+        <code className="ds-body-small ds-muted" style={{ overflowWrap: 'anywhere' }}>
           {source}
         </code>
         {note && (
-          <p className="imp-small" style={{ margin: '6px 0 0', maxWidth: '80ch' }}>
+          <p className="ds-body-base ds-muted" style={{ margin: '6px 0 0', maxWidth: '80ch' }}>
             {note}
           </p>
         )}
@@ -52,7 +67,7 @@ function Section({ id, source, note, children }: { id: SectionId; source: string
 function Example({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <div className="db-kpi-sub" style={{ marginBottom: 8 }}>
+      <div className="ds-caption-small ds-muted" style={{ marginBottom: 8 }}>
         {label}
       </div>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>{children}</div>
@@ -60,463 +75,553 @@ function Example({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-const FILTER_FIELDS: FilterFieldDef[] = [
-  {
-    key: 'period',
-    label: 'Period',
-    allLabel: 'All periods',
-    options: [
-      { value: '2026-07', label: 'Jul 2026' },
-      { value: '2026-08', label: 'Aug 2026' },
-    ],
-  },
+const SWATCHES = [
+  ['bg-brand-emphasis', 'bg-dark-brand-emphasis', 'bg-brand-disabled', 'bg-accent-emphasis', 'bg-emphasis', 'bg-muted', 'bg-disabled'],
+  ['bg-success-emphasis', 'bg-success-muted', 'bg-warning-emphasis', 'bg-warning-muted', 'bg-danger-emphasis', 'bg-danger-muted', 'status-info-bg'],
+  ['stroke-emphasis', 'stroke-muted', 'stroke-disabled', 'stroke-focus', 'stroke-brand-muted'],
+] as const
+
+const TEXT_STYLES = [
+  ['ds-heading-xlarge', 'heading/x-large · 30'],
+  ['ds-heading-large', 'heading/large · 25'],
+  ['ds-heading-medium', 'heading/medium · 21'],
+  ['ds-heading-small', 'heading/small · 17'],
+  ['ds-heading-tiny', 'heading/tiny · 14'],
+  ['ds-body-medium', 'body/medium · 16'],
+  ['ds-body-base', 'body/base · 14'],
+  ['ds-body-small', 'body/small · 12'],
+  ['ds-caption-small', 'caption/small · 12'],
+  ['ds-caption-tiny', 'caption/tiny · 10'],
+] as const
+
+const FILTER_FIELDS: FilterField[] = [
   {
     key: 'biller',
     label: 'Biller',
-    allLabel: 'All billers',
     options: [
       { value: 'quickbox', label: 'QuickBox' },
       { value: 'flowspace', label: 'Flowspace' },
       { value: 'shipbob', label: 'ShipBob' },
     ],
   },
+  {
+    key: 'status',
+    label: 'Status',
+    options: [
+      { value: 'variance', label: 'Variance identified' },
+      { value: 'clear', label: 'No significant variance' },
+      { value: 'pending', label: 'Audit not complete' },
+    ],
+  },
 ]
 
-const TABLE_ROWS = [
-  { id: 'INV-10231', date: 'Jul 03, 2026', invoiced: 4210.55, variance: -312.4 },
-  { id: 'INV-10248', date: 'Jul 10, 2026', invoiced: 3988.1, variance: 0 },
-  { id: 'INV-10277', date: 'Jul 17, 2026', invoiced: 5102.9, variance: 48.25 },
+const ROWS = [
+  { id: 'INV-10231', biller: 'quickbox', status: 'variance', date: '2026-07-03', invoiced: 4210.55, variance: -312.4 },
+  { id: 'INV-10248', biller: 'flowspace', status: 'clear', date: '2026-07-10', invoiced: 3988.1, variance: 0 },
+  { id: 'INV-10277', biller: 'shipbob', status: 'pending', date: '2026-07-17', invoiced: 5102.9, variance: 48.25 },
 ]
 
 const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 
-const BRAND_ASSETS = [
-  'implentio-mark.svg',
-  'implentio-wordmark.svg',
-  'filter.svg',
-  'credits-check.svg',
-  'variance-arrow.svg',
-  'title-swash.svg',
-  'nav-parcel.svg',
-  'nav-invoices.svg',
-  'nav-lcc.svg',
-  'nav-pwv.svg',
-  'nav-fcm.svg',
-  'nav-ratecards.svg',
-  'nav-bi.svg',
-  'gmail.png',
-  'outlook.png',
-  'empty-state.png',
-]
+const BRAND_ASSETS = ['implentio-mark.svg', 'implentio-wordmark.svg', 'gmail.png', 'outlook.png', 'empty-state.png']
 
 export function ComponentGallery() {
   const showToast = useToast()
-  const [underline, setUnderline] = useState<'memos' | 'outcomes'>('memos')
-  const [secnav, setSecnav] = useState<'summary' | 'invoices' | 'activity'>('summary')
-  const [segmented, setSegmented] = useState<'month' | 'quarter' | 'year'>('month')
-  const [metric, setMetric] = useState<'all' | 'collected' | 'awaiting'>('all')
-  const [filters, setFilters] = useState<FilterValues>({ period: 'all', biller: 'quickbox' })
-  const [sortDesc, setSortDesc] = useState<boolean | null>(null)
-  const [modal, setModal] = useState<'basic' | 'wide' | null>(null)
+  const [tab, setTab] = useState<'memos' | 'outcomes' | 'archived'>('memos')
+  const [action, setAction] = useState<'all' | 'collected' | 'awaiting'>('all')
+  const [modal, setModal] = useState<'medium' | 'large' | 'narrow' | null>(null)
   const [checked, setChecked] = useState(true)
+  const [boxed, setBoxed] = useState(false)
+  const [radio, setRadio] = useState<'full' | 'partial' | 'none' | null>('partial')
+  const [biller, setBiller] = useState<string | undefined>('quickbox')
+  const [email, setEmail] = useState('tori@acme')
+  const [filterValues, setFilterValues] = useState<FilterValues>({ biller: ['quickbox'] })
+  const filters = useFilters(FILTER_FIELDS, filterValues, setFilterValues)
+  const [sort, setSort] = useState<SortDirection>(null)
+  const [step, setStep] = useState(1)
+  const [loading, setLoading] = useState(false)
 
-  const rows = sortDesc == null ? TABLE_ROWS : [...TABLE_ROWS].sort((a, b) => (sortDesc ? -1 : 1) * a.date.localeCompare(b.date))
+  const rows = ROWS.filter((r) => matchesFilter(filterValues, 'biller', r.biller) && matchesFilter(filterValues, 'status', r.status))
+  const sorted = sort === null ? rows : [...rows].sort((a, b) => (sort === 'asc' ? 1 : -1) * a.date.localeCompare(b.date))
 
   return (
     <main className="db-main" style={{ maxWidth: 1100 }}>
       <div>
-        <p className="db-eyebrow">Dev</p>
-        <h1 className="db-h1">Component Gallery</h1>
-        <p className="imp-small" style={{ margin: '6px 0 0', maxWidth: '80ch' }}>
-          Shared UI from <code>src/ui/</code> and the ported classes in <code>src/styles/proto.css</code>. Dev-only
-          (not routed in production builds). Hover and focus states are live: hover or tab to see them.
+        <p className="imp-eyebrow" style={{ margin: 0 }}>
+          Dev
+        </p>
+        <h1 className="ds-heading-xlarge" style={{ margin: '4px 0 0' }}>
+          Component Gallery
+        </h1>
+        <p className="ds-body-base ds-muted" style={{ margin: '6px 0 0', maxWidth: '80ch' }}>
+          The shared components in <code>src/ui/</code>, aligned with the Figma library (see DESIGN-SYSTEM.md). Dev-only — not routed in production builds.
+          Hover, focus and press states are live.
         </p>
       </div>
 
-      <nav aria-label="Gallery sections" className="db-card" style={{ gap: 6 }}>
+      <nav aria-label="Gallery sections" className="db-card" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: '6px 16px' }}>
         {SECTIONS.map(([id, title]) => (
-          <a key={id} href={`#${id}`} style={{ font: '600 13px var(--imp-font-body)' }}>
+          <Link key={id} href={`#${id}`} variant="accent" size="small">
             {title}
-          </a>
+          </Link>
         ))}
       </nav>
 
+      <Section id="foundations" source="src/styles/tokens.css — Figma variables, text styles, effect styles" note="Inter throughout; semantic colour tokens mirror Figma's Colors collection.">
+        {SWATCHES.map((row, i) => (
+          <div key={i} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {row.map((t) => (
+              <div key={t} style={{ width: 132 }}>
+                <div style={{ height: 40, borderRadius: 6, border: '1px solid var(--ds-stroke-disabled)', background: `var(--ds-${t})` }} />
+                <code className="ds-body-small ds-muted">{t}</code>
+              </div>
+            ))}
+          </div>
+        ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {TEXT_STYLES.map(([cls, name]) => (
+            <div key={cls} style={{ display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
+              <code className="ds-body-small ds-muted" style={{ width: 160, flex: 'none' }}>
+                {name}
+              </code>
+              <span className={cls} style={{ minWidth: 0, overflowWrap: 'anywhere' }}>Credit memo CM-2026-0630 — $10,459.83</span>
+            </div>
+          ))}
+        </div>
+        <Example label="Radius · small 4 / medium 6 / large 8 / xlarge 12 — Effects · disabled / muted / popover">
+          {(['small', 'medium', 'large', 'xlarge'] as const).map((r) => (
+            <div key={r} style={{ width: 64, height: 40, border: '1px solid var(--ds-stroke-emphasis)', borderRadius: `var(--ds-radius-${r})` }} />
+          ))}
+          {(['disabled', 'muted', 'popover'] as const).map((s) => (
+            <div key={s} style={{ width: 96, height: 40, borderRadius: 6, background: '#fff', boxShadow: `var(--ds-shadow-${s})`, display: 'grid', placeItems: 'center' }}>
+              <code className="ds-body-small">{s}</code>
+            </div>
+          ))}
+        </Example>
+      </Section>
+
       <Section
         id="buttons"
-        source="proto.css: .db-btn .db-btn-primary .db-btn-secondary .db-btn-sm · .db-icon-btn · .db-row-btn · .ia-crumb · .db-link · .ia-tracker-*"
-        note="proto.css has no :disabled rule for .db-btn. Call sites apply opacity/cursor inline (e.g. FilterPanel's Apply button)."
+        source="src/ui/Button/Button.tsx — Figma ❖ Button (button, icon-button)"
+        note="Primary + Secondary; secondary variations: Emphasis (secondary action), Danger (reject/delete), Success (approve/accept), Attention. Sizes small 32 / medium 36 (default). One primary per view: repeated per-card actions use Emphasis or Secondary."
       >
-        <Example label="Primary / secondary">
-          <button type="button" className="db-btn db-btn-primary">Prepare dispute</button>
-          <button type="button" className="db-btn db-btn-secondary">Download report</button>
+        {(['medium', 'small'] as const).map((size) => (
+          <Example key={size} label={`Variants · ${size}`}>
+            <Button variant="primary" size={size}>
+              Prepare dispute
+            </Button>
+            <Button variant="secondary" size={size}>
+              Download report
+            </Button>
+            <Button variant="emphasis" size={size}>
+              Review findings
+            </Button>
+            <Button variant="danger" size={size}>
+              Remove
+            </Button>
+            <Button variant="success" size={size}>
+              Mark collected
+            </Button>
+            <Button variant="attention" size={size}>
+              Needs attention
+            </Button>
+          </Example>
+        ))}
+        <Example label="Icons · loading · disabled">
+          <Button variant="primary" iconLeft={<PaperAirplaneIcon aria-hidden="true" />}>
+            Send
+          </Button>
+          <Button iconLeft={<ArrowDownTrayIcon aria-hidden="true" />}>Download</Button>
+          <Button variant="emphasis" iconRight={<ChevronDownIcon aria-hidden="true" />}>
+            More
+          </Button>
+          <Button
+            variant="primary"
+            loading={loading}
+            onClick={() => {
+              setLoading(true)
+              window.setTimeout(() => setLoading(false), 1500)
+            }}
+          >
+            {loading ? 'Sending…' : 'Click to load'}
+          </Button>
+          <Button variant="primary" disabled>
+            Primary disabled
+          </Button>
+          <Button disabled>Secondary disabled</Button>
         </Example>
-        <Example label="Small">
-          <button type="button" className="db-btn db-btn-primary db-btn-sm">Apply filters</button>
-          <button type="button" className="db-btn db-btn-secondary db-btn-sm">Clear all</button>
-          <button type="button" className="db-btn db-btn-secondary db-btn-sm">
-            <img src="/brand/filter.svg" alt="" style={{ width: 15, height: 15 }} />
-            With icon
-          </button>
+        <Example label="ButtonLink · navigation that must look like a button (a real link: new tab, copy link)">
+          <ButtonLink to="/tracker/memos" size="small" iconLeft={<ListBulletIcon aria-hidden="true" />}>
+            Review findings
+          </ButtonLink>
+          <ButtonLink to="/tracker/memos" variant="emphasis" size="small">
+            Prepare dispute
+          </ButtonLink>
         </Example>
-        <Example label="Disabled attribute (no dedicated style)">
-          <button type="button" className="db-btn db-btn-primary" disabled>Primary disabled</button>
-          <button type="button" className="db-btn db-btn-secondary db-btn-sm" disabled>Secondary disabled</button>
-        </Example>
-        <Example label="Icon button (+ notification dot)">
-          <button type="button" className="db-icon-btn" aria-label="Close">✕</button>
-          <button type="button" className="db-icon-btn" aria-label="Notifications">
-            <img src="/brand/credits-check.svg" alt="" />
-            <span className="db-icon-dot" />
-          </button>
-        </Example>
-        <Example label="Text actions">
-          <button type="button" className="db-row-btn">View memo</button>
-          <button type="button" className="ia-crumb">← Parcel Credit Tracker</button>
-          <a className="db-link" href="#buttons">db-link (unused by screens)</a>
-        </Example>
-        <Example label="Tracker action classes">
-          <button type="button" className="ia-tracker-review-btn">Review findings</button>
-          <button type="button" className="ia-tracker-secondary-link">Update outcomes →</button>
-        </Example>
-      </Section>
-
-      <Section
-        id="inputs"
-        source="proto.css: .ia-input (applied to input, select, textarea)"
-        note="No error or success styling is defined; forms show validation as a text message below the field. Checkboxes are native."
-      >
-        <Example label="Text input">
-          <input className="ia-input" aria-label="Default input" placeholder="Search by invoice #" />
-          <input className="ia-input" aria-label="Filled input" defaultValue="tori@acme.com" />
-          <input className="ia-input" aria-label="Disabled input" defaultValue="Disabled" disabled />
-        </Example>
-        <Example label="Select">
-          <select className="ia-input" aria-label="Biller" defaultValue="quickbox">
-            <option value="quickbox">QuickBox</option>
-            <option value="flowspace">Flowspace</option>
-          </select>
-          <select className="ia-input" aria-label="Disabled select" disabled>
-            <option>Disabled</option>
-          </select>
-        </Example>
-        <Example label="Textarea">
-          <textarea
-            className="ia-input"
-            aria-label="Reason"
-            rows={3}
-            placeholder="Add details about why the request was declined"
-            style={{ width: 420, resize: 'vertical' }}
-          />
-        </Example>
-        <Example label="Checkbox (native)">
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
-            <span style={{ font: '600 13px var(--imp-font-body)' }}>Default dispute contact for this biller</span>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input type="checkbox" disabled />
-            <span style={{ font: '600 13px var(--imp-font-body)', color: 'var(--imp-fg-muted)' }}>Disabled</span>
-          </label>
+        <Example label="IconButton · tiny 24 / small 32 / medium 36 / large 44 · ghost · disabled">
+          <IconButton size="tiny" aria-label="Search" icon={<MagnifyingGlassIcon aria-hidden="true" />} />
+          <IconButton size="small" aria-label="Search" icon={<MagnifyingGlassIcon aria-hidden="true" />} />
+          <IconButton aria-label="Search" icon={<MagnifyingGlassIcon aria-hidden="true" />} />
+          <IconButton size="large" aria-label="Search" icon={<MagnifyingGlassIcon aria-hidden="true" />} />
+          <IconButton ghost aria-label="Close" icon={<XMarkIcon aria-hidden="true" />} />
+          <IconButton disabled aria-label="Delete" icon={<TrashIcon aria-hidden="true" />} />
+          <Tooltip content="Tooltip Info">
+            <IconButton aria-label="With tooltip" icon={<EnvelopeIcon aria-hidden="true" />} />
+          </Tooltip>
         </Example>
       </Section>
 
-      <Section id="tabs" source="src/ui/Tabs/UnderlineTabs.tsx: UnderlineTabs, SecNav · proto.css: .db-tabs .db-tab">
-        <Example label="UnderlineTabs (tracker)">
-          <div style={{ width: '100%' }}>
-            <UnderlineTabs
-              tabs={[
-                { key: 'memos', label: 'Credit memos' },
-                { key: 'outcomes', label: 'Dispute outcomes' },
-              ]}
-              active={underline}
-              onSelect={setUnderline}
-            />
-          </div>
-        </Example>
-        <Example label="SecNav (memo detail)">
-          <SecNav
-            ariaLabel="Example section nav"
-            tabs={[
-              { key: 'summary', label: 'Summary' },
-              { key: 'invoices', label: 'Invoices' },
-              { key: 'activity', label: 'Activity & exports' },
-            ]}
-            active={secnav}
-            onSelect={setSecnav}
-          />
-        </Example>
-        <Example label="Segmented .db-tabs (defined, unused by screens)">
-          <div className="db-tabs">
-            {(['month', 'quarter', 'year'] as const).map((k) => (
-              <button key={k} type="button" className={segmented === k ? 'db-tab is-on' : 'db-tab'} onClick={() => setSegmented(k)}>
-                {k[0]?.toUpperCase() + k.slice(1)}
-              </button>
-            ))}
-          </div>
-        </Example>
-      </Section>
-
-      <Section
-        id="pills"
-        source="proto.css: .ia-pill · .db-badge · .ia-chip — tones from OutcomesTab.outcomePillStyle, InvoicesPage.STATUS_PILL"
-        note=".ia-pill only sets shape; each feature supplies its tone colors inline. Not a shared tone API yet."
-      >
-        <Example label="Outcome tones (outcomePillStyle)">
-          {(['eligible', 'success', 'warn', 'muted'] as const).map((t) => (
-            <span key={t} className="ia-pill" style={outcomePillStyle(t)}>
-              {t}
-            </span>
-          ))}
-        </Example>
-        <Example label="Invoice review status (STATUS_PILL)">
-          {Object.entries(STATUS_PILL).map(([k, v]) => (
-            <span key={k} className="ia-pill" style={v.style}>
-              {v.label}
-            </span>
-          ))}
-        </Example>
-        <Example label=".db-badge ok / warn / err (defined, unused by screens)">
-          {(['ok', 'warn', 'err'] as const).map((t) => (
-            <span key={t} className={`db-badge ${t}`}>
-              <span className="dot" />
-              {t}
-            </span>
-          ))}
-        </Example>
-        <Example label="Chip (.ia-chip, as rendered by FilterChips)">
-          <button type="button" className="ia-chip">
-            Biller: QuickBox
-            <span aria-hidden="true" style={{ fontSize: 11, opacity: 0.7 }}>✕</span>
-          </button>
-        </Example>
-      </Section>
-
-      <Section id="cards" source="proto.css: .db-card .db-card-head · .db-cta-strip · .db-avatar">
-        <Example label="Card with header">
-          <div className="db-card" style={{ width: 420 }}>
-            <div className="db-card-head">
-              <div>
-                <div className="db-eyebrow">Credit memo</div>
-                <h3 className="db-h3">CM-2026-0630</h3>
-              </div>
-              <button type="button" className="db-row-btn">Open</button>
-            </div>
-            <p className="imp-small" style={{ margin: 0 }}>QuickBox · Jun 2026 · 852 packages reviewed</p>
-          </div>
-        </Example>
-        <Example label="CTA strip">
-          <div className="db-cta-strip" style={{ width: '100%' }}>
-            <span>
-              <span className="db-money-orange">$10,459.83</span> in variance identified
-            </span>
-            <button type="button" className="db-btn db-btn-primary db-btn-sm">Review findings</button>
-          </div>
-        </Example>
-        <Example label="Avatar">
-          <span className="db-avatar">TM</span>
-        </Example>
-      </Section>
-
-      <Section
-        id="kpis"
-        source="features/tracker/OutcomesTab.module.css: .metricGrid .metricBtn .metricNum (shared by 3 screens) · proto.css: .db-kpi-*"
-        note="The metric tile is shared by Outcomes, Invoices and Memo invoices but lives in a feature CSS module."
-      >
-        <Example label="Metric tiles (selectable, aria-pressed)">
-          <div className={metricStyles.metricGrid} style={{ width: '100%' }}>
-            {(
-              [
-                ['all', 'Total identified', '$24,310.12', 'var(--imp-ink)'],
-                ['collected', 'Collected', '$9,387.70', 'var(--imp-success)'],
-                ['awaiting', 'Awaiting Biller', '$4,120.00', 'var(--imp-purple-500)'],
-              ] as const
-            ).map(([key, label, value, color]) => (
-              <button
-                key={key}
-                type="button"
-                className={metricStyles.metricBtn}
-                aria-pressed={metric === key}
-                style={{ borderTop: `3px solid ${metric === key ? color : 'transparent'}` }}
-                onClick={() => setMetric(key)}
-              >
-                <div className="db-kpi-sub">{label}</div>
-                <div className={metricStyles.metricNum} style={{ color }}>
-                  {value}
-                </div>
-              </button>
-            ))}
-          </div>
-        </Example>
-        <Example label=".db-kpi-card with deltas (defined, unused by screens)">
-          <div className="db-kpi-row" style={{ width: '100%' }}>
-            {(
-              [
-                ['up', '+4.2% vs last month'],
-                ['dn', '−1.8% vs last month'],
-                ['neutral', 'No change'],
-              ] as const
-            ).map(([dir, text]) => (
-              <div key={dir} className="db-kpi-card">
-                <div className="db-kpi-sub">Recovery rate</div>
-                <div className="db-kpi-val">
-                  38<span className="db-pct">%</span>
-                </div>
-                <div className={`db-kpi-delta ${dir}`}>{text}</div>
-              </div>
-            ))}
-          </div>
-        </Example>
-      </Section>
-
-      <Section id="tooltips" source="src/ui/InfoTip.tsx (CSS hover/focus, .ia-tip) · .ia-tip-right used directly in Sidebar">
-        <Example label="Above (default) / below / larger / custom color">
-          <InfoTip text="Variance is the difference between invoiced and expected charges." />
-          <InfoTip down text="Opens below: use near the top of a container." />
-          <InfoTip size={18} text="Size 18." />
-          <InfoTip color="var(--imp-orange-500)" text="Custom icon color." />
-        </Example>
-      </Section>
-
-      <Section id="modals" source="src/ui/Modal/Modal.tsx (Radix Dialog: focus trap, Escape, focus return)">
-        <Example label="Open">
-          <button type="button" className="db-btn db-btn-secondary db-btn-sm" onClick={() => setModal('basic')}>
-            Default (420px)
-          </button>
-          <button type="button" className="db-btn db-btn-secondary db-btn-sm" onClick={() => setModal('wide')}>
-            Wide (720px) with footer
-          </button>
-        </Example>
-        <Modal open={modal === 'basic'} onClose={() => setModal(null)} title="Invite member">
-          <p className="imp-small" style={{ margin: 0 }}>Body content without a footer. Press Escape or × to close.</p>
-        </Modal>
-        <Modal
-          open={modal === 'wide'}
-          onClose={() => setModal(null)}
-          title="Update credit memo dispute"
-          width={720}
-          footer={
-            <>
-              <button type="button" className="db-btn db-btn-secondary db-btn-sm" onClick={() => setModal(null)}>Cancel</button>
-              <button type="button" className="db-btn db-btn-primary db-btn-sm" onClick={() => setModal(null)}>Save</button>
-            </>
-          }
-        >
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span className="db-kpi-sub">Note</span>
-            <textarea className="ia-input" rows={3} />
-          </label>
-        </Modal>
-      </Section>
-
-      <Section id="toasts" source="src/ui/Toast/ToastProvider.tsx: useToast() (one at a time, 3.6s)">
-        <Example label="Trigger">
-          <button type="button" className="db-btn db-btn-secondary db-btn-sm" onClick={() => showToast('ok', 'Downloading CM-2026-0630.xlsx')}>
-            Success (ok)
-          </button>
-          <button type="button" className="db-btn db-btn-secondary db-btn-sm" onClick={() => showToast('warn', 'Connection needs to be re-authorized')}>
-            Warning (warn)
-          </button>
-        </Example>
-      </Section>
-
-      <Section id="filters" source="src/ui/FilterPanel/FilterPanel.tsx: FilterPanel, FilterChips, activeFilterCount (bottom sheet under 640px)">
-        <Example label={`Staged panel + applied chips (${activeFilterCount(filters)} active)`}>
-          <FilterPanel fields={FILTER_FIELDS} values={filters} onApply={setFilters} />
-          <FilterChips fields={FILTER_FIELDS} values={filters} onClear={(key) => setFilters((f) => ({ ...f, [key]: 'all' }))} />
-        </Example>
-      </Section>
-
-      <Section
-        id="tables"
-        source="proto.css: .db-table .db-table-compact td.num/.neg/.pos .db-total-row .ia-sort-btn .db-row-btn"
-        note="No table component; screens compose these classes directly."
-      >
-        {(['db-table', 'db-table db-table-compact'] as const).map((cls) => (
-          <Example key={cls} label={cls === 'db-table' ? 'Default (hover rows, sortable date)' : 'Compact'}>
-            <table className={cls}>
-              <thead>
-                <tr>
-                  <th>Invoice</th>
-                  <th aria-sort={sortDesc == null ? undefined : sortDesc ? 'descending' : 'ascending'}>
-                    <button type="button" className="ia-sort-btn" onClick={() => setSortDesc((s) => (s == null ? true : !s))}>
-                      Invoice Date
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ transform: sortDesc === false ? 'rotate(180deg)' : undefined, opacity: sortDesc == null ? 0.4 : 1 }}>
-                        <path d="M7 10l5 5 5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </button>
-                  </th>
-                  <th className="num">Invoiced</th>
-                  <th className="num">Variance</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.id}>
-                    <td>{r.id}</td>
-                    <td>{r.date}</td>
-                    <td className="num">{usd(r.invoiced)}</td>
-                    <td className={r.variance < 0 ? 'num neg' : r.variance > 0 ? 'num pos' : 'num'}>{usd(r.variance)}</td>
-                    <td className="num">
-                      <button type="button" className="db-row-btn">Open</button>
-                    </td>
-                  </tr>
-                ))}
-                <tr className="db-total-row">
-                  <td>Total</td>
-                  <td />
-                  <td className="num">{usd(TABLE_ROWS.reduce((s, r) => s + r.invoiced, 0))}</td>
-                  <td className="num">{usd(TABLE_ROWS.reduce((s, r) => s + r.variance, 0))}</td>
-                  <td />
-                </tr>
-              </tbody>
-            </table>
+      <Section id="links" source="src/ui/Link/Link.tsx — Figma ❖ Link" note="Renders a router link (to), an anchor (href) or a button (onClick).">
+        {(['default', 'accent', 'muted'] as const).map((v) => (
+          <Example key={v} label={v}>
+            <Link variant={v} size="small" onClick={() => undefined}>
+              Small link
+            </Link>
+            <Link variant={v} onClick={() => undefined}>
+              Medium link
+            </Link>
+            <Link variant={v} size="large" onClick={() => undefined}>
+              Large link
+            </Link>
+            <Link variant={v} bold onClick={() => undefined}>
+              Bold
+            </Link>
+            <Link variant={v} underline onClick={() => undefined}>
+              Underlined
+            </Link>
+            <Link variant={v} iconLeft={<ArrowDownTrayIcon aria-hidden="true" />} onClick={() => undefined}>
+              With icon
+            </Link>
           </Example>
         ))}
       </Section>
 
-      <Section id="empty" source="proto.css: .db-empty (on .db-card)">
-        <Example label="Filtered-to-nothing">
-          <div className="db-card db-empty" style={{ padding: '40px 32px', width: 480 }}>
-            <h3 className="db-h3">No credit memos match these filters</h3>
-            <p className="imp-small" style={{ margin: '6px auto 0', maxWidth: '44ch' }}>
-              Adjust the filters above to see credit memos for other periods, statuses, or carriers.
-            </p>
-          </div>
+      <Section
+        id="inputs"
+        source="src/ui/Form/TextField.tsx — Figma ❖ Text Input"
+        note="Validation = border colour + message below; the focus border overrides validation. Label optional (use for complex forms)."
+      >
+        <Example label="Default · with label · icon · small · disabled">
+          <TextField aria-label="Search" placeholder="Search by invoice #" iconLeft={<MagnifyingGlassIcon />} />
+          <TextField label="Contact name" placeholder="Jane Doe" />
+          <TextField size="small" aria-label="Small" placeholder="Small (32px)" />
+          <TextField label="Disabled" defaultValue="Read only value" disabled />
         </Example>
-        <Example label="With illustration">
-          <div className="db-card db-empty" style={{ padding: '40px 32px', width: 480, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <img src="/brand/empty-state.png" alt="" style={{ width: 200, height: 'auto', marginBottom: 14, opacity: 0.55 }} />
-            <h3 className="db-h3">Detailed breakdown unavailable</h3>
-          </div>
+        <Example label="Validation · invalid / warning / success · caption">
+          <TextField
+            label="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            validation={email.includes('.') ? 'success' : 'invalid'}
+            message={email.includes('.') ? 'Looks good' : 'Enter a valid email address'}
+          />
+          <TextField label="Amount" defaultValue="12000" validation="warning" message="Above the requested amount" />
+          <TextField label="Reference" optional placeholder="PO-1234" caption="Shown on the dispute email" />
+        </Example>
+        <Example label="TextArea">
+          <TextArea label="Reason" placeholder="Add details about why the request was declined" rows={3} />
+        </Example>
+      </Section>
+
+      <Section id="select" source="src/ui/Form/Select.tsx — Figma ❖ Select (select + select-menu), Radix Select">
+        <Example label="With label · placeholder · small · disabled">
+          <Select
+            label="Biller"
+            value={biller}
+            onValueChange={setBiller}
+            options={[
+              { value: 'quickbox', label: 'QuickBox' },
+              { value: 'flowspace', label: 'Flowspace' },
+              { value: 'shipbob', label: 'ShipBob', disabled: true },
+            ]}
+          />
+          <Select aria-label="Period" placeholder="Choose a period" value={undefined} onValueChange={() => undefined} options={[{ value: 'jul', label: 'Jul 2026' }]} />
+          <Select aria-label="Small" size="small" value="a" onValueChange={() => undefined} options={[{ value: 'a', label: 'Small select' }]} />
+          <Select label="Disabled" disabled value="a" onValueChange={() => undefined} options={[{ value: 'a', label: 'Disabled' }]} />
+        </Example>
+      </Section>
+
+      <Section id="choices" source="src/ui/Form/Choice.tsx — Figma ❖ Checkbox (regular, withOutline) · ❖ Radio">
+        <Example label="Checkbox · bordered · description · disabled">
+          <Checkbox label="Default dispute contact" checked={checked} onCheckedChange={setChecked} />
+          <Checkbox label="Include in dispute" bordered checked={boxed} onCheckedChange={setBoxed} />
+          <Checkbox label="Attach evidence" description="Adds the package-level workbook" checked onCheckedChange={() => undefined} />
+          <Checkbox label="Disabled" checked={false} disabled onCheckedChange={() => undefined} />
+          <Checkbox label="Checked disabled" checked disabled onCheckedChange={() => undefined} />
+        </Example>
+        <Example label="RadioGroup · column · bordered row">
+          <RadioGroup
+            aria-label="Outcome"
+            value={radio}
+            onValueChange={setRadio}
+            options={[
+              { value: 'full', label: 'Collected in full' },
+              { value: 'partial', label: 'Partially collected' },
+              { value: 'none', label: 'Not issued', disabled: true },
+            ]}
+          />
+          <RadioGroup
+            aria-label="Outcome (bordered)"
+            bordered
+            direction="row"
+            value={radio}
+            onValueChange={setRadio}
+            options={[
+              { value: 'full', label: 'Collected in full' },
+              { value: 'partial', label: 'Partially collected' },
+              { value: 'none', label: 'Not issued' },
+            ]}
+          />
         </Example>
       </Section>
 
       <Section
-        id="assets"
-        source="public/brand/*"
-        note="Icons are static SVG/PNG files referenced by <img>; there are no icon components. Small UI glyphs (chevrons, sort arrow, info) are inline SVG at the call site."
+        id="chips"
+        source="src/ui/Chip/StatusChip.tsx — Figma ❖ Chips (status-chip, tag-chip)"
+        note="Domain statuses map to tones in one place: features/status-tones.ts."
       >
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
-          {BRAND_ASSETS.map((f) => (
-            <figure key={f} style={{ margin: 0, textAlign: 'center' }}>
-              <div style={{ height: 64, display: 'grid', placeItems: 'center', border: '1px solid var(--imp-gray-200)', borderRadius: 8, background: 'var(--imp-gray-100)' }}>
-                <img src={`/brand/${f}`} alt="" style={{ maxWidth: 110, maxHeight: 44 }} />
-              </div>
-              <figcaption className="db-tnum" style={{ marginTop: 4 }}>{f}</figcaption>
-            </figure>
-          ))}
-        </div>
+        <Example label="Tones · filled">
+          <StatusChip tone="neutral">Eligible</StatusChip>
+          <StatusChip tone="info" icon={<ClockIcon />}>
+            Awaiting outcome
+          </StatusChip>
+          <StatusChip tone="attention">Partially collected</StatusChip>
+          <StatusChip tone="success" icon={<CheckIcon />}>
+            Collected
+          </StatusChip>
+          <StatusChip tone="danger" icon={<NoSymbolIcon />}>
+            Declined
+          </StatusChip>
+          <StatusChip tone="muted">Superseded</StatusChip>
+        </Example>
+        <Example label="Text only">
+          <StatusChip tone="info" textOnly>
+            Awaiting outcome
+          </StatusChip>
+          <StatusChip tone="success" textOnly icon={<CheckIcon />}>
+            Collected
+          </StatusChip>
+        </Example>
+        <Example label="Tag">
+          <Tag>UPS</Tag>
+          <Tag>FedEx</Tag>
+          <Tag>USPS</Tag>
+        </Example>
       </Section>
 
-      <Section id="absent" source="—">
-        <ul className="imp-small" style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <li><b>Radio, toggle/switch, drawer/sheet, pagination, skeletons</b>: none exist.</li>
-          <li><b>Dropdown menu</b>: only feature-local (OutcomeModal's <code>.ia-om-dd-*</code>).</li>
-          <li><b>Popover</b>: only FilterPanel&apos;s panel; <code>.ia-tb-pop</code> exists in proto.css for the deferred BI screen.</li>
-          <li><b>Loading spinner</b>: inline-styled at call sites (SummaryTab, DisputeWizard, AccountPage) using <code>@keyframes imp-spin</code>.</li>
-          <li><b>Defined in proto.css, unused by screens</b>: <code>.db-chart-* .db-bar-* .db-sla-* .db-search .db-kbd .ia-tb-*</code>.</li>
-        </ul>
+      <Section id="tabs" source="src/ui/Tabs/Tabs.tsx — Figma ❖ Tab (tab, actionTab)" note="An action tab is a button setting a specific set of filters; its stats row takes the tab's type colour when active.">
+        <Example label="Tabs">
+          <div style={{ width: '100%' }}>
+            <Tabs
+              tabs={[
+                { key: 'memos', label: 'Credit memos' },
+                { key: 'outcomes', label: 'Dispute outcomes' },
+                { key: 'archived', label: 'Archived', disabled: true },
+              ]}
+              active={tab}
+              onSelect={setTab}
+            />
+          </div>
+        </Example>
+        <Example label="ActionTab · neutral / positive / negative">
+          <div style={{ width: '100%' }}>
+            <ActionTabs ariaLabel="Outcome filters">
+              <ActionTab label="Total identified" value="$24,310.12" active={action === 'all'} onClick={() => setAction('all')} />
+              <ActionTab label="Collected" value="$9,387.70" counter={4} type="positive" active={action === 'collected'} onClick={() => setAction('collected')} />
+              <ActionTab label="Awaiting Biller" value="–" type="negative" active={action === 'awaiting'} onClick={() => setAction('awaiting')} />
+            </ActionTabs>
+          </div>
+        </Example>
+      </Section>
+
+      <Section id="statistic" source="src/ui/Display/Display.tsx — Figma ❖ Stat Summary (statistic, statistic.text-group)">
+        <Example label="StatisticGroup">
+          <div style={{ width: '100%' }}>
+            <StatisticGroup
+              items={[
+                { label: 'Total invoiced', value: '$36,000,000' },
+                { label: 'Total variance', value: '$10,459.83', type: 'negative' },
+                { label: 'Recovered', value: '$515,000', type: 'positive' },
+              ]}
+            />
+          </div>
+        </Example>
+        <Example label="Statistic sizes (bare)">
+          <Statistic bare size="large" label="Total variance" value="$10,459.83" type="accent" sub="Across 852 packages" />
+          <Statistic bare label="Packages" value="852" />
+          <Statistic bare size="small" label="Invoices" value="14" />
+        </Example>
+      </Section>
+
+      <Section id="stepper" source="src/ui/Display/Display.tsx — Figma ❖ Stepper" note="Step isn't clickable — it is a simple indicator.">
+        <Stepper steps={['Review findings', 'Prepare email', 'Send']} current={step} />
+        <Example label="Advance">
+          <Button size="small" onClick={() => setStep((s) => (s + 1) % 4)}>
+            Next step
+          </Button>
+        </Example>
+      </Section>
+
+      <Section id="avatar" source="src/ui/Display/Display.tsx — Figma ❖ Avatar" note="Without an image, the default avatar shows initials on the muted background.">
+        <Example label="small · large · huge">
+          <Avatar name="Tori Matthews" size="small" />
+          <Avatar name="Tori Matthews" />
+          <Avatar name="Tori Matthews" size="huge" />
+        </Example>
+      </Section>
+
+      <Section id="tooltip" source="src/ui/Tooltip/Tooltip.tsx — Figma ❖ Tooltip (Radix Tooltip)">
+        <Example label="Sides · InfoTip">
+          {(['top', 'right', 'bottom', 'left'] as const).map((side) => (
+            <Tooltip key={side} content={`Tooltip on ${side}`} side={side}>
+              <Button size="small">{side}</Button>
+            </Tooltip>
+          ))}
+          <InfoTip text="Variance is the difference between invoiced and expected charges. Tooltips wrap across several lines when the text is long." />
+        </Example>
+      </Section>
+
+      <Section id="menu" source="src/ui/Menu/Menu.tsx — Figma action-list (Radix DropdownMenu)">
+        <Example label="Actions menu">
+          <Menu trigger={<Button iconRight={<ChevronDownIcon aria-hidden="true" />}>Account</Button>}>
+            <MenuLabel>Tori Matthews</MenuLabel>
+            <MenuItem icon={<ArrowDownTrayIcon aria-hidden="true" />} onSelect={() => showToast('neutral', 'Export started')}>
+              Export
+            </MenuItem>
+            <MenuSeparator />
+            <MenuItem danger icon={<TrashIcon aria-hidden="true" />} onSelect={() => showToast('danger', 'Deleted')}>
+              Delete
+            </MenuItem>
+            <MenuItem disabled onSelect={() => undefined}>
+              Disabled item
+            </MenuItem>
+          </Menu>
+        </Example>
+      </Section>
+
+      <Section id="banner" source="src/ui/Banner/Banner.tsx — Figma banner (info / success / warning / error)">
+        <Banner type="info" title="Disputes are sent from your own email account." />
+        <Banner type="success" title="Dispute sent to QuickBox" actions={<Button size="small">View email</Button>}>
+          The Biller usually responds within 10 business days.
+        </Banner>
+        <Banner type="warning" title="Deadline in 4 days" onDismiss={() => showToast('neutral', 'Dismissed')} />
+        <Banner type="error" title="The report could not be downloaded.">
+          Please try again or contact your Implentio team.
+        </Banner>
+      </Section>
+
+      <Section id="toast" source="src/ui/Toast/ToastProvider.tsx — Figma ❖ Toast (neutral / danger / positive)">
+        <Example label="Trigger">
+          <Button size="small" onClick={() => showToast('neutral', 'Link copied')}>
+            Neutral
+          </Button>
+          <Button size="small" onClick={() => showToast('positive', 'Downloading CM-2026-0630.xlsx')}>
+            Positive
+          </Button>
+          <Button size="small" onClick={() => showToast('danger', 'The report could not be downloaded.')}>
+            Danger
+          </Button>
+        </Example>
+      </Section>
+
+      <Section id="modal" source="src/ui/Modal/Modal.tsx — Figma ❖ Popup (Radix Dialog)" note="Medium: max 668×644, padding 24. Large: max 1320×712, padding 32. Content scrolls past max height. At most 2 stacked.">
+        <Example label="Open">
+          <Button size="small" onClick={() => setModal('narrow')}>
+            Narrow (420)
+          </Button>
+          <Button size="small" onClick={() => setModal('medium')}>
+            Medium
+          </Button>
+          <Button size="small" onClick={() => setModal('large')}>
+            Large with stepper
+          </Button>
+        </Example>
+        <Modal open={modal === 'narrow'} onClose={() => setModal(null)} title="Invite member" width={420} footer={<Button variant="primary" onClick={() => setModal(null)}>Send invite</Button>} footerStart={<Button onClick={() => setModal(null)}>Cancel</Button>}>
+          <TextField label="Email" placeholder="name@company.com" />
+        </Modal>
+        <Modal open={modal === 'medium'} onClose={() => setModal(null)} title="Update credit memo dispute" description="Record what the Biller issued." footer={<Button variant="primary" onClick={() => setModal(null)}>Save</Button>} footerStart={<Button onClick={() => setModal(null)}>Cancel</Button>}>
+          <RadioGroup aria-label="Outcome" bordered value={radio} onValueChange={setRadio} options={[{ value: 'full', label: 'Collected in full' }, { value: 'partial', label: 'Partially collected' }, { value: 'none', label: 'Not issued' }]} />
+          <TextArea label="Note" optional rows={3} />
+        </Modal>
+        <Modal open={modal === 'large'} onClose={() => setModal(null)} size="large" title="Prepare dispute" footer={<Button variant="primary" onClick={() => setModal(null)}>Next</Button>} footerStart={<Button onClick={() => setModal(null)}>Cancel</Button>}>
+          <Stepper steps={['Review findings', 'Prepare email', 'Send']} current={0} />
+          <p className="ds-body-medium" style={{ margin: 0 }}>
+            Choose the findings you'd like to dispute with your Biller.
+          </p>
+          <div style={{ height: 900, borderRadius: 8, background: 'var(--ds-bg-disabled)' }} />
+        </Modal>
+      </Section>
+
+      <Section
+        id="filters"
+        source="src/ui/Filters/Filters.tsx — Figma Filter-Group, Filter Field, filter-chip"
+        note="Filter opens the filter types; the group stays open until Filter is clicked again, then shows 'Filter: N active'. Values are multi-select and apply immediately."
+      >
+        <div>
+          <FilterButton filters={filters} />
+        </div>
+        <FilterGroup filters={filters} />
+        <p className="ds-body-small ds-muted" style={{ margin: 0 }}>
+          {rows.length} of {ROWS.length} rows match.
+        </p>
+      </Section>
+
+      <Section id="table" source="src/ui/Table/Table.tsx — Figma Row & Cols (table-label, table-row.bg, value-difference)">
+        <TableScroll>
+        <Table>
+          <thead>
+            <tr>
+              <th>Invoice</th>
+              <SortableHeader label="Invoice date" direction={sort} onSort={() => setSort(nextSort)} />
+              <th className="num">Invoiced</th>
+              <th className="num">Variance</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((r) => (
+              <tr key={r.id}>
+                <td>
+                  <Link variant="accent" onClick={() => undefined}>
+                    {r.id}
+                  </Link>
+                </td>
+                <td>{r.date}</td>
+                <td className="num">{usd(r.invoiced)}</td>
+                <td className="num">
+                  <ValueDiff type={r.variance < 0 ? 'negative' : r.variance > 0 ? 'positive' : 'none'}>{usd(r.variance)}</ValueDiff>
+                </td>
+                <td>
+                  <StatusChip tone={r.status === 'variance' ? 'attention' : r.status === 'clear' ? 'success' : 'muted'}>{FILTER_FIELDS[1]?.options.find((o) => o.value === r.status)?.label}</StatusChip>
+                </td>
+              </tr>
+            ))}
+            <tr className="total-row">
+              <td>Total</td>
+              <td />
+              <td className="num">{usd(sorted.reduce((s, r) => s + r.invoiced, 0))}</td>
+              <td className="num">{usd(sorted.reduce((s, r) => s + r.variance, 0))}</td>
+              <td />
+            </tr>
+          </tbody>
+        </Table>
+        </TableScroll>
+      </Section>
+
+      <Section id="empty" source="src/ui/Display/Display.tsx — Figma empty-state (with / without filters) · Spinner (no Figma source)">
+        <div className="db-card" style={{ padding: 0 }}>
+          <EmptyState title="No filtered invoices" subtitle="Currently, you don't have any invoices by selected filters" action={<Button size="small" iconLeft={<PlusIcon aria-hidden="true" />}>Clear filters</Button>} />
+        </div>
+        <Example label="Spinner 16 / 32 / 44">
+          <Spinner />
+          <Spinner size={32} />
+          <Spinner size={44} label="Loading" />
+        </Example>
+        <Example label="Brand assets (public/brand)">
+          {BRAND_ASSETS.map((f) => (
+            <img key={f} src={`/brand/${f}`} alt={f} style={{ maxHeight: 40, maxWidth: 120 }} />
+          ))}
+        </Example>
       </Section>
     </main>
   )

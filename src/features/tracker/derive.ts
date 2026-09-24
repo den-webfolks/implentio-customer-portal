@@ -10,6 +10,8 @@ import { fmtMoney, r2 } from '@/domain/money'
 import { fmtDateShort } from '@/domain/dates'
 import { deriveReportState } from '@/domain/memo'
 import { groupExpired } from '@/domain/outcomes'
+import { TONE_CHART_COLOR } from '@/features/status-tones'
+import { plural } from '@/domain/plural'
 
 const DASH = '—'
 
@@ -42,7 +44,7 @@ export function trackerDisputeCta(input: {
     if (!memoDisputeStatus)
       return {
         key: 'ready',
-        statusLabel: 'READY TO DISPUTE',
+        statusLabel: 'Ready to dispute',
         color: 'purple',
         supporting: 'No dispute has been started.',
         primaryKind: 'prep',
@@ -51,7 +53,7 @@ export function trackerDisputeCta(input: {
     if (memoDisputeStatus === 'awaiting')
       return {
         key: 'awaiting',
-        statusLabel: 'AWAITING BILLER RESPONSE',
+        statusLabel: 'Awaiting Biller response',
         color: 'amber',
         supporting: 'Awaiting a response from your biller.',
         primaryKind: 'outcome',
@@ -59,7 +61,7 @@ export function trackerDisputeCta(input: {
       }
     return {
       key: 'completed',
-      statusLabel: 'DISPUTE COMPLETED',
+      statusLabel: 'Dispute completed',
       color: 'green',
       supporting: 'This dispute has been finalized.',
       primaryKind: 'view',
@@ -86,7 +88,7 @@ export function trackerDisputeCta(input: {
   if (hasDraft)
     return {
       key: 'draft',
-      statusLabel: 'DISPUTE DRAFT',
+      statusLabel: 'Dispute draft',
       color: 'purple',
       supporting: `Started ${draftDate ?? fmtDateShort(now)} · Not yet sent.`,
       primaryKind: 'draft',
@@ -95,7 +97,7 @@ export function trackerDisputeCta(input: {
   if (eligible.length && pursued.length)
     return {
       key: 'more',
-      statusLabel: 'MORE FINDINGS AVAILABLE',
+      statusLabel: 'More findings available',
       color: 'purple',
       supporting: `${fmtCount(eligible.length)} ${eligible.length === 1 ? 'has' : 'have'} not been submitted.`,
       primaryKind: 'prep',
@@ -108,7 +110,7 @@ export function trackerDisputeCta(input: {
   if (eligible.length)
     return {
       key: 'ready',
-      statusLabel: 'READY TO DISPUTE',
+      statusLabel: 'Ready to dispute',
       color: 'purple',
       supporting: 'No dispute has been started.',
       primaryKind: 'prep',
@@ -117,24 +119,24 @@ export function trackerDisputeCta(input: {
   if (awaitingCount === 0)
     return {
       key: 'completed',
-      statusLabel: 'DISPUTE COMPLETED',
+      statusLabel: 'Dispute completed',
       color: 'green',
-      supporting: `${pursued.length} of ${pursued.length} findings finalized.`,
+      supporting: `${pursued.length} of ${plural(pursued.length, 'finding')} finalized.`,
       primaryKind: 'view',
       primaryLabel: 'View dispute details',
     }
   if (finalizedCount > 0)
     return {
       key: 'partial',
-      statusLabel: 'OUTCOMES PARTIALLY RECORDED',
+      statusLabel: 'Outcomes partly recorded',
       color: 'amber',
-      supporting: `${finalizedCount} of ${pursued.length} findings finalized.`,
+      supporting: `${finalizedCount} of ${plural(pursued.length, 'finding')} finalized.`,
       primaryKind: 'outcome',
       primaryLabel: 'Update dispute outcomes',
     }
   return {
     key: 'awaiting',
-    statusLabel: 'AWAITING BILLER RESPONSE',
+    statusLabel: 'Awaiting Biller response',
     color: 'amber',
     supporting: `${fmtCount(awaitingCount)} awaiting an outcome.`,
     primaryKind: 'outcome',
@@ -183,7 +185,7 @@ function dlAttribution(ev: DownloadEvent | undefined): string | null {
 
 const DEFAULT_CTA: TrackerCta = {
   key: 'ready',
-  statusLabel: 'READY TO DISPUTE',
+  statusLabel: 'Ready to dispute',
   color: 'purple',
   supporting: 'No dispute has been started.',
   primaryKind: 'prep',
@@ -259,7 +261,7 @@ export function memoCardView(
         : null,
     preparedText: m.versionNum && m.versionNum > 1 ? null : prepared,
     over: m.netN == null ? DASH : fmtMoney(m.netN),
-    overSub: `${m.orders == null ? DASH : m.orders.toLocaleString('en-US')} affected packages on ${m.invoices == null ? DASH : m.invoices} invoices`,
+    overSub: `${m.orders == null ? `${DASH} affected packages` : plural(m.orders, 'affected package')} on ${m.invoices == null ? `${DASH} invoices` : plural(m.invoices, 'invoice')}`,
     billedSub: `${m.invoicedN == null ? DASH : fmtMoney(m.invoicedN)} billed · ${
       m.expectedN != null
         ? fmtMoney(m.expectedN)
@@ -380,10 +382,10 @@ export interface DonutData {
 }
 
 const DONUT_DEFS: { key: DispositionKey; label: string; color: string }[] = [
-  { key: 'eligible', label: 'Eligible to pursue', color: 'var(--imp-purple-500)' },
-  { key: 'awaiting', label: 'Awaiting outcome', color: 'var(--imp-orange-500)' },
-  { key: 'collected', label: 'Collected', color: 'var(--imp-success)' },
-  { key: 'denied', label: 'Denied by Biller', color: '#B8756D' },
+  { key: 'eligible', label: 'Eligible to pursue', color: TONE_CHART_COLOR.neutral },
+  { key: 'awaiting', label: 'Awaiting outcome', color: TONE_CHART_COLOR.info },
+  { key: 'collected', label: 'Collected', color: TONE_CHART_COLOR.success },
+  { key: 'denied', label: 'Biller declined', color: TONE_CHART_COLOR.danger },
 ]
 
 export function dispositionDonut(rows: readonly OutcomeRow[]): DonutData {

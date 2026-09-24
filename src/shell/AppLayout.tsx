@@ -1,6 +1,9 @@
 import { lazy, Suspense, useState } from 'react'
 import { Outlet, useSearchParams } from 'react-router'
-import { Sidebar } from './Sidebar'
+import { Button } from '@/ui/Button/Button'
+import { CompactNav, Sidebar } from './Sidebar'
+import { useCompactShell } from './useCompactShell'
+import styles from './AppLayout.module.css'
 import { isDemoMode } from '@/demo/demo-mode'
 
 const HarnessBar = lazy(() => import('@/demo/HarnessBar'))
@@ -16,8 +19,7 @@ function SignedOutOverlay({ onSignIn }: { onSignIn: () => void }) {
         alignItems: 'center',
         justifyContent: 'center',
         padding: 24,
-        background: 'var(--imp-gray-100)',
-        fontFamily: 'var(--imp-font-body)',
+        background: 'var(--ds-neutral-100)',
       }}
     >
       <div
@@ -26,20 +28,16 @@ function SignedOutOverlay({ onSignIn }: { onSignIn: () => void }) {
       >
         <img src="/brand/implentio-wordmark.svg" alt="Implentio" style={{ height: 22 }} />
         <div>
-          <h2 className="db-h3" style={{ margin: 0, fontSize: 20 }}>
+          <h2 className="ds-heading-medium" style={{ margin: 0 }}>
             You&rsquo;ve been signed out
           </h2>
           <p className="imp-small" style={{ margin: '8px 0 0' }}>
             Your session has ended. Sign back in to return to your dashboard.
           </p>
         </div>
-        <button
-          className="db-btn db-btn-primary"
-          style={{ width: '100%', justifyContent: 'center' }}
-          onClick={onSignIn}
-        >
+        <Button variant="primary" fullWidth onClick={onSignIn}>
           Sign in
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -49,6 +47,7 @@ export function AppLayout() {
   const [loggedOut, setLoggedOut] = useState(false)
   const [searchParams] = useSearchParams()
   const demo = isDemoMode()
+  const compact = useCompactShell()
 
   if (loggedOut) {
     // Signing back in reloads the app, which reseeds the fixture store —
@@ -57,24 +56,18 @@ export function AppLayout() {
   }
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        minHeight: '100vh',
-        background: 'var(--imp-gray-100)',
-        color: 'var(--imp-ink)',
-        fontFamily: 'var(--imp-font-body)',
-        fontWeight: 500,
-      }}
-    >
-      <Sidebar onLogout={() => setLoggedOut(true)} />
-      <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+    <div className={compact ? `${styles.shell} ${styles.shellCompact}` : styles.shell}>
+      <a className={styles.skipLink} href="#main">
+        Skip to content
+      </a>
+      {compact ? <CompactNav onLogout={() => setLoggedOut(true)} /> : <Sidebar onLogout={() => setLoggedOut(true)} />}
+      <main id="main" tabIndex={-1} className={styles.main}>
         {demo && (
           <Suspense fallback={null}>
             <HarnessBar activeScenarioId={searchParams.get('scenario') ?? ''} />
           </Suspense>
         )}
-        <div style={{ padding: '22px 24px 56px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className={compact ? `${styles.content} ${styles.contentCompact}` : styles.content}>
           <Outlet />
         </div>
       </main>

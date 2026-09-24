@@ -1,0 +1,413 @@
+/* Figma ❖ Text Input (111:2094), ❖ Select (85:827), ❖ Checkbox (79:2052,
+   83:1224), ❖ Radio (116:675). */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.label {
+  font: var(--ds-weight-regular) 14px/1.46 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  color: var(--ds-fg-default);
+}
+
+.labelDisabled {
+  color: var(--ds-fg-disabled);
+}
+
+.optional {
+  color: var(--ds-fg-muted);
+}
+
+/* ---------- Input / textarea / select trigger shell ---------- */
+
+.control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid var(--ds-stroke-muted);
+  border-radius: var(--ds-radius-medium);
+  background: var(--ds-bg-default);
+  box-shadow: var(--ds-shadow-disabled);
+  color: var(--ds-fg-default);
+  font: var(--ds-weight-regular) 14px/1.46 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  transition:
+    border-color var(--ds-dur-fast) ease,
+    box-shadow var(--ds-dur-fast) ease;
+}
+
+.control:hover {
+  border-color: var(--ds-stroke-emphasis);
+  box-shadow: var(--ds-shadow-muted);
+}
+
+.small {
+  min-height: 32px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.invalid {
+  border-color: var(--ds-stroke-invalid);
+}
+
+.warning {
+  border-color: var(--ds-stroke-warning);
+}
+
+.success {
+  border-color: var(--ds-stroke-success);
+}
+
+.invalid:hover {
+  border-color: var(--ds-stroke-invalid);
+}
+
+.warning:hover {
+  border-color: var(--ds-stroke-warning);
+}
+
+.success:hover {
+  border-color: var(--ds-stroke-success);
+}
+
+/* Figma: focus border overrides the validation colour. */
+.control:focus-within,
+.control[data-state='open'] {
+  border-color: var(--ds-stroke-focus);
+  box-shadow: inset 0 0 0 1px var(--ds-stroke-focus);
+}
+
+.disabled,
+.disabled:hover {
+  background: var(--ds-bg-disabled);
+  border-color: var(--ds-stroke-disabled);
+  box-shadow: none;
+  color: var(--ds-fg-disabled);
+  cursor: not-allowed;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+/* iOS Safari zooms the page when a focused field's text is under 16px.
+   Touch devices get 16px; pointer devices keep Figma's 14px. */
+@media (hover: none) and (pointer: coarse) {
+  .input {
+    font-size: 16px;
+  }
+}
+
+.input::placeholder {
+  color: var(--ds-fg-muted);
+}
+
+.input:disabled {
+  cursor: not-allowed;
+}
+
+.input:disabled::placeholder {
+  color: var(--ds-fg-disabled);
+}
+
+.textarea {
+  align-items: stretch;
+}
+
+.textarea .input {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.adornment {
+  display: inline-flex;
+  flex: none;
+  color: var(--ds-icon-muted);
+}
+
+.adornment svg {
+  /* 24px outline icons scaled down keep a legible ~1.3px stroke. */
+  stroke-width: 2;
+  width: 16px;
+  height: 16px;
+}
+
+/* ---------- Validation / caption message ---------- */
+
+.message {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 0;
+  font: var(--ds-weight-regular) 12px/1.64 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  color: var(--ds-fg-muted);
+}
+
+.message svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+}
+
+.messageInvalid {
+  color: var(--ds-fg-danger);
+}
+
+.messageWarning {
+  color: var(--ds-fg-warning);
+}
+
+.messageSuccess {
+  color: var(--ds-fg-success);
+}
+
+/* ---------- Select (Radix) ---------- */
+
+.trigger {
+  width: auto;
+  justify-content: space-between;
+  text-align: start;
+  cursor: pointer;
+}
+
+.trigger:focus-visible {
+  outline: none;
+  border-color: var(--ds-stroke-focus);
+  box-shadow: inset 0 0 0 1px var(--ds-stroke-focus);
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.triggerValue {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.triggerValue[data-placeholder] {
+  color: var(--ds-fg-muted);
+}
+
+.chevron {
+  display: inline-flex;
+  flex: none;
+  color: var(--ds-icon-muted);
+}
+
+.chevron svg {
+  /* 24px outline icons scaled down keep a legible ~1.3px stroke. */
+  stroke-width: 2.5;
+  width: 12px;
+  height: 12px;
+}
+
+.menu {
+  z-index: var(--ds-z-popover);
+  min-width: var(--radix-select-trigger-width);
+  max-height: min(var(--radix-select-content-available-height), 320px);
+  padding: 4px;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-medium);
+  background: var(--ds-bg-default);
+  box-shadow: var(--ds-shadow-popover);
+  overflow: hidden;
+}
+
+.viewport {
+  display: flex;
+  flex-direction: column;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 6px 8px;
+  border-radius: var(--ds-radius-medium);
+  color: var(--ds-fg-default);
+  font: var(--ds-weight-regular) 14px/1.46 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+
+.item[data-highlighted] {
+  background: var(--ds-bg-brand-disabled);
+}
+
+.item[data-state='checked'] {
+  color: var(--ds-fg-brand-emphasis);
+}
+
+.item[data-disabled] {
+  color: var(--ds-fg-disabled);
+  cursor: not-allowed;
+}
+
+.itemCheck {
+  display: inline-flex;
+  width: 16px;
+  flex: none;
+}
+
+.itemCheck svg {
+  /* 24px outline icons scaled down keep a legible ~1.3px stroke. */
+  stroke-width: 2;
+  width: 16px;
+  height: 16px;
+}
+
+/* ---------- Checkbox & radio ---------- */
+
+.choice {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  font: var(--ds-weight-regular) 14px/1.46 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  color: var(--ds-fg-default);
+}
+
+.choiceDisabled {
+  color: var(--ds-fg-disabled);
+  cursor: not-allowed;
+}
+
+.choiceText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.choiceFull {
+  display: flex;
+  width: 100%;
+}
+
+.choiceFull .choiceText {
+  flex: 1;
+}
+
+.choiceDescription {
+  font: var(--ds-weight-regular) 12px/1.64 var(--ds-font);
+  color: var(--ds-fg-muted);
+}
+
+/* Figma border-box / withOutline: bordered choice (checkbox-group). */
+.bordered {
+  padding: 5px 11px 5px 5px;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-bg-default);
+}
+
+.bordered:has(input:checked) {
+  border-color: var(--ds-stroke-brand-emphasis);
+}
+
+.bordered:hover:not(.choiceDisabled) {
+  border-color: var(--ds-stroke-brand-muted);
+}
+
+.bordered:has(input:checked):hover {
+  border-color: var(--ds-stroke-brand-emphasis);
+}
+
+.boxWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 20px;
+  flex: none;
+}
+
+.box {
+  appearance: none;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1px solid var(--ds-stroke-emphasis);
+  border-radius: var(--ds-radius-small);
+  background: var(--ds-bg-default) center / 12px 12px no-repeat;
+  cursor: inherit;
+}
+
+.radio {
+  border-radius: var(--ds-radius-full);
+}
+
+.choice:hover .box:not(:checked):not(:disabled) {
+  background-color: var(--ds-bg-brand-disabled);
+  border-color: var(--ds-stroke-brand-muted);
+}
+
+.box:checked {
+  border-color: var(--ds-bg-brand-emphasis);
+  background-color: var(--ds-bg-brand-emphasis);
+}
+
+.box:not(.radio):checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 12.75l6 6 9-13.5'/%3E%3C/svg%3E");
+}
+
+.radio:checked {
+  background-image: radial-gradient(circle, var(--ds-bg-default) 0 3.5px, transparent 4px);
+  background-size: 100% 100%;
+}
+
+.box:focus-visible {
+  outline: 2px solid var(--ds-stroke-focus);
+  outline-offset: 2px;
+}
+
+.box:disabled {
+  background-color: var(--ds-bg-disabled);
+  border-color: var(--ds-stroke-disabled);
+}
+
+.box:disabled:checked {
+  background-color: var(--ds-bg-brand-muted);
+  border-color: var(--ds-bg-brand-muted);
+}
+
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.radioGroupRow {
+  flex-direction: row;
+  flex-wrap: wrap;
+}

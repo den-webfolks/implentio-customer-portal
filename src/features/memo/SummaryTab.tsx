@@ -1,31 +1,50 @@
 /** Memo detail — Summary & Findings tab (template ~4608–5184). */
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
+import { CheckCircleIcon, CheckIcon, ClockIcon, EyeIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
 import type { MemoDetail } from '@/domain/types'
 import { useClock } from '@/lib/clock'
 import { fmtMoney } from '@/domain/money'
-import { InfoTip } from '@/ui/InfoTip'
+import { InfoTip } from '@/ui/Tooltip/Tooltip'
 import { Modal } from '@/ui/Modal/Modal'
+import { Button } from '@/ui/Button/Button'
+import { Link } from '@/ui/Link/Link'
+import { Banner } from '@/ui/Banner/Banner'
+import { StatusChip } from '@/ui/Chip/StatusChip'
+import { EmptyState, Spinner } from '@/ui/Display/Display'
+import { Select } from '@/ui/Form/Select'
+import { Table, TableScroll } from '@/ui/Table/Table'
+import { FilterButton, FilterGroup, useFilters, type FilterField, type FilterValues } from '@/ui/Filters/Filters'
 import { useDisputeContext, useSetDisputeDraft, useIncludeInAnotherRequest } from './api'
-import {
-  CHARGE_DEFS,
-  filterGroups,
-  INITIAL_FINDING_FILTERS,
-  memoRollupRows,
-  nextStepCard,
-  recoveryStatus,
-  serviceList,
-  titleCase,
-  type FindingFilters,
-} from './derive'
+import { CHARGE_DEFS, FINDING_FILTER_KEYS, filterGroups, memoRollupRows, nextStepCard, recoveryStatus, serviceList, titleCase } from './derive'
 import { FindingCard } from './FindingCard'
 import { DisputeWizard } from './DisputeWizard'
 import { ReportPreviewModal } from './ReportPreviewModal'
 import { OutcomeModal } from './OutcomeModal'
+import { plural } from '@/domain/plural'
 
 const VARIANCE_TIP =
   'These amounts include only packages with significant variance—not all invoices and spend reviewed during this audit period.'
 const RECOVERY_TIP =
   'Collected, declined, awaiting, and eligible amounts add up to the total variance identified.'
+
+const DISPUTE_STATUS_OPTIONS = [
+  { value: 'eligible', label: 'Eligible to pursue' },
+  { value: 'awaiting_outcome', label: 'Awaiting outcome' },
+  { value: 'fully_collected', label: 'Fully collected' },
+  { value: 'partly_collected', label: 'Partly collected' },
+  { value: 'declined', label: 'Biller declined' },
+]
+
+const NO_HIGHLIGHT = 'all'
+
+const EYEBROW_ACCENT: CSSProperties = {
+  font: 'var(--ds-weight-semi) 12px/1.3 var(--ds-font)',
+  letterSpacing: 'var(--ds-tracking-caption)',
+  textTransform: 'uppercase',
+  color: 'var(--ds-fg-accent-text)',
+}
+
+const SURFACE_BORDER = '1px solid var(--ds-stroke-disabled)'
 
 export function SummaryTab({
   detail,
@@ -38,7 +57,8 @@ export function SummaryTab({
   const ctxQ = useDisputeContext()
   const setDraft = useSetDisputeDraft()
   const includeAgain = useIncludeInAnotherRequest()
-  const [filters, setFilters] = useState<FindingFilters>(INITIAL_FINDING_FILTERS)
+  const [filterValues, setFilterValues] = useState<FilterValues>({})
+  const [hl, setHl] = useState<string>(NO_HIGHLIGHT)
   const [methodOpen, setMethodOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [wizardOpen, setWizardOpen] = useState(
@@ -50,23 +70,37 @@ export function SummaryTab({
 
   const memo = detail.memo
   const now = clock.now()
+  const allGroups = memo.detailAvailable || detail.findingGroups.length ? detail.findingGroups : []
+  const filterFields: FilterField[] = [
+    {
+      key: FINDING_FILTER_KEYS.carrier,
+      label: 'Carrier',
+      options: [...new Set(allGroups.flatMap((g) => g.carriers))].sort().map((v) => ({ value: v, label: v })),
+    },
+    {
+      key: FINDING_FILTER_KEYS.service,
+      label: 'Service level',
+      options: [...new Set(allGroups.flatMap(serviceList))].sort().map((v) => ({ value: v, label: titleCase(v) })),
+    },
+    { key: FINDING_FILTER_KEYS.disputeStatus, label: 'Dispute status', options: DISPUTE_STATUS_OPTIONS },
+  ]
+  const filters = useFilters(filterFields, filterValues, setFilterValues)
 
   if (detail.auditProcessing) {
     return (
-      <div className="db-card db-empty" style={{ alignItems: 'center', textAlign: 'center', padding: '56px 32px' }}>
-        <div style={{ width: 44, height: 44, border: '4px solid var(--imp-gray-200)', borderTopColor: 'var(--imp-purple-500)', borderRadius: 999, animation: 'imp-spin 0.9s linear infinite', marginBottom: 16 }} />
-        <h3 className="db-h3">Audit in progress</h3>
-        <p className="imp-small" style={{ maxWidth: '46ch' }}>
-          Implentio is reviewing invoices for {memo.period}. Findings appear here once an Implentio
-          reviewer has approved them.
-        </p>
+      <div className="db-card" style={{ padding: '56px 32px' }}>
+        <EmptyState
+          media={<Spinner size={44} label="Audit in progress" />}
+          title="Audit in progress"
+          subtitle={`Implentio is reviewing invoices for ${memo.period}. Findings appear here once an Implentio reviewer has approved them.`}
+        />
       </div>
     )
   }
 
   if (!ctxQ.data) return null
   const excludedIds = ctxQ.data.excludedIds
-  const groups = memo.detailAvailable || detail.findingGroups.length ? detail.findingGroups : []
+  const groups = allGroups
   const hasFindings = groups.length > 0 && !detail.findingsUnavailable
 
   const recovery = memo.detailAvailable ? recoveryStatus(groups, now) : null
@@ -82,17 +116,17 @@ export function SummaryTab({
     : null
   const rollup = memoRollupRows(detail)
 
-  const groupsFiltered = filterGroups(groups, filters, excludedIds, memo.provider, now)
-  const activeFilterCount = Object.values(filters).filter((v) => v !== 'all').length
-  const carrierOpts = [...new Set(groups.flatMap((g) => g.carriers))].sort()
-  const serviceOpts = [...new Set(groups.flatMap(serviceList))].sort()
-  const hl = filters.fCategory
-  const hlLabel = hl === 'all' ? null : CHARGE_DEFS.find((c) => c[0] === hl)?.[2]
+  const groupsFiltered = filterGroups(groups, filterValues, excludedIds, memo.provider, now)
+  const hlLabel = hl === NO_HIGHLIGHT ? null : CHARGE_DEFS.find((c) => c[0] === hl)?.[2]
+  const auditedInvoices = (memo.invoices ?? 0) + (memo.invoicesNoVariance ?? 0)
 
   const scrollToFinding = (anchor: string) => {
     const el = document.getElementById(anchor)
     if (!el) return
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const reduceMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+    // Move focus with the view so keyboard and screen-reader users land on the finding.
+    el.focus({ preventScroll: true })
     el.classList.remove('ia-flash')
     requestAnimationFrame(() => el.classList.add('ia-flash'))
     setTimeout(() => el.classList.remove('ia-flash'), 1500)
@@ -103,121 +137,87 @@ export function SummaryTab({
     setDraft.mutate({ excludedIds: next, draftDate: ctxQ.data.draftDate })
   }
 
-  const filterSelect = (
-    key: keyof FindingFilters,
-    allLabel: string,
-    options: { value: string; label: string }[],
-  ) => (
-    <select
-      className="ia-input"
-      aria-label={allLabel}
-      value={filters[key]}
-      style={{
-        padding: '8px 10px',
-        ...(filters[key] !== 'all'
-          ? { borderColor: 'var(--imp-purple-400)', boxShadow: '0 0 0 1px var(--imp-purple-200)' }
-          : {}),
-      }}
-      onChange={(e) => setFilters((f) => ({ ...f, [key]: e.target.value }))}
-    >
-      <option value="all">{allLabel}</option>
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
-  )
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {memo.changeSummary && (
-        <div className="db-card" style={{ gap: 12, borderColor: 'var(--imp-purple-300)', background: 'var(--imp-purple-100)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            {memo.report === 'updated' && (
-              <span style={{ background: 'var(--imp-purple-500)', color: '#fff', borderRadius: 999, padding: '4px 12px', font: '700 11px var(--imp-font-body)', letterSpacing: '0.06em' }}>
-                UPDATED
-              </span>
-            )}
-            <span style={{ font: '600 14px var(--imp-font-display)', color: 'var(--imp-ink)' }}>
+        <Banner
+          type="info"
+          title={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {memo.report === 'updated' && <StatusChip tone="info">Updated</StatusChip>}
               {memo.version} · {memo.updatedText ?? memo.completedText}
             </span>
-          </div>
-          <p className="imp-small" style={{ margin: 0 }}>
-            <strong style={{ color: 'var(--imp-ink)' }}>What changed:</strong> {memo.changeSummary}
-          </p>
-        </div>
+          }
+        >
+          <strong className="ds-w-semi">What changed:</strong> {memo.changeSummary}
+        </Banner>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div className="db-eyebrow">Credit memo summary</div>
-      </div>
+      <div className="db-eyebrow">Credit memo summary</div>
 
       {!memo.allNoVariance ? (
-        <div className="ia-memo-summary" style={{ display: 'grid', gridTemplateColumns: '34fr 66fr', border: '1.5px solid var(--imp-orange-300)', borderRadius: 'var(--imp-radius-lg)', background: '#FFF8F1', overflow: 'hidden' }}>
+        <div className="ia-memo-summary" style={{ display: 'grid', gridTemplateColumns: '34fr 66fr', border: SURFACE_BORDER, borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-orange-100)', boxShadow: 'var(--ds-shadow-disabled)', overflow: 'hidden' }}>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10, padding: '28px 30px', minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ font: '700 12px var(--imp-font-body)', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--imp-orange-500)' }}>
-                Total variance identified
-              </span>
-              <InfoTip text={VARIANCE_TIP} color="var(--imp-orange-500)" size={15} />
+              <span style={EYEBROW_ACCENT}>Total variance identified</span>
+              <InfoTip text={VARIANCE_TIP} color="var(--ds-fg-accent-text)" />
             </div>
-            <div style={{ font: '600 clamp(34px, 3.6vw, 48px) var(--imp-font-display)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', color: 'var(--imp-orange-500)', lineHeight: 1.05, whiteSpace: 'nowrap' }}>
+            <div style={{ font: 'var(--ds-weight-semi) clamp(34px, 3.6vw, 48px)/1.05 var(--ds-font)', fontVariantNumeric: 'tabular-nums', letterSpacing: 'var(--ds-tracking-heading)', color: 'var(--ds-fg-accent-text)', whiteSpace: 'nowrap' }}>
               {memo.netN == null ? '—' : fmtMoney(memo.netN)}
             </div>
-            <div style={{ font: '500 14px var(--imp-font-body)', color: 'var(--imp-fg-muted)' }}>
-              Found across {memo.orders?.toLocaleString('en-US') ?? '—'} packages on {memo.invoices ?? '—'} invoices
+            <div className="ds-body-base ds-muted">
+              Found across {memo.orders != null ? plural(memo.orders, 'package') : '— packages'} on {memo.invoices != null ? plural(memo.invoices, 'invoice') : '— invoices'}
             </div>
             {memo.invoicesNoVariance != null && memo.invoicesNoVariance > 0 && (
-              <div style={{ font: '500 13px var(--imp-font-body)', color: 'var(--imp-fg-subtle)' }}>
-                {(memo.invoices ?? 0) + memo.invoicesNoVariance} invoices audited · {memo.invoicesNoVariance} had no significant variance
+              <div className="ds-body-small" style={{ color: 'var(--ds-fg-muted)' }}>
+                {plural(auditedInvoices, 'invoice')} audited · {memo.invoicesNoVariance} had no significant variance
               </div>
             )}
             {recovery && (
-              <div style={{ borderTop: '1.5px solid var(--imp-orange-200, #FFDDBD)', marginTop: 6, paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ borderTop: SURFACE_BORDER, marginTop: 6, paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ font: '700 12px var(--imp-font-body)', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--imp-orange-500)' }}>
-                    {recovery.eyebrow}
-                  </span>
-                  <InfoTip text={RECOVERY_TIP} color="var(--imp-orange-500)" size={15} />
+                  <span style={EYEBROW_ACCENT}>{recovery.eyebrow}</span>
+                  <InfoTip text={RECOVERY_TIP} color="var(--ds-fg-accent-text)" />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
                   <div style={{ position: 'relative', width: 120, height: 120, flex: 'none' }}>
-                    <svg viewBox="0 0 120 120" width="120" height="120" style={{ transform: 'rotate(-90deg)' }}>
-                      <circle cx="60" cy="60" r="50" fill="none" stroke="#FFFFFF" strokeWidth="16" />
+                    <svg viewBox="0 0 120 120" width="120" height="120" style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
+                      <circle cx="60" cy="60" r="50" fill="none" stroke="var(--ds-bg-default)" strokeWidth="16" />
                       {recovery.slices.map((s) => (
                         <circle key={s.label} cx="60" cy="60" r="50" fill="none" stroke={s.color} strokeWidth="16" strokeDasharray={s.dashArray} strokeDashoffset={s.dashOffset} />
                       ))}
                     </svg>
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', pointerEvents: 'none' }}>
-                      <div style={{ font: '600 15px var(--imp-font-display)', color: 'var(--imp-ink)', fontVariantNumeric: 'tabular-nums' }}>{recovery.total}</div>
-                      <div style={{ font: '500 10px var(--imp-font-body)', color: 'var(--imp-fg-muted)' }}>Total identified</div>
+                      <div className="ds-heading-tiny" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                        {recovery.total}
+                      </div>
+                      <div className="ds-caption-tiny ds-muted">Total identified</div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: '1 1 160px', minWidth: 150 }}>
+                  <ul style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: '1 1 160px', minWidth: 150, margin: 0, padding: 0, listStyle: 'none' }}>
                     {recovery.slices.map((s) => (
-                      <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 8, font: '500 13px var(--imp-font-body)', color: 'var(--imp-ink)' }}>
-                        <span style={{ width: 10, height: 10, borderRadius: 999, background: s.color, flex: 'none' }} />
+                      <li key={s.label} className="ds-body-base" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ width: 10, height: 10, borderRadius: 'var(--ds-radius-full)', background: s.color, flex: 'none' }} />
                         <span style={{ flex: '1 1 auto', minWidth: 0 }}>{s.label}</span>
-                        <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', flex: 'none' }}>{s.amount}</span>
-                      </div>
+                        <span className="ds-w-semi" style={{ fontVariantNumeric: 'tabular-nums', flex: 'none' }}>
+                          {s.amount}
+                        </span>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </div>
               </div>
             )}
           </div>
-          <div className="ia-memo-rollup" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '22px 26px 20px', background: '#fff', borderLeft: '1.5px solid var(--imp-orange-200, var(--imp-gray-300))', minWidth: 0 }}>
+          <div className="ia-memo-rollup" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '22px 26px 20px', background: 'var(--ds-bg-default)', borderInlineStart: SURFACE_BORDER, minWidth: 0 }}>
             <div>
-              <div style={{ font: '600 15px var(--imp-font-display)', color: 'var(--imp-ink)' }}>
-                Variance groups in this credit memo
-              </div>
+              <div className="ds-heading-tiny">Variance groups in this credit memo</div>
               <p className="imp-small" style={{ margin: '4px 0 0' }}>
                 See how the total variance is distributed across the groups explained below.
               </p>
             </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="db-table db-table-compact" style={{ width: '100%', minWidth: 520, background: 'transparent' }}>
+            <TableScroll>
+              <Table style={{ minWidth: 520 }}>
                 <thead>
                   <tr>
                     <th>Variance group</th>
@@ -230,93 +230,67 @@ export function SummaryTab({
                   {rollup.map((r) => (
                     <tr key={r.id}>
                       <td>
-                        <button type="button" className="ia-sort-btn" style={{ textAlign: 'left', font: '600 12.5px var(--imp-font-body)', color: 'var(--imp-purple-500)', whiteSpace: 'normal' }} onClick={() => scrollToFinding(r.anchor)}>
+                        <Link variant="accent" bold onClick={() => scrollToFinding(r.anchor)}>
                           {r.title}
-                        </button>
+                        </Link>
                       </td>
-                      <td className="num" style={{ color: 'var(--imp-orange-500)', fontWeight: 700 }}>{r.amount}</td>
+                      <td className="num" style={{ color: 'var(--ds-fg-accent-text)', fontWeight: 600 }}>
+                        {r.amount}
+                      </td>
                       <td className="num">{r.packages}</td>
                       <td className="num">{r.invoices}</td>
                     </tr>
                   ))}
-                  <tr className="db-total-row">
+                  <tr className="total-row">
                     <td>Total</td>
-                    <td className="num" style={{ color: 'var(--imp-orange-500)' }}>{memo.netN == null ? '—' : fmtMoney(memo.netN)}</td>
+                    <td className="num" style={{ color: 'var(--ds-fg-accent-text)' }}>
+                      {memo.netN == null ? '—' : fmtMoney(memo.netN)}
+                    </td>
                     <td className="num">{memo.orders?.toLocaleString('en-US') ?? '—'}</td>
                     <td className="num">{memo.invoices ?? '—'}</td>
                   </tr>
                 </tbody>
-              </table>
-            </div>
-            <p className="imp-small" style={{ margin: 0, color: 'var(--imp-fg-subtle)' }}>
+              </Table>
+            </TableScroll>
+            <p className="ds-body-small" style={{ margin: 0, color: 'var(--ds-fg-muted)' }}>
               Invoice counts are distinct per group; one invoice can appear in several groups, so the rows do not sum.
             </p>
           </div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '34fr 66fr', border: '1.5px solid var(--imp-success)', borderRadius: 'var(--imp-radius-lg)', background: 'var(--imp-success-bg)', overflow: 'hidden' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '34fr 66fr', border: SURFACE_BORDER, borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-bg-success-muted)', boxShadow: 'var(--ds-shadow-disabled)', overflow: 'hidden' }}>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10, padding: '28px 30px', minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ flex: 'none' }}>
-                <circle cx="12" cy="12" r="9" stroke="var(--imp-success)" strokeWidth="1.8" />
-                <path d="M8 12l3 3 5-6" stroke="var(--imp-success)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span style={{ font: '700 12px var(--imp-font-body)', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--imp-success)' }}>
-                No significant variance identified
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ds-fg-success)' }}>
+              <CheckCircleIcon width={20} height={20} aria-hidden="true" style={{ flex: 'none' }} />
+              <span style={{ ...EYEBROW_ACCENT, color: 'var(--ds-fg-success)' }}>No significant variance identified</span>
             </div>
-            <div style={{ font: '600 clamp(28px, 3vw, 38px) var(--imp-font-display)', letterSpacing: '-0.02em', color: 'var(--imp-ink)', lineHeight: 1.05 }}>
-              {(memo.invoices ?? 0) + (memo.invoicesNoVariance ?? 0)} invoices audited
-            </div>
+            <div className="ds-heading-xlarge">{plural(auditedInvoices, 'invoice')} audited</div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6, padding: '22px 26px', background: '#fff', borderLeft: '1.5px solid var(--imp-success)' }}>
-            <div style={{ font: '600 15px var(--imp-font-display)', color: 'var(--imp-ink)' }}>All clear</div>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6, padding: '22px 26px', background: 'var(--ds-bg-default)', borderInlineStart: SURFACE_BORDER }}>
+            <div className="ds-heading-tiny">All clear</div>
             <p className="imp-small" style={{ margin: 0 }}>
-              All {(memo.invoices ?? 0) + (memo.invoicesNoVariance ?? 0)} invoices in this audit were reviewed and were within the significant-variance threshold.
+              All {plural(auditedInvoices, 'invoice')} in this audit were reviewed and were within the significant-variance threshold.
             </p>
           </div>
         </div>
       )}
 
       {nextStep && (
-        <div style={{ border: '1.5px solid var(--imp-purple-300)', borderRadius: 'var(--imp-radius-lg)', background: 'var(--imp-purple-100)', padding: '22px 26px', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-          <span style={{ width: 56, height: 56, borderRadius: 999, background: 'var(--imp-purple-200, #E4DEFF)', color: 'var(--imp-purple-500)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-            {nextStep.resolvedTreatment ? (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <path d="M5 12l5 5 9-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            ) : (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
+        <div style={{ border: SURFACE_BORDER, borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-bg-brand-disabled)', padding: '22px 26px', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+          <span style={{ width: 56, height: 56, borderRadius: 'var(--ds-radius-full)', background: 'var(--ds-bg-default)', color: 'var(--ds-icon-brand-emphasis)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+            {nextStep.resolvedTreatment ? <CheckIcon width={24} height={24} aria-hidden="true" /> : <PaperAirplaneIcon width={24} height={24} aria-hidden="true" />}
           </span>
           <div style={{ flex: '1 1 320px', minWidth: 0 }}>
-            <div style={{ font: '700 11px var(--imp-font-body)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--imp-purple-500)', marginBottom: 4 }}>
+            <div className="imp-eyebrow" style={{ marginBottom: 4 }}>
               {nextStep.eyebrow}
             </div>
-            <div style={{ font: '600 20px var(--imp-font-display)', color: 'var(--imp-ink)' }}>{nextStep.heading}</div>
+            <div className="ds-heading-medium">{nextStep.heading}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
               {nextStep.lines.map((ln) => (
-                <div key={ln.text} style={{ display: 'flex', alignItems: 'center', gap: 6, font: '700 14px var(--imp-font-display)', color: 'var(--imp-purple-500)' }}>
-                  {ln.icon === 'prep' && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flex: 'none' }}>
-                      <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      <path d="M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                  {ln.icon === 'clock' && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flex: 'none' }}>
-                      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-                      <path d="M12 7v5l3.2 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                  {ln.icon === 'check' && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flex: 'none' }}>
-                      <path d="M5 12l5 5 9-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
+                <div key={ln.text} className="ds-body-base ds-w-medium" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--ds-fg-brand-emphasis)' }}>
+                  {ln.icon === 'prep' && <PaperAirplaneIcon width={16} height={16} aria-hidden="true" style={{ flex: 'none' }} />}
+                  {ln.icon === 'clock' && <ClockIcon width={16} height={16} aria-hidden="true" style={{ flex: 'none' }} />}
+                  {ln.icon === 'check' && <CheckIcon width={16} height={16} aria-hidden="true" style={{ flex: 'none' }} />}
                   <span>{ln.text}</span>
                 </div>
               ))}
@@ -335,38 +309,32 @@ export function SummaryTab({
               }
               if (act.variant === 'primary')
                 return (
-                  <button key={act.label} type="button" className="db-btn db-btn-primary" style={{ whiteSpace: 'nowrap', gap: 8, justifyContent: 'center' }} onClick={onClick}>
-                    {act.kind === 'prep' ? (
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                        <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    ) : (
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" stroke="currentColor" strokeWidth="2" />
-                        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
-                      </svg>
-                    )}
+                  <Button
+                    key={act.label}
+                    variant="primary"
+                    iconLeft={act.kind === 'prep' ? <PaperAirplaneIcon aria-hidden="true" /> : <EyeIcon aria-hidden="true" />}
+                    onClick={onClick}
+                  >
                     {act.label}
-                  </button>
+                  </Button>
                 )
               if (act.variant === 'secondary')
                 return (
-                  <button key={act.label} type="button" style={{ background: '#fff', border: '1.5px solid var(--imp-purple-500)', color: 'var(--imp-purple-500)', borderRadius: 8, padding: '9px 16px', font: '600 13px var(--imp-font-body)', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={onClick}>
+                  <Button key={act.label} variant="emphasis" onClick={onClick}>
                     {act.label}
-                  </button>
+                  </Button>
                 )
               return (
-                <button key={act.label} type="button" style={{ background: 'none', border: 'none', padding: 0, textAlign: 'center', cursor: 'pointer', font: '600 13px var(--imp-font-body)', color: 'var(--imp-purple-500)', textDecoration: 'underline', whiteSpace: 'nowrap' }} onClick={onClick}>
+                <Link key={act.label} variant="accent" underline className="ds-w-medium" onClick={onClick} style={{ alignSelf: 'center' }}>
                   {act.label}
-                </button>
+                </Link>
               )
             })}
           </div>
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', borderTop: '1.5px solid var(--imp-gray-300)', paddingTop: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', borderTop: SURFACE_BORDER, paddingTop: 20 }}>
         <div style={{ maxWidth: '72ch' }}>
           <h3 className="db-h3" style={{ margin: 0 }}>
             Findings
@@ -375,83 +343,70 @@ export function SummaryTab({
             Implentio rebuilds what each package should have cost using its shipment details and your contracted rates, then compares that amount with what you were billed. When the same supported difference appears across multiple packages, we group those packages into a finding below.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
-            <button type="button" className="db-btn db-btn-secondary db-btn-sm" onClick={() => setMethodOpen(true)}>
+            <Button size="small" onClick={() => setMethodOpen(true)}>
               Learn how findings are calculated
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
       {detail.findingsUnavailable && (
-        <div className="db-card db-empty" style={{ padding: '56px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-          <img src="/brand/empty-state.png" alt="" style={{ width: 200, height: 'auto', marginBottom: 14, opacity: 0.55 }} />
-          <h3 className="db-h3">Detailed breakdown unavailable</h3>
-          <p className="imp-small" style={{ maxWidth: '56ch', margin: '2px auto 0' }}>
-            Before finding details appear in the platform, each variance group is reviewed by Implentio to ensure it meets our quality standards. A detailed breakdown is not available for this credit memo, but you can still download the complete report.
-          </p>
+        <div className="db-card" style={{ padding: '32px' }}>
+          <EmptyState
+            media={<img src="/brand/empty-state.png" alt="" style={{ width: 200, height: 'auto', opacity: 0.55 }} />}
+            title="Detailed breakdown unavailable"
+            subtitle="Before finding details appear in the platform, each variance group is reviewed by Implentio to ensure it meets our quality standards. A detailed breakdown is not available for this credit memo, but you can still download the complete report."
+          />
         </div>
       )}
       {!detail.findingsUnavailable && groups.length === 0 && (
-        <div className="db-card db-empty" style={{ padding: '56px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, background: 'var(--imp-success-bg)', borderColor: 'var(--imp-success)' }}>
-          <span style={{ width: 56, height: 56, borderRadius: 999, background: '#fff', color: 'var(--imp-success)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-              <path d="M8 12l3 3 5-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </span>
-          <h3 className="db-h3">No significant variance identified</h3>
-          <p className="imp-small" style={{ maxWidth: '56ch', margin: '2px auto 0' }}>
-            All {(memo.invoices ?? 0) + (memo.invoicesNoVariance ?? 0)} invoices in this audit were reviewed and were within the significant-variance threshold.
-          </p>
+        <div className="db-card" style={{ padding: '32px', background: 'var(--ds-bg-success-muted)' }}>
+          <EmptyState
+            media={
+              <span style={{ width: 56, height: 56, borderRadius: 'var(--ds-radius-full)', background: 'var(--ds-bg-default)', color: 'var(--ds-icon-success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CheckCircleIcon width={28} height={28} aria-hidden="true" />
+              </span>
+            }
+            title="No significant variance identified"
+            subtitle={`All ${plural(auditedInvoices, 'invoice')} in this audit were reviewed and were within the significant-variance threshold.`}
+          />
         </div>
       )}
 
       {hasFindings && (
         <div className="db-card" style={{ gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span className="db-eyebrow" style={{ display: 'flex', alignItems: 'center', gap: 7, marginRight: 4 }}>
-              <img src="/brand/filter.svg" alt="" style={{ width: 13, height: 13 }} />
-              Filters
-            </span>
-            {filterSelect('fCarrier', 'All carriers', carrierOpts.map((v) => ({ value: v, label: v })))}
-            {filterSelect('fService', 'All service levels', serviceOpts.map((v) => ({ value: v, label: titleCase(v) })))}
-            {filterSelect('fCategory', 'All charges', CHARGE_DEFS.map((c) => ({ value: c[0], label: c[2] })))}
-            {filterSelect('fDisputeStatus', 'All dispute statuses', [
-              { value: 'eligible', label: 'Eligible to pursue' },
-              { value: 'awaiting_outcome', label: 'Awaiting outcome' },
-              { value: 'fully_collected', label: 'Fully collected' },
-              { value: 'partly_collected', label: 'Partly collected' },
-              { value: 'declined', label: 'Biller declined' },
-            ])}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <span className="imp-small" style={{ margin: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <FilterButton filters={filters} />
+            <Select
+              aria-label="Highlight charge"
+              size="small"
+              value={hl}
+              onValueChange={setHl}
+              options={[{ value: NO_HIGHLIGHT, label: 'All charges' }, ...CHARGE_DEFS.map((c) => ({ value: c[0], label: `Highlight ${c[2].toLowerCase()}` }))]}
+            />
+            <span className="imp-small" style={{ margin: 0, marginInlineStart: 'auto' }} aria-live="polite">
               Showing {groupsFiltered.length} of {groups.length} findings
             </span>
-            {activeFilterCount > 0 && (
-              <button className="db-btn db-btn-secondary db-btn-sm" onClick={() => setFilters(INITIAL_FINDING_FILTERS)}>
-                Clear all
-              </button>
-            )}
           </div>
+          <FilterGroup filters={filters} />
         </div>
       )}
 
-      {hl !== 'all' && hasFindings && (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, border: '1.5px solid var(--imp-orange-300)', background: 'var(--imp-warning-bg)', borderRadius: 10, padding: '11px 14px' }}>
-          <span style={{ flex: 'none', width: 8, height: 8, borderRadius: 999, background: 'var(--imp-orange-500)', marginTop: 5 }} />
-          <p className="imp-small" style={{ margin: 0 }}>
-            Highlighted charges help explain the finding. Package totals include all charge differences and remain unchanged.
-          </p>
-        </div>
+      {hl !== NO_HIGHLIGHT && hasFindings && (
+        <Banner type="warning" title="Highlighted charges help explain the finding. Package totals include all charge differences and remain unchanged." />
       )}
 
       {hasFindings && groupsFiltered.length === 0 && (
-        <div className="db-card db-empty" style={{ padding: '40px 32px' }}>
-          <h3 className="db-h3">No findings match these filters</h3>
-          <p className="imp-small" style={{ maxWidth: '48ch', margin: '6px auto 0' }}>
-            Filtering refines this view only. It does not change which findings belong to the credit memo or recalculate its Total variance.
-          </p>
+        <div className="db-card" style={{ padding: 0 }}>
+          <EmptyState
+            title="No findings match these filters"
+            subtitle="Filtering refines this view only. It does not change which findings belong to the credit memo or recalculate its Total variance."
+            action={
+              <Button size="small" onClick={filters.clear}>
+                Clear filters
+              </Button>
+            }
+          />
         </div>
       )}
 
@@ -478,45 +433,37 @@ export function SummaryTab({
             </p>
           </div>
         </div>
-        <div className="db-cta-strip">
-          <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap', padding: '12px 16px', border: SURFACE_BORDER, borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-bg-brand-disabled)' }}>
+          <div className="ds-body-base">
             Total variance in this report{' '}
-            <strong className="db-money-orange">{memo.netN == null ? '—' : fmtMoney(memo.netN)}</strong>
+            <strong style={{ color: 'var(--ds-fg-accent-text)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{memo.netN == null ? '—' : fmtMoney(memo.netN)}</strong>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button className="db-btn db-btn-secondary db-btn-sm" onClick={onDownloadExcel}>
-              Download Credit Memo
-            </button>
-            <button className="db-btn db-btn-primary db-btn-sm" onClick={() => setReportOpen(true)}>
-              Review Summary
-            </button>
+          <div style={{ display: 'flex', gap: 'var(--ds-space-3)', flexWrap: 'wrap' }}>
+            <Button size="small" onClick={onDownloadExcel}>
+              Download credit memo
+            </Button>
+            <Button size="small" variant="primary" onClick={() => setReportOpen(true)}>
+              Review summary
+            </Button>
           </div>
         </div>
       </div>
 
       <Modal open={methodOpen} onClose={() => setMethodOpen(false)} title="How findings are calculated" width={640}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <p className="imp-small" style={{ margin: 0 }}>
-            Implentio rebuilds the expected cost of every package from its shipment facts — carrier, service level, zone, billed weight, and surcharges — using your contracted rate cards, then compares that expected amount with what your Biller invoiced.
-          </p>
-          <p className="imp-small" style={{ margin: 0 }}>
-            Packages with the same supported difference are grouped into a finding. Favourable charge differences are netted against unfavourable differences on the same package, and only net-unfavourable packages are published.
-          </p>
-          <p className="imp-small" style={{ margin: 0 }}>
-            Every finding links to its contributing packages, the rate cards used to rebuild expected charges, and the invoice records that show what was billed.
-          </p>
-        </div>
+        <p className="imp-small" style={{ margin: 0 }}>
+          Implentio rebuilds the expected cost of every package from its shipment facts — carrier, service level, zone, billed weight, and surcharges — using your contracted rate cards, then compares that expected amount with what your Biller invoiced.
+        </p>
+        <p className="imp-small" style={{ margin: 0 }}>
+          Packages with the same supported difference are grouped into a finding. Favourable charge differences are netted against unfavourable differences on the same package, and only net-unfavourable packages are published.
+        </p>
+        <p className="imp-small" style={{ margin: 0 }}>
+          Every finding links to its contributing packages, the rate cards used to rebuild expected charges, and the invoice records that show what was billed.
+        </p>
       </Modal>
 
-      {wizardOpen && (
-        <DisputeWizard detail={detail} excludedIds={excludedIds} onClose={() => setWizardOpen(false)} />
-      )}
-      {outcomesOpen && (
-        <OutcomeModal detail={detail} onClose={() => setOutcomesOpen(false)} />
-      )}
-      {reportOpen && (
-        <ReportPreviewModal detail={detail} onClose={() => setReportOpen(false)} onDownload={onDownloadExcel} />
-      )}
+      {wizardOpen && <DisputeWizard detail={detail} excludedIds={excludedIds} onClose={() => setWizardOpen(false)} />}
+      {outcomesOpen && <OutcomeModal detail={detail} onClose={() => setOutcomesOpen(false)} />}
+      {reportOpen && <ReportPreviewModal detail={detail} onClose={() => setReportOpen(false)} onDownload={onDownloadExcel} />}
     </div>
   )
 }

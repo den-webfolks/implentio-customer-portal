@@ -10,8 +10,8 @@ make us revisit them.
 | --- | --- | --- |
 | Framework | Vite + React + React Router (data router, **no loaders**) | Fully client-interactive dashboard, no SEO, client-SDK backend later. Revisit only if several real server needs appear; a single need becomes one Vercel function. |
 | Data | Thin TanStack Query over the `AppDataSource` seam | Cross-view mutation invalidation now, Supabase-ready later. Keep it thin — no suspense/infinite/optimistic machinery without a concrete need. |
-| Styling | `tokens.css` (prototype's `--imp-*` verbatim) + ported `proto.css` classes + CSS Modules for new structure | Pixel parity with least churn. The Figma design system becomes authoritative in Phase 2; consider Tailwind then only if the Figma tokens arrive Tailwind-mapped. |
-| Components | Radix per-component where it maps cleanly (Dialog = yes: focus trap/aria the prototype lacked). Hand-rolled ports elsewhere; small table primitives, no generic DataTable | If a Radix overlay can't match prototype behavior, hand-roll that one component. |
+| Styling | `tokens.css` mirrors the Figma variables (`--ds-*`) + text styles (`ds-*` classes); CSS Modules per component. `--imp-*` survive only as deprecated aliases; `proto.css` keeps prototype layout classes until Phase 2b | Figma is the UI source of truth (DESIGN-SYSTEM.md). No Tailwind: the Figma variables map 1:1 to CSS custom properties. |
+| Components | `src/ui/` base layer built to the Figma library. Radix underneath where it maps cleanly (Dialog, Tooltip, DropdownMenu, Select); native inputs for checkbox/radio; small table primitives, no generic DataTable; Heroicons | Radix supplies behaviour and a11y only — visuals come from Figma, never shadcn defaults. |
 | Forms | Controlled components + tiny validators | 4 small forms. Schema validation (zod) exists where an untrusted boundary exists today: the fixture JSON parsed by `src/demo/fixtures/schema.ts`. Supabase responses get the same treatment in Phase 3. |
 | TypeScript | strict + `noUncheckedIndexedAccess`, discriminated unions, no `as`/`!` escape hatches | Domain types are the Phase 3 schema input. |
 
