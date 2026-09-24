@@ -13,15 +13,18 @@ import {
 import { InfoTip } from '@/ui/Tooltip/Tooltip'
 import { ButtonLink } from '@/ui/Button/Button'
 import { Link } from '@/ui/Link/Link'
-import { StatusChip, Tag, type StatusTone } from '@/ui/Chip/StatusChip'
+import { StatusChip, Tag } from '@/ui/Chip/StatusChip'
 import { EmptyState } from '@/ui/Display/Display'
 import { FilterButton, FilterGroup, matchesFilter, useFilters, type FilterField, type FilterValues } from '@/ui/Filters/Filters'
 import { useToast } from '@/ui/Toast/ToastProvider'
 import { saveFile } from '@/lib/download'
+import { useClock } from '@/lib/clock'
 import { deriveReportState } from '@/domain/memo'
+import { creditsRealized, memoStatus } from '@/domain/outcomes'
 import type { CreditMemoSummary } from '@/domain/types'
-import { useDownloadState, useGoldenCta, useMemos, useRecordMemoDownload } from './api'
-import { execSummary, memoCardView, type CtaKind, type MemoCardView } from './derive'
+import { MEMO_STATUS_TONE } from '@/features/status-tones'
+import { useDisputeContext, useDownloadState, useMemos, useOutcomeRows, useRecordMemoDownload } from './api'
+import { PLACEHOLDER_CTA, execSummary, memoCardView, trackerCta, type CtaKind, type MemoCardView } from './derive'
 import { fmtMoney } from '@/domain/money'
 import { Button } from '@/ui/Button/Button'
 
@@ -30,10 +33,7 @@ const VARIANCE_TIP =
 const CADENCE_TIP =
   'Audit cadence is based on your reporting cadence with each biller and may vary by carrier. To request a change, contact your Implentio customer representative.'
 const CREDITS_TIP =
-  'Credits realized are confirmed from credit invoices or credit adjustments issued by your biller and ingested by Implentio.'
-
-/** Fixed demo value (prototype freshState.creditsRealized). */
-const CREDITS_REALIZED = 9294.74
+  'The credits your team has recorded as received from your billers. Implentio does not read biller credit records yet, so this total comes from the outcomes you record.'
 
 const FILTER_FIELDS: FilterField[] = [
   {
@@ -81,12 +81,6 @@ function filterMemoList(memos: readonly CreditMemoSummary[], downloadedIds: read
   return out.slice(0, Math.max(...ranges.map((r) => RANGE_CUT[r] ?? out.length)))
 }
 
-const CTA_TONE: Record<string, StatusTone> = {
-  awaiting: 'info',
-  partial: 'attention',
-  completed: 'success',
-}
-
 const ACCENT = {
   warning: 'var(--ds-bg-warning-emphasis)',
   orange: 'var(--ds-bg-accent-emphasis)',
@@ -97,8 +91,8 @@ const ACCENT = {
 const CTA_ICON: Record<CtaKind, ReactNode> = {
   view: <EyeIcon aria-hidden="true" />,
   outcome: <ClockIcon aria-hidden="true" />,
-  draft: <DocumentTextIcon aria-hidden="true" />,
-  prep: <PaperAirplaneIcon aria-hidden="true" />,
+  send: <PaperAirplaneIcon aria-hidden="true" />,
+  prep: <ListBulletIcon aria-hidden="true" />,
 }
 
 // Inline text styles on the Figma scale (body-base 14/1.46, body-small
@@ -242,17 +236,25 @@ function MemoCard({
           )}
           {m.actionsEnabled && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {m.hasVariance && (
+              {m.hasVariance && m.cta && (
                 <>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
-                    <StatusChip tone={CTA_TONE[m.cta.key] ?? 'neutral'}>{m.cta.statusLabel}</StatusChip>
+                    <StatusChip tone={MEMO_STATUS_TONE[m.cta.statusKey]}>{m.cta.statusLabel}</StatusChip>
                     <p className="imp-small" style={{ margin: 0 }}>
                       {m.cta.supporting}
                     </p>
+                    {m.cta.deadline && (
+                      <p className="imp-small" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--ds-fg-default)' }}>
+                        <ClockIcon width={16} height={16} aria-hidden="true" style={{ flex: 'none' }} />
+                        {m.cta.deadline}
+                      </p>
+                    )}
                   </div>
-                  <ButtonLink to={ctaTo(m.cta.primaryKind)} variant="primary" size="small" fullWidth iconLeft={CTA_ICON[m.cta.primaryKind]} style={{ whiteSpace: 'nowrap' }}>
-                    {m.cta.primaryLabel}
-                  </ButtonLink>
+                  {m.cta.primaryKind && (
+                    <ButtonLink to={ctaTo(m.cta.primaryKind)} variant="primary" size="small" fullWidth iconLeft={CTA_ICON[m.cta.primaryKind]} style={{ whiteSpace: 'nowrap' }}>
+                      {m.cta.primaryLabel}
+                    </ButtonLink>
+                  )}
                   {m.cta.contextual && (
                     <div className="imp-small" style={{ margin: '-4px 0 0', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                       <span>{m.cta.contextual.text}</span>
@@ -288,16 +290,32 @@ export function MemosTab() {
   const [filterValues, setFilterValues] = useState<FilterValues>(EMPTY_FILTERS)
   const filters = useFilters(FILTER_FIELDS, filterValues, setFilterValues)
 
+  const rowsQ = useOutcomeRows()
+  const clock = useClock()
   const memos = memosQ.data ?? []
   const golden = memos.find((m) => m.detailAvailable)
-  const goldenCta = useGoldenCta(golden?.id)
+  const ctxQ = useDisputeContext(golden?.id)
 
-  if (!memosQ.data || !dlQ.data) return null
+  if (!memosQ.data || !dlQ.data || !rowsQ.data || (golden && !ctxQ.data)) return null
   const { downloadedMemoIds, memoDlEvents } = dlQ.data
+  const rows = rowsQ.data
+  const now = clock.now()
+
+  // One memo status everywhere: each card reads its memo's own dispute rows
+  // (plus the draft for the golden memo); placeholders have none.
+  const ctaFor = (m: CreditMemoSummary) => {
+    const items = rows.filter((r) => r.memoId === m.id)
+    if (!items.length) return m.detailAvailable ? null : PLACEHOLDER_CTA
+    // A whole-memo dispute has no finding selection, so no draft.
+    const draft = m.detailAvailable && !items.some((r) => r.wholeMemo) ? ctxQ.data : null
+    const st = memoStatus(items, { draft, now })
+    return st ? trackerCta(st, { wholeMemo: items.some((r) => r.wholeMemo) }) : null
+  }
 
   const filtered = filterMemoList(memos, downloadedMemoIds, filterValues)
-  const cards = filtered.map((m) => memoCardView(m, downloadedMemoIds, memoDlEvents, goldenCta))
+  const cards = filtered.map((m) => memoCardView(m, downloadedMemoIds, memoDlEvents, ctaFor(m)))
   const exec = execSummary(memos, downloadedMemoIds)
+  const credits = creditsRealized(rows)
 
   const download = (m: MemoCardView) => {
     const finish = () => {
@@ -316,10 +334,10 @@ export function MemosTab() {
     }
   }
 
-  const ctaHref = (m: MemoCardView, kind: CtaKind) => {
-    const param = { prep: 'prep', draft: 'prep', outcome: 'outcomes', view: 'dispute' }[kind]
-    return `/memos/${m.id}?${param}=1`
-  }
+  // Findings are chosen on the memo page and outcomes recorded on its dispute
+  // cards; only Review & send and the dispute record open a dialog.
+  const ctaHref = (m: MemoCardView, kind: CtaKind) =>
+    ({ prep: `/memos/${m.id}`, send: `/memos/${m.id}?send=1`, outcome: `/memos/${m.id}`, view: `/memos/${m.id}?dispute=1` })[kind]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -379,10 +397,10 @@ export function MemosTab() {
                   overflowWrap: 'anywhere',
                 }}
               >
-                {fmtMoney(CREDITS_REALIZED)}
+                {fmtMoney(credits)}
               </span>
             </div>
-            <div style={{ ...HERO_LABEL, font: 'var(--ds-weight-medium) 10px/1.16 var(--ds-font)', marginTop: 6 }}>Confirmed from ingested Biller credit records</div>
+            <div style={{ ...HERO_LABEL, font: 'var(--ds-weight-medium) 10px/1.16 var(--ds-font)', marginTop: 6 }}>Recorded by your team</div>
           </div>
           <div style={{ padding: '0 22px', boxShadow: HERO_DIVIDER, display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
             <div style={HERO_LABEL}>Credit memos ready</div>

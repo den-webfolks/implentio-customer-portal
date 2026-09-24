@@ -36,15 +36,19 @@ data source; direct `new Date()`/`Date.now()` is lint-barred in feature code.
   `/invoices`, `/account`, reserved `/reports/{lcc,pwv,fcm}`, `/bi`
   (placeholder while the BI area is deferred).
 - **Query params** — contextual selections and dev state: `?finding=`
-  (scroll target), `?prep=1`/`?outcomes=1` (open memo dialogs),
+  (scroll target), `?send=1` (opens Review & send; removed on close),
+  `?outcomes=1`/`?dispute=1` (scroll to the memo's dispute cards),
   `?scenario=`, `?demo=`.
-- **Local state** — transient UI: filter panels, wizard steps, popovers,
-  drill expansion.
+- **Local state** — transient UI: filter panels, popovers, disclosure and
+  "smaller findings" expansion, the package view.
 
 ## Scenario harness — temporary infrastructure
 
 `src/demo/scenarios.ts` ports the prototype's 17 `applyScenario` cases as
-pure seed transforms (+ initial location). The harness bar is gated by
+pure seed transforms (+ initial location), plus `dispute-deadline` (Phase 1
+dispute flow: a deadline two days out and one expired finding). Dispute
+records for seeded pursuits are derived after the transform
+(`withSeedDisputes`), one per send time. The harness bar is gated by
 `?demo=1` / `VITE_DEMO_TOOLS=1` and lazy-loaded so the ~1MB fixture chunk
 stays out of the main bundle. **Revisit point:** when Supabase mode ships
 (Phase 3), decide whether the harness moves behind a build flag or an
@@ -53,10 +57,10 @@ production build.
 
 ## Testing
 
-- **Vitest** — domain derivations, all 17 scenario seed shapes,
+- **Vitest** — domain derivations, all 18 scenario seed shapes,
   FixtureDataSource mutation behavior.
-- **Playwright flows** — tracker filtering, memo drill, dispute wizard
-  (manual + connected paths), outcome recording, invoices, account.
+- **Playwright flows** — tracker filtering, tick → Review & send →
+  dispute card, one-click outcomes, whole-memo dispute, invoices, account.
 - **VRT** — CI gates on the app's own `toHaveScreenshot` baselines
   (`tests/vrt`, deterministic via frozen clock + disabled animations).
   Parity vs the prototype is a human review against
@@ -76,3 +80,12 @@ production build.
 - The in-app "Product Notes" overlay was mined into PRODUCT.md, not rebuilt.
 - Exports that were toast-only in the prototype remain toast-only, and the
   one real workbook backs every memo download, exactly as before.
+- Dispute flow, Phase 1 (2026-09-24): one memo status shared by every screen,
+  dispute records, "Won't pursue", Expired, per-memo activity — see
+  DESIGN-SYSTEM.md "Parcel dispute flow — Phase 1".
+- Demo limitation (unchanged): every memo page shows the golden memo's
+  findings, draft, and disputes. Tracker cards and Credit outcomes use each
+  memo's own rows (golden findings; `outcomeGroups` on CM-2026-0517 /
+  CM-2026-0328; none on placeholders), so those two cards' status won't match
+  the golden data on the page they link to. The Supabase source keys all of
+  it by memo.

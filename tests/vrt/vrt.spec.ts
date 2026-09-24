@@ -54,6 +54,8 @@ const DESKTOP_ONLY: { name: string; url: string }[] = [
   { name: 'memo-findings-unavailable', url: '/memos/CM-2026-0630?scenario=findings-unavailable' },
   { name: 'memo-dispute-finalized', url: '/memos/CM-2026-0630?scenario=dispute-finalized' },
   { name: 'tracker-dispute-recorded', url: '/tracker/memos?scenario=dispute-recorded' },
+  { name: 'memo-dispute-deadline', url: '/memos/CM-2026-0630?scenario=dispute-deadline' },
+  { name: 'memo-dispute-awaiting', url: '/memos/CM-2026-0630?scenario=dispute-awaiting' },
 ]
 
 for (const route of DESKTOP_ONLY) {
@@ -66,35 +68,22 @@ for (const route of DESKTOP_ONLY) {
 }
 
 // Overlay states at desktop.
-test('vrt wizard step 1', async ({ page }) => {
+test('vrt review & send', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto('/memos/CM-2026-0630?scenario=dispute-not-started&demo=1')
+  await page.goto('/memos/CM-2026-0630?scenario=dispute-prep-started&demo=1&send=1')
   await settle(page)
-  await page.getByRole('button', { name: 'Prepare dispute for Biller' }).first().click()
-  await expect(page.getByRole('dialog', { name: 'Prepare for Biller' })).toBeVisible()
-  await expect(page).toHaveScreenshot('wizard-step1-desktop.png', { maxDiffPixelRatio: 0.001 })
+  await expect(page.getByRole('dialog', { name: 'Review & send' })).toBeVisible()
+  await expect(page).toHaveScreenshot('review-send-desktop.png', { maxDiffPixelRatio: 0.001 })
 })
 
-test('vrt outcome modal', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto('/memos/CM-2026-0630?scenario=dispute-awaiting&demo=1')
-  await settle(page)
-  await page.getByRole('button', { name: 'Update dispute outcomes' }).first().click()
-  await expect(page.getByRole('dialog', { name: 'Update credit memo dispute' })).toBeVisible()
-  await expect(page).toHaveScreenshot('outcome-modal-desktop.png', { maxDiffPixelRatio: 0.001 })
-})
-
-test('vrt finding drill open', async ({ page }) => {
+test('vrt package view', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/memos/CM-2026-0630')
   await settle(page)
-  await page.getByRole('button', { name: 'View affected packages' }).first().click()
-  await page.getByRole('button', { name: 'Show packages' }).first().click()
-  await expect(page.getByText('Contributing packages').first()).toBeVisible()
-  await expect(page).toHaveScreenshot('finding-drill-desktop.png', {
-    fullPage: true,
-    maxDiffPixelRatio: 0.001,
-  })
+  await page.locator('#finding-eg-base').getByRole('button', { name: 'Show me why' }).click()
+  await page.locator('#finding-eg-base').getByRole('button', { name: /^See all/ }).click()
+  await expect(page.getByRole('dialog', { name: /^All 510 packages/ })).toBeVisible()
+  await expect(page).toHaveScreenshot('package-view-desktop.png', { maxDiffPixelRatio: 0.001 })
 })
 
 test('vrt invite modal', async ({ page }) => {

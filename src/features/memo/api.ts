@@ -1,55 +1,37 @@
 /** Memo feature hooks — the only path from memo components to data. */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useDataSource } from '@/data/DataSourceProvider'
 import {
   queryKeys,
+  useActivity,
+  useDisputeContext,
+  useDisputes,
   useDownloadState,
-  useMarkGroupsPursued,
+  useMarkDisputeChecked,
   useMemoDetail,
   useMemos,
+  useRecordDisputeSent,
   useRecordGroupOutcome,
+  useRecordMemoDisputeOutcome,
   useRecordMemoDownload,
-  useActivity,
+  useSetDisputeDraft,
+  useSetGroupNotPursued,
 } from '@/data/queries'
 
 export {
+  useActivity,
+  useDisputeContext,
+  useDisputes,
+  useDownloadState,
+  useMarkDisputeChecked,
   useMemoDetail,
   useMemos,
-  useDownloadState,
-  useMarkGroupsPursued,
+  useRecordDisputeSent,
   useRecordGroupOutcome,
+  useRecordMemoDisputeOutcome,
   useRecordMemoDownload,
-  useActivity,
-}
-
-export function useDisputeContext() {
-  const ds = useDataSource()
-  return useQuery({ queryKey: ['disputeContext'], queryFn: () => ds.getDisputeContext() })
-}
-
-export function useSetDisputeDraft() {
-  const ds = useDataSource()
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (input: { excludedIds: string[]; draftDate: string | null }) =>
-      ds.setDisputeDraft(input),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['disputeContext'] })
-      void qc.invalidateQueries({ queryKey: ['memo'] })
-    },
-  })
-}
-
-export function useIncludeInAnotherRequest() {
-  const ds = useDataSource()
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (groupId: string) => ds.includeGroupInAnotherRequest(groupId),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['memo'] })
-      void qc.invalidateQueries({ queryKey: queryKeys.outcomeRows })
-    },
-  })
+  useSetDisputeDraft,
+  useSetGroupNotPursued,
 }
 
 export function useAccountForDispute() {

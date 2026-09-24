@@ -30,6 +30,17 @@ export function deriveReportState(
   }
 }
 
+/** Evidence attachment name for a dispute: the complete workbook when every
+ *  eligible finding (or the whole memo) is sent, a ZIP of the selected
+ *  variance-group files otherwise. */
+export function evidenceFileName(
+  memo: Pick<CreditMemoSummary, 'id' | 'version'>,
+  complete: boolean,
+): string {
+  const base = `${memo.id}-${memo.version.replace(/\s+/g, '-')}`
+  return base + (complete ? '-Complete-Excel-Evidence.xlsx' : '-Selected-Variance-Evidence.zip')
+}
+
 export interface InvoiceClassification {
   kind: VarianceKind
   resultLabel: string

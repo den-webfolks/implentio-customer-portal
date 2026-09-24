@@ -524,7 +524,7 @@ export function ComponentGallery() {
         </Example>
       </Section>
 
-      <Section id="modal" source="src/ui/Modal/Modal.tsx — Figma ❖ Popup (Radix Dialog)" note="Medium: max 668×644, padding 24. Large: max 1320×712, padding 32. Content scrolls past max height. At most 2 stacked.">
+      <Section id="modal" source="src/ui/Modal/Modal.tsx — Figma ❖ Popup (Radix Dialog)" note="Medium: max 668×644, padding 24. Large: max 1320×712, padding 32. Content scrolls past max height (the body becomes a tab stop while it overflows, for keyboard scrolling). At most 2 stacked.">
         <Example label="Open">
           <Button size="small" onClick={() => setModal('narrow')}>
             Narrow (420)

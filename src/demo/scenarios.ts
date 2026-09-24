@@ -1,6 +1,6 @@
 /**
- * The 17 demo scenarios, ported from the prototype's applyScenario()
- * (template ~7299–7368). Each scenario is a pure transform of the base seed
+ * The demo scenarios: 17 ported from the prototype's applyScenario()
+ * (template ~7299–7368), plus 'dispute-deadline' (Phase 1 dispute flow). Each scenario is a pure transform of the base seed
  * plus an optional initial location the harness navigates to on switch.
  *
  * The four LCC/PWV/FCM scenarios are defined but unavailable until Phase 1.5
@@ -28,6 +28,7 @@ export type ScenarioId =
   | 'dispute-finalized'
   | 'dispute-awaiting'
   | 'dispute-plus-new'
+  | 'dispute-deadline'
 
 export interface Scenario {
   id: ScenarioId
@@ -313,7 +314,28 @@ export const scenarios: Scenario[] = [
       return {
         ...s,
         findingGroups: s.findingGroups.map((g) => (sent.includes(g.id) ? g : clearDispute(g))),
-        disputeExcludedIds: [],
+        // Nothing is pre-selected for the next dispute (decision 6).
+        disputeExcludedIds: s.findingGroups.filter((g) => !sent.includes(g.id)).map((g) => g.id),
+      }
+    },
+  },
+  {
+    // Phase 1 addition (not in the prototype): exercises "Action needed" and
+    // the "Expired" label. One finding is due in 2 days, one expired unsent.
+    id: 'dispute-deadline',
+    label: 'Dispute — deadline close / expired',
+    available: true,
+    initialLocation: `/memos/${FEATURED}`,
+    seed: (s) => {
+      const sent = ['eg-base', 'eg-fuel', 'eg-das']
+      return {
+        ...s,
+        findingGroups: s.findingGroups.map((g) => {
+          if (sent.includes(g.id)) return g
+          if (g.id === 'eg-res') return { ...clearDispute(g), disputeDeadline: '2026-09-19' }
+          return { ...clearDispute(g), disputeDeadline: '2026-09-15' }
+        }),
+        disputeExcludedIds: s.findingGroups.filter((g) => !sent.includes(g.id)).map((g) => g.id),
       }
     },
   },

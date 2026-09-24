@@ -1,147 +1,115 @@
 /**
  * Tracker view derivations — ports the prototype's renderVals tracker
- * section (template ~13816–13870), trackerDisputeCta (~12646) and the
- * outcomes-tab disposition helpers (~12946–13010) with semantic tones
- * instead of inline CSS.
+ * section (template ~13816–13870) and the outcomes-tab disposition helpers
+ * (~12946–13010). Card status and dispositions come from the shared memo
+ * status and money buckets in domain/outcomes.
  */
 import type { OutcomeRow } from '@/data/source'
-import type { CreditMemoSummary, DownloadEvent, FindingGroup } from '@/domain/types'
+import type { CreditMemoSummary, DownloadEvent } from '@/domain/types'
 import { fmtMoney, r2 } from '@/domain/money'
-import { fmtDateShort } from '@/domain/dates'
+import { countdownText, fmtDateShort } from '@/domain/dates'
 import { deriveReportState } from '@/domain/memo'
-import { groupExpired } from '@/domain/outcomes'
-import { TONE_CHART_COLOR } from '@/features/status-tones'
+import {
+  MEMO_STATUS_LABELS,
+  RECOVERY_BUCKETS,
+  bucketMatch,
+  recoveryBuckets,
+  type MemoStatus,
+  type MemoStatusKey,
+  type RecoveryBucketKey,
+} from '@/domain/outcomes'
+import { BUCKET_TONE, TONE_CHART_COLOR } from '@/features/status-tones'
 import { plural } from '@/domain/plural'
 
 const DASH = '—'
 
-// ---------- memo card CTA (golden memo only) --------------------------------
+// ---------- memo card CTA ------------------------------------------------------
 
-export type CtaColor = 'purple' | 'amber' | 'green'
-export type CtaKind = 'prep' | 'draft' | 'outcome' | 'view'
+export type CtaKind = 'prep' | 'send' | 'outcome' | 'view'
 
 export interface TrackerCta {
-  key: string
+  statusKey: MemoStatusKey
   statusLabel: string
-  color: CtaColor
   supporting: string
-  primaryKind: CtaKind
+  /** "Dispute by Sep 20, 2026 · 3 days remaining" while findings are open. */
+  deadline: string | null
+  /** Null when there is nothing further to do (e.g. every finding expired unsent). */
+  primaryKind: CtaKind | null
   primaryLabel: string
   contextual?: { text: string; link: string } | null
 }
 
-export function trackerDisputeCta(input: {
-  findingGroups: readonly FindingGroup[]
-  findingsUnavailable: boolean
-  memoDisputeStatus: 'awaiting' | 'completed' | null
-  excludedIds: readonly string[]
-  draftDate: string | null
-  now: Date
-}): TrackerCta | null {
-  const { findingGroups, findingsUnavailable, memoDisputeStatus, excludedIds, draftDate, now } =
-    input
-  if (findingsUnavailable) {
-    if (!memoDisputeStatus)
-      return {
-        key: 'ready',
-        statusLabel: 'Ready to dispute',
-        color: 'purple',
-        supporting: 'No dispute has been started.',
-        primaryKind: 'prep',
-        primaryLabel: 'Prepare dispute for Biller',
-      }
-    if (memoDisputeStatus === 'awaiting')
-      return {
-        key: 'awaiting',
-        statusLabel: 'Awaiting Biller response',
-        color: 'amber',
-        supporting: 'Awaiting a response from your biller.',
-        primaryKind: 'outcome',
-        primaryLabel: 'Update dispute outcomes',
-      }
-    return {
-      key: 'completed',
-      statusLabel: 'Dispute completed',
-      color: 'green',
-      supporting: 'This dispute has been finalized.',
-      primaryKind: 'view',
-      primaryLabel: 'View dispute details',
-    }
-  }
-  if (!findingGroups.length) return null
-  const eligible = findingGroups.filter(
-    (g) => g.pursuit !== 'pursued' && g.pursuit !== 'excluded' && !groupExpired(g, now),
-  )
-  const pursued = findingGroups.filter((g) => g.pursuit === 'pursued')
-  if (!eligible.length && !pursued.length) return null
-  const fmtCount = (n: number) => `${n} finding${n === 1 ? '' : 's'}`
-  let awaitingCount = 0
-  let finalizedCount = 0
-  for (const g of pursued) {
-    const s = g.collection?.status
-    if (!s || s === 'awaiting') awaitingCount++
-    else finalizedCount++
-  }
-  const excludedCount = eligible.filter((g) => excludedIds.includes(g.id)).length
-  const hasDraft = !pursued.length && excludedCount > 0 && excludedCount < eligible.length
+/** "Sep 20, 2026" from an ISO date. */
+const shortDate = (iso: string) => fmtDateShort(new Date(iso + 'T00:00:00'))
 
-  if (hasDraft)
+/** The memo card's status block, from the shared memo status. */
+export function trackerCta(st: MemoStatus, opts: { wholeMemo?: boolean } = {}): TrackerCta {
+  const findings = (n: number) => plural(n, 'finding')
+  const base = { statusKey: st.key, statusLabel: st.label, deadline: null, contextual: null }
+  if (st.key === 'ready' || st.key === 'action_needed') {
+    const deadline =
+      st.nextDeadline && st.daysLeft != null ? `Dispute by ${shortDate(st.nextDeadline)} · ${countdownText(st.daysLeft)}` : null
+    const contextual =
+      st.waiting.count > 0 ? { text: `${findings(st.waiting.count)} waiting on the Biller`, link: 'Record outcome' } : null
+    if (st.hasDraft)
+      return {
+        ...base,
+        deadline,
+        contextual,
+        supporting: `${findings(st.selected.count)} selected, not sent yet.`,
+        primaryKind: 'send',
+        primaryLabel: 'Review & send',
+      }
+    if (opts.wholeMemo)
+      return {
+        ...base,
+        deadline,
+        contextual,
+        supporting: 'The complete credit memo is disputed as one.',
+        primaryKind: 'send',
+        primaryLabel: 'Review & send',
+      }
+    const another = st.total.count > st.open.count
     return {
-      key: 'draft',
-      statusLabel: 'Dispute draft',
-      color: 'purple',
-      supporting: `Started ${draftDate ?? fmtDateShort(now)} · Not yet sent.`,
-      primaryKind: 'draft',
-      primaryLabel: 'Continue preparing dispute',
-    }
-  if (eligible.length && pursued.length)
-    return {
-      key: 'more',
-      statusLabel: 'More findings available',
-      color: 'purple',
-      supporting: `${fmtCount(eligible.length)} ${eligible.length === 1 ? 'has' : 'have'} not been submitted.`,
+      ...base,
+      deadline,
+      contextual,
+      supporting: another
+        ? `${findings(st.open.count)} can still be disputed.`
+        : 'No dispute has been started.',
       primaryKind: 'prep',
-      primaryLabel: 'Prepare another dispute',
-      contextual:
-        awaitingCount > 0
-          ? { text: `${fmtCount(awaitingCount)} awaiting an outcome`, link: 'Update outcomes' }
-          : null,
+      primaryLabel: 'Choose findings to dispute',
     }
-  if (eligible.length)
-    return {
-      key: 'ready',
-      statusLabel: 'Ready to dispute',
-      color: 'purple',
-      supporting: 'No dispute has been started.',
-      primaryKind: 'prep',
-      primaryLabel: 'Prepare dispute for Biller',
-    }
-  if (awaitingCount === 0)
-    return {
-      key: 'completed',
-      statusLabel: 'Dispute completed',
-      color: 'green',
-      supporting: `${pursued.length} of ${plural(pursued.length, 'finding')} finalized.`,
-      primaryKind: 'view',
-      primaryLabel: 'View dispute details',
-    }
-  if (finalizedCount > 0)
-    return {
-      key: 'partial',
-      statusLabel: 'Outcomes partly recorded',
-      color: 'amber',
-      supporting: `${finalizedCount} of ${plural(pursued.length, 'finding')} finalized.`,
-      primaryKind: 'outcome',
-      primaryLabel: 'Update dispute outcomes',
-    }
-  return {
-    key: 'awaiting',
-    statusLabel: 'Awaiting Biller response',
-    color: 'amber',
-    supporting: `${fmtCount(awaitingCount)} awaiting an outcome.`,
-    primaryKind: 'outcome',
-    primaryLabel: 'Update dispute outcomes',
   }
+  if (st.key === 'waiting')
+    return {
+      ...base,
+      supporting: `${st.waiting.count} of ${findings(st.total.count)} waiting on the Biller.`,
+      primaryKind: 'outcome',
+      primaryLabel: 'Record outcome',
+    }
+  const disputed = st.collectedN + st.notRecoveredN > 0.005
+  return {
+    ...base,
+    supporting: disputed
+      ? [`${fmtMoney(st.collectedN)} collected`, st.notRecoveredN > 0.005 ? `${fmtMoney(st.notRecoveredN)} not recovered` : null]
+          .filter(Boolean)
+          .join(' · ') + '.'
+      : 'No findings were disputed before the deadline.',
+    primaryKind: disputed ? 'view' : null,
+    primaryLabel: 'View dispute details',
+  }
+}
+
+/** Placeholder memos carry no dispute data; their card keeps the prototype's
+ *  static call to action (demo limitation, see ARCHITECTURE.md). */
+export const PLACEHOLDER_CTA: TrackerCta = {
+  statusKey: 'ready',
+  statusLabel: MEMO_STATUS_LABELS.ready,
+  supporting: 'No dispute has been started.',
+  deadline: null,
+  primaryKind: 'prep',
+  primaryLabel: 'Choose findings to dispute',
 }
 
 // ---------- memo cards -------------------------------------------------------
@@ -164,7 +132,8 @@ export interface MemoCardView {
   showCoverage: boolean
   coverageText: string | null
   actionsEnabled: boolean
-  cta: TrackerCta
+  /** Null when the memo has nothing to dispute. */
+  cta: TrackerCta | null
   versionLabel: string | null
   preparedText: string | null
   over: string
@@ -181,15 +150,6 @@ function dlAttribution(ev: DownloadEvent | undefined): string | null {
   const d = new Date(ev.at)
   const date = isNaN(d.getTime()) ? '' : fmtDateShort(d)
   return `Downloaded by ${ev.userFirst} ${ev.userLast} · ${date}`
-}
-
-const DEFAULT_CTA: TrackerCta = {
-  key: 'ready',
-  statusLabel: 'Ready to dispute',
-  color: 'purple',
-  supporting: 'No dispute has been started.',
-  primaryKind: 'prep',
-  primaryLabel: 'Prepare dispute for Biller',
 }
 
 export interface TrackerFilters {
@@ -217,7 +177,7 @@ export function memoCardView(
   m: CreditMemoSummary,
   downloadedIds: readonly string[],
   memoDlEvents: Record<string, DownloadEvent>,
-  goldenCta: TrackerCta | null,
+  cta: TrackerCta | null,
 ): MemoCardView {
   const rs = deriveReportState(m, downloadedIds)
   const report = rs.report
@@ -230,7 +190,6 @@ export function memoCardView(
     report === 'generating'
       ? null
       : 'Report prepared ' + m.completedText.replace(/^Completed /, '').replace(/^Prepared /, '')
-  const cta = (m.detailAvailable ? goldenCta : null) ?? DEFAULT_CTA
   return {
     id: m.id,
     provider: m.provider,
@@ -319,49 +278,16 @@ export function execSummary(
 
 // ---------- outcomes tab: dispositions & donut -------------------------------
 
-export type DispositionKey = 'eligible' | 'awaiting' | 'collected' | 'denied'
+export type DispositionKey = RecoveryBucketKey
 
-export interface DispositionAmounts {
-  eligible: number
-  awaiting: number
-  collected: number
-  denied: number
+export type DispositionAmounts = Record<DispositionKey, number>
+
+export function dispositionAmounts(rows: readonly OutcomeRow[], now: Date): DispositionAmounts {
+  return recoveryBuckets(rows, now)
 }
 
-export function dispositionAmounts(rows: readonly OutcomeRow[]): DispositionAmounts {
-  let eligible = 0
-  let awaiting = 0
-  let collected = 0
-  let denied = 0
-  for (const g of rows) {
-    const amt = g.amountN ?? 0
-    if (g.pursuit !== 'pursued') {
-      eligible += amt
-      continue
-    }
-    const c = g.collection
-    if (c?.status === 'full') collected += amt
-    else if (c?.status === 'not_issued') denied += amt
-    else if (c?.status === 'partial') {
-      const coll = c.amountN ?? 0
-      collected += coll
-      awaiting += Math.max(0, r2(amt - coll))
-    } else awaiting += amt
-  }
-  return { eligible: r2(eligible), awaiting: r2(awaiting), collected: r2(collected), denied: r2(denied) }
-}
-
-export function dispositionMatch(g: OutcomeRow, key: DispositionKey): boolean {
-  if (g.pursuit !== 'pursued') return key === 'eligible'
-  const c = g.collection
-  if (key === 'denied') return c?.status === 'not_issued'
-  if (key === 'collected')
-    return c?.status === 'full' || (c?.status === 'partial' && (c.amountN ?? 0) > 0.005)
-  if (key === 'awaiting') {
-    if (c?.status === 'partial') return r2((g.amountN ?? 0) - (c.amountN ?? 0)) > 0.005
-    return !c?.status || c.status === 'awaiting'
-  }
-  return false
+export function dispositionMatch(g: OutcomeRow, key: DispositionKey, now: Date): boolean {
+  return bucketMatch(g, key, now)
 }
 
 export interface DonutSlice {
@@ -381,16 +307,14 @@ export interface DonutData {
   empty: boolean
 }
 
-const DONUT_DEFS: { key: DispositionKey; label: string; color: string }[] = [
-  { key: 'eligible', label: 'Eligible to pursue', color: TONE_CHART_COLOR.neutral },
-  { key: 'awaiting', label: 'Awaiting outcome', color: TONE_CHART_COLOR.info },
-  { key: 'collected', label: 'Collected', color: TONE_CHART_COLOR.success },
-  { key: 'denied', label: 'Biller declined', color: TONE_CHART_COLOR.danger },
-]
+const DONUT_DEFS: { key: DispositionKey; label: string; color: string }[] = RECOVERY_BUCKETS.map((b) => ({
+  ...b,
+  color: TONE_CHART_COLOR[BUCKET_TONE[b.key]],
+}))
 
-export function dispositionDonut(rows: readonly OutcomeRow[]): DonutData {
-  const amts = dispositionAmounts(rows)
-  const total = r2(amts.eligible + amts.awaiting + amts.collected + amts.denied)
+export function dispositionDonut(rows: readonly OutcomeRow[], now: Date): DonutData {
+  const amts = dispositionAmounts(rows, now)
+  const total = r2(RECOVERY_BUCKETS.reduce((s, b) => s + amts[b.key], 0))
   const R = 68
   const CIRC = 2 * Math.PI * R
   const GAP = 3

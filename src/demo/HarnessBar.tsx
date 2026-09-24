@@ -26,6 +26,7 @@ const SCENARIO_LABELS: Record<ScenarioId, string> = {
   'dispute-awaiting': 'Dispute flow — awaiting Biller response',
   'dispute-recorded': 'Dispute flow — outcomes partially recorded',
   'dispute-finalized': 'Dispute flow — dispute completed',
+  'dispute-deadline': 'Dispute flow — deadline close, one finding expired',
 }
 
 export default function HarnessBar({ activeScenarioId }: { activeScenarioId: string }) {

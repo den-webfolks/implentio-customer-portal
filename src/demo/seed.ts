@@ -6,6 +6,7 @@ import type {
   AccountSettings,
   ActivityEntry,
   CreditMemoSummary,
+  DisputeRecord,
   DownloadEvent,
   FindingGroup,
   MemoInvoice,
@@ -13,6 +14,10 @@ import type {
   ReportMonth,
   UnderGroup,
 } from '@/domain/types'
+import { evidenceFileName } from '@/domain/memo'
+import { fmtDateTime } from '@/domain/dates'
+import { fmtMoney, r2 } from '@/domain/money'
+import { emailLine } from '@/domain/finding-copy'
 import { parseCmData, parseCmPkg } from './fixtures/schema'
 import cmDataRaw from './fixtures/cm-data.json'
 import cmPkgRaw from './fixtures/cm-pkg.json'
@@ -35,9 +40,12 @@ export interface SeedState {
   auditProcessing: boolean
   downloadedMemoIds: string[]
   memoDlEvents: Record<string, DownloadEvent>
-  /** Finding-group ids excluded from the current dispute draft. */
+  /** Finding-group ids not selected for the current dispute draft. */
   disputeExcludedIds: string[]
   disputeDraftDate: string | null
+  /** Disputes sent against the shared drill-down findings, oldest first.
+   *  Left empty by the seed and scenarios; derived by withSeedDisputes. */
+  disputes: DisputeRecord[]
   /** Report-level disputes keyed `kind:id` (LCC/PWV/FCM, Phase 1.5). */
   reportDisputes: Record<string, ReportDispute>
   activity: ActivityEntry[]
@@ -46,6 +54,87 @@ export interface SeedState {
 
 export function demoDownloadEvent(at: Date): DownloadEvent {
   return { userFirst: 'Tori', userLast: 'Matthews', at: at.toISOString() }
+}
+
+/** "Completed May 16, 2026 by Implentio" → "May 16, 2026". */
+const dateFromText = (text: string) =>
+  text.replace(/^.*?(Completed|Prepared|Published|Updated)\s+/, '').replace(/\s+by Implentio$/, '')
+
+/** Seed activity for the non-golden memos: one entry per published report
+ *  version, plus the seeded download (newest first). */
+function memoActivity(m: CreditMemoSummary): ActivityEntry[] {
+  if (m.status !== 'complete') return []
+  const out: ActivityEntry[] = []
+  if (m.dlEvent) {
+    out.push({ memoId: m.id, icon: 'dl', text: `Credit memo downloaded — ${m.version}`, time: fmtDateTime(new Date(m.dlEvent.at)) })
+  }
+  const versions = m.reportVersions ?? [{ num: 1, label: m.version, dateText: m.completedText }]
+  for (const v of [...versions].sort((a, b) => b.num - a.num)) {
+    out.push({
+      memoId: m.id,
+      icon: v.num > 1 ? 'up' : 'gen',
+      text: v.num > 1 ? `Report updated — ${v.label}` : `Report ready — ${v.label}`,
+      time: dateFromText(v.dateText),
+    })
+  }
+  return out
+}
+
+/**
+ * Derives the dispute records implied by the pursued findings (one dispute
+ * per send time), so every scenario's seeded pursuit has matching records
+ * without hand-writing them. Runs after the scenario transform.
+ */
+export function withSeedDisputes(state: SeedState): SeedState {
+  if (state.disputes.length) return state
+  const memo = state.memos.find((m) => m.id === state.goldenMemoId)
+  if (!memo) return state
+  const contact = state.account.billerContacts.find((c) => c.biller === memo.provider && c.dispute)
+  const bySend = new Map<string, FindingGroup[]>()
+  for (const g of state.findingGroups) {
+    if (g.pursuit !== 'pursued') continue
+    const key = g.pursuedTs ?? g.pursuedAt ?? ''
+    bySend.set(key, [...(bySend.get(key) ?? []), g])
+  }
+  const disputes = [...bySend.entries()]
+    .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
+    .map(([sentAt, groups], i): DisputeRecord => {
+      const first = groups[0]
+      const via = first?.pursuedVia ?? 'connected'
+      return {
+        id: `dsp-seed-${i + 1}`,
+        memoId: memo.id,
+        memoVersion: memo.version,
+        biller: memo.provider,
+        scope: 'groups',
+        groupIds: groups.map((g) => g.id),
+        amountN: r2(groups.reduce((s, g) => s + g.varN, 0)),
+        sentAt,
+        sentBy: first?.pursuedBy ?? state.account.user.name,
+        via,
+        senderEmail: via === 'connected' ? state.account.user.email : null,
+        to: contact?.email ?? '',
+        cc: contact?.cc ?? '',
+        subject: `Parcel invoice review — ${memo.period} — ${memo.id}`,
+        body: [
+          `Hi ${contact?.contact ?? `${memo.provider} billing`},`,
+          '',
+          `We reviewed our parcel invoices for ${memo.period} (${memo.id}) and found charges that don't match our contract:`,
+          '',
+          ...groups.map((g) => `• ${emailLine(g)}`),
+          '',
+          `In total that's ${fmtMoney(r2(groups.reduce((s, g) => s + g.varN, 0)))}. The attached file lists every package with the billed and contracted amounts.`,
+          '',
+          'Could you review these and let us know which credits you can issue?',
+          '',
+          'Thank you,',
+          first?.pursuedBy ?? state.account.user.name,
+        ].join('\n'),
+        evidenceFile: evidenceFileName(memo, groups.length === state.findingGroups.length),
+        collection: null,
+      }
+    })
+  return { ...state, disputes }
 }
 
 export function buildBaseSeed(): SeedState {
@@ -99,8 +188,9 @@ export function buildBaseSeed(): SeedState {
     ...(outcomeSeed[g.id] ?? defaultDisputeState),
   }))
 
+  const memos = [...memosBeforeGolden, golden, ...memosAfterGolden]
   return {
-    memos: [...memosBeforeGolden, golden, ...memosAfterGolden],
+    memos,
     goldenMemoId: golden.id,
     file: cmData.file,
     reportName: cmData.memo.reportName,
@@ -115,14 +205,17 @@ export function buildBaseSeed(): SeedState {
     memoDlEvents: {},
     disputeExcludedIds: [],
     disputeDraftDate: null,
+    disputes: [],
     reportDisputes: {},
     activity: [
-      { icon: 'up', text: `Report ready — ${cmData.memo.version}`, time: 'Jul 6, 2026, 9:03 AM' },
+      { memoId: golden.id, icon: 'up', text: `Report ready — ${cmData.memo.version}`, time: 'Jul 6, 2026, 9:03 AM' },
       {
+        memoId: golden.id,
         icon: 'gen',
         text: `Report asset loaded — ${cmData.memo.reportName}`,
         time: 'Jul 6, 2026, 9:02 AM',
       },
+      ...memos.filter((m) => m.id !== golden.id).flatMap(memoActivity),
     ],
     account: structuredClone(accountFixture),
   }

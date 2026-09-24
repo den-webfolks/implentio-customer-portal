@@ -13,6 +13,7 @@ import type {
   BillerContact,
   Collection,
   CreditMemoSummary,
+  DisputeRecord,
   DownloadEvent,
   EmailProvider,
   MemoDetail,
@@ -26,8 +27,15 @@ export interface DownloadState {
   memoDlEvents: Record<string, DownloadEvent>
 }
 
-/** An outcome row on the tracker's Credit Outcomes tab. */
-export type OutcomeRow = OutcomeGroup & { memoId: string; memoVersion: string }
+/** An outcome row on the tracker's Credit Outcomes tab. `wholeMemo` marks
+ *  the single row of a memo disputed as a whole (no finding breakdown). */
+export type OutcomeRow = OutcomeGroup & {
+  memoId: string
+  memoVersion: string
+  wholeMemo?: boolean
+  /** Last "no reply yet" check on the dispute this row was sent in. */
+  lastCheckedAt?: string | null
+}
 
 /** One row on the account-wide invoices index. */
 export interface InvoiceIndexRow {
@@ -50,14 +58,27 @@ export interface InvoiceIndexRow {
   memoId: string | null
 }
 
-/** Dispute-draft context for the golden memo's finding groups. */
+/** Unsent dispute draft for a memo's findings. */
 export interface DisputeContext {
-  /** Finding-group ids excluded from the current dispute draft. */
+  /** Finding-group ids not selected for the draft (nothing is pre-selected). */
   excludedIds: string[]
   /** Display date the draft was started, or null when no draft exists. */
   draftDate: string | null
-  /** Memo-level dispute (findings-unavailable path): 'awaiting' | 'completed'. */
-  memoDisputeStatus: 'awaiting' | 'completed' | null
+}
+
+/** A dispute the customer sent (connected mailbox) or confirmed sending. */
+export interface SendDisputeInput {
+  memoId: string
+  /** 'memo' sends the complete credit memo (no finding breakdown published). */
+  scope: 'groups' | 'memo'
+  groupIds: string[]
+  via: 'connected' | 'manual'
+  to: string
+  cc: string
+  subject: string
+  body?: string
+  evidenceFile: string
+  senderEmail: string | null
 }
 
 export interface AppDataSource {
@@ -65,26 +86,31 @@ export interface AppDataSource {
   listMemos(): Promise<CreditMemoSummary[]>
   getMemoDetail(memoId: string): Promise<MemoDetail | null>
   getDownloadState(): Promise<DownloadState>
-  getDisputeContext(): Promise<DisputeContext>
+  getDisputeContext(memoId: string): Promise<DisputeContext>
+  /** Every dispute sent for a memo, oldest first. */
+  listDisputes(memoId: string): Promise<DisputeRecord[]>
+  /** Finding-level dispute rows for every published memo (Credit outcomes). */
   listOutcomeRows(): Promise<OutcomeRow[]>
   listInvoiceIndex(): Promise<InvoiceIndexRow[]>
   getAccount(): Promise<AccountSettings>
-  getActivity(): Promise<ActivityEntry[]>
+  /** A memo's activity, newest first. Mutations write their own entries. */
+  getActivity(memoId: string): Promise<ActivityEntry[]>
 
   // ---- mutations ----
   recordMemoDownload(memoId: string): Promise<void>
-  /** Mark finding groups pursued (dispute sent). */
-  markGroupsPursued(input: {
-    groupIds: string[]
-    via: 'connected' | 'manual'
-  }): Promise<void>
+  /** Record a sent dispute: stores the record, marks its findings pursued
+   *  (awaiting outcome), and clears the draft (nothing selected). */
+  recordDisputeSent(input: SendDisputeInput): Promise<DisputeRecord>
   /** Record or edit a collection outcome on a finding group. */
   recordGroupOutcome(input: { groupId: string; collection: Collection }): Promise<void>
-  /** Return an excluded group to the eligible pool. */
-  includeGroupInAnotherRequest(groupId: string): Promise<void>
-  /** Update the dispute draft (excluded groups + draft-start date). */
+  /** Record or edit the outcome of a whole-memo dispute. */
+  recordMemoDisputeOutcome(input: { disputeId: string; collection: Collection }): Promise<void>
+  /** The customer checked and the Biller hasn't replied yet. */
+  markDisputeChecked(disputeId: string): Promise<void>
+  /** "Won't pursue" a finding, or undo that decision. */
+  setGroupNotPursued(input: { groupId: string; notPursued: boolean }): Promise<void>
+  /** Update the dispute draft (unselected groups + draft-start date). */
   setDisputeDraft(input: { excludedIds: string[]; draftDate: string | null }): Promise<void>
-  addActivity(entry: ActivityEntry): Promise<void>
 
   // ---- account mutations ----
   inviteMember(input: { name: string; email: string }): Promise<TeamMember>

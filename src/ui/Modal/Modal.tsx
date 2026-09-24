@@ -68,9 +68,12 @@ export function Modal({ open, onClose, title, description, size = 'medium', widt
                 <IconButton className={styles.close} ghost aria-label="Close" icon={<XMarkIcon aria-hidden="true" />} disabled={dismissDisabled} />
               </Dialog.Close>
             </div>
-            {/* Fades + hairlines at the body's edges show when content is scrolled out of view. */}
+            {/* Fades + hairlines at the body's edges show when content is scrolled out of view.
+                While it overflows, the body is a tab stop so read-only content can be
+                scrolled from the keyboard (axe scrollable-region-focusable). */}
             <div className={styles.bodyFrame} data-scroll-start={edges.start || undefined} data-scroll-end={edges.end || undefined}>
-              <div ref={bodyRef} className={styles.body}>
+              {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region must be keyboard-reachable */}
+              <div ref={bodyRef} className={styles.body} tabIndex={edges.start || edges.end ? 0 : undefined}>
                 {children}
               </div>
             </div>

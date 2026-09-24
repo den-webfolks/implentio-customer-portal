@@ -28,9 +28,16 @@ work.
   slices, and **packages** (852 rows on the golden memo: tracking, order,
   invoice, ship date, zone, weight, per-charge invoiced/expected pairs).
   Open question: store package level or only service-level rollups?
-- **Dispute state per finding group** — pursuit, deadline, pursued at/by/via,
-  and **collection outcome** (awaiting/partial/full/not_issued, amount,
-  date, reason, edit history).
+- **Dispute state per finding group** — pursuit (pursued / not pursued by
+  the customer's choice / undecided), deadline, pursued at/by/via, and
+  **collection outcome** (awaiting/partial/full/not_issued, amount, date,
+  reason, edit history). Expired is derived from the deadline, not stored.
+- **Dispute records (sends)** — one row per dispute sent or confirmed:
+  memo + version, Biller, scope (selected findings vs complete memo), finding
+  ids, amount, sent at/by/via, sender mailbox, to, cc, subject, evidence file
+  (`DisputeRecord` in `src/domain/types.ts`). A whole-memo dispute carries its
+  own collection outcome.
+- **Dispute draft** — per memo: unselected finding ids + draft start date.
 - **Report-level disputes** (LCC/PWV/FCM, Phase 1.5) — same lifecycle keyed
   `kind:id`.
 - **Invoices index** — full-invoice totals vs eligible parcel amounts,
@@ -40,14 +47,17 @@ work.
   attribution in the UI).
 - **Email connections** — per-user Gmail/Outlook OAuth (notes 305, 314:
   per-user tokens; distinct reconnect-required vs admin-required states).
-- **Activity log** — report versions, downloads, dispute submissions,
-  outcome changes.
+- **Activity log** — per memo: report versions, downloads, dispute
+  submissions, outcome changes, "won't pursue" decisions. Written by the
+  mutations themselves (server-side in Phase 3), not by the client.
 
 ## Derived (compute, don't store)
 
-Memo rollup statuses, outcome summaries and by-Biller collection rates,
-recovery donut amounts, next-step card state, invoice classification, and
-every formatted display string.
+Memo status (Action needed / Ready to dispute / Waiting on Biller / Done),
+expiry, recovery buckets, "Credits realized" (sum of recorded collections
+until Biller credit records are ingested), outcome summaries and by-Biller
+collection rates, next-step card state, invoice classification, and every
+formatted display string.
 
 ## Open questions (blockers for schema work)
 

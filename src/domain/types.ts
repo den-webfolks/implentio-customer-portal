@@ -12,7 +12,9 @@
 
 // ---------- Dispute & collection lifecycle --------------------------------
 
-/** How a finding entered (or left) the dispute process. */
+/** How a finding entered (or left) the dispute process: 'pursued' once a
+ *  dispute including it was sent; 'excluded' when the customer chose "Won't
+ *  pursue" (reversible while the deadline is open); null while undecided. */
 export type Pursuit = 'pursued' | 'excluded' | null
 
 export type CollectionStatus = 'awaiting' | 'partial' | 'full' | 'not_issued'
@@ -50,9 +52,37 @@ export interface DisputeState {
   pursuedTs?: string | null
   pursuedBy?: string | null
   pursuedVia?: 'connected' | 'manual' | null
-  /** Which request date this group was excluded from, when pursuit === 'excluded'. */
-  excludedRequestDate?: string | null
   collection: Collection | null
+}
+
+/** One sent dispute: the record of a send to the Biller. Finding-level
+ *  disputes keep their outcomes on each finding; a whole-memo dispute (no
+ *  finding breakdown published) carries its outcome here. */
+export interface DisputeRecord {
+  id: string
+  memoId: string
+  memoVersion: string
+  biller: string
+  /** 'groups' = the selected findings; 'memo' = the complete credit memo. */
+  scope: 'groups' | 'memo'
+  groupIds: string[]
+  amountN: number
+  /** ISO timestamp of the send (or of the manual-send confirmation). */
+  sentAt: string
+  sentBy: string
+  via: 'connected' | 'manual'
+  /** Connected mailbox the dispute went from; null for a manual send. */
+  senderEmail: string | null
+  to: string
+  cc: string
+  subject: string
+  /** The message as sent (or as prepared, for a manual send). */
+  body?: string
+  evidenceFile: string
+  /** Outcome of a whole-memo dispute; null for finding-level disputes. */
+  collection: Collection | null
+  /** Last time the customer confirmed there's no reply yet (ISO timestamp). */
+  lastCheckedAt?: string | null
 }
 
 // ---------- Credit memos ---------------------------------------------------
@@ -345,8 +375,10 @@ export interface MemoDetail {
 // ---------- Activity & account ---------------------------------------------
 
 export interface ActivityEntry {
-  icon: 'up' | 'gen' | 'dl' | 'send'
+  memoId: string
+  icon: 'up' | 'gen' | 'dl' | 'send' | 'outcome'
   text: string
+  /** Display timestamp, e.g. "Sep 17, 2026, 10:00 AM". */
   time: string
 }
 

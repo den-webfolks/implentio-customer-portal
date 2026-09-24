@@ -11,6 +11,11 @@ export function fmtDateLong(iso: string | null | undefined): string {
   })
 }
 
+/** Local calendar date as ISO "2026-09-17". */
+export function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 /** "Sep 20, 2026" from a Date. */
 export function fmtDateShort(d: Date): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -44,14 +49,30 @@ export function excelDate(v: string | number | null | undefined): string {
   })
 }
 
-/** Whole days from `now` until end-of-day on `deadline` (ISO date). */
-export function daysUntilDeadline(deadline: string, now: Date): number {
-  return Math.ceil((new Date(deadline + 'T23:59:59').getTime() - now.getTime()) / 86400000)
+const DAY_MS = 86400000
+
+function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
 }
 
-/** "Due today" / "1 day remaining" / "N days remaining". */
+/** Calendar days from today to `deadline` (ISO date): 0 on the deadline day,
+ *  negative once it has passed. */
+export function daysUntilDeadline(deadline: string, now: Date): number {
+  return Math.round((new Date(deadline + 'T00:00:00').getTime() - startOfDay(now).getTime()) / DAY_MS)
+}
+
+/** Calendar days from `since` to today (0 on the same day). */
+export function daysSince(since: Date, now: Date): number {
+  return Math.round((startOfDay(now).getTime() - startOfDay(since).getTime()) / DAY_MS)
+}
+
+/** "Due today" / "1 day remaining" / "N days remaining" from calendar days left. */
+export function countdownText(daysLeft: number): string {
+  if (daysLeft <= 0) return 'Due today'
+  return daysLeft === 1 ? '1 day remaining' : `${daysLeft} days remaining`
+}
+
+/** Countdown for an open deadline (ISO date). */
 export function deadlineCountdown(deadline: string, now: Date): string {
-  const days = daysUntilDeadline(deadline, now)
-  if (days <= 0) return 'Due today'
-  return days === 1 ? '1 day remaining' : `${days} days remaining`
+  return countdownText(daysUntilDeadline(deadline, now))
 }

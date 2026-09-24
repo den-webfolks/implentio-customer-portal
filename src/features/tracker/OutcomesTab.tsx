@@ -3,8 +3,22 @@ import { useState } from 'react'
 import { ArrowRightIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline'
 import { fmtMoney } from '@/domain/money'
 import { fmtDateLong } from '@/domain/dates'
-import { collectionPill, outcomesBy3pl } from '@/domain/outcomes'
+import { plural } from '@/domain/plural'
+import {
+  ACTION_NEEDED_WITHIN_DAYS,
+  COLLECTION_LABELS,
+  STATUS_LABELS,
+  OUTCOME_NUDGE_DAYS,
+  RECOVERY_BUCKETS,
+  groupStatusLine,
+  needsUpdate,
+  outcomesBy3pl,
+} from '@/domain/outcomes'
 import type { OutcomeRow } from '@/data/source'
+import { useClock } from '@/lib/clock'
+import { COLLECTION_TONE, GROUP_STATUS_TONE } from '@/features/status-tones'
+import type { StatusTone } from '@/ui/Chip/StatusChip'
+import { Banner } from '@/ui/Banner/Banner'
 import { Button, ButtonLink } from '@/ui/Button/Button'
 import { Link } from '@/ui/Link/Link'
 import { StatusChip } from '@/ui/Chip/StatusChip'
@@ -36,24 +50,37 @@ const EMPTY_FILTERS: FilterValues = {
   ocOutcome: [],
 }
 
+const METRIC_TYPE: Partial<Record<DispositionKey, ActionTabType>> = { collected: 'positive', notRecovered: 'negative' }
+
 const METRIC_DEFS: { key: SliceFilter; label: string; type: ActionTabType }[] = [
   { key: 'all', label: 'Total identified', type: 'neutral' },
-  { key: 'eligible', label: 'Eligible to pursue', type: 'neutral' },
-  { key: 'awaiting', label: 'Awaiting outcome', type: 'neutral' },
-  { key: 'collected', label: 'Collected', type: 'positive' },
-  { key: 'denied', label: 'Biller declined', type: 'negative' },
+  ...RECOVERY_BUCKETS.map((b) => ({ key: b.key, label: b.label, type: METRIC_TYPE[b.key] ?? 'neutral' })),
 ]
 
 const PURSUIT_OPTIONS = [
-  { value: 'eligible', label: 'Eligible to pursue' },
-  { value: 'pursued', label: 'Pursued with Biller' },
+  { value: 'eligible', label: STATUS_LABELS.eligible },
+  { value: 'pursued', label: 'Disputed' },
+  { value: 'not_pursued', label: STATUS_LABELS.not_pursued },
+  { value: 'expired', label: STATUS_LABELS.expired },
 ]
 
+/** The filter chips a donut slice stands for (display only; rows are
+ *  filtered by the slice itself). */
+const SLICE_CHIPS: Record<DispositionKey, { ocPursuit: string[]; ocOutcome: string[] }> = {
+  open: { ocPursuit: ['eligible'], ocOutcome: [] },
+  awaiting: { ocPursuit: ['pursued'], ocOutcome: ['awaiting'] },
+  collected: { ocPursuit: ['pursued'], ocOutcome: ['full', 'partial'] },
+  notRecovered: { ocPursuit: ['pursued'], ocOutcome: ['partial', 'not_issued'] },
+  notDisputed: { ocPursuit: ['not_pursued', 'expired'], ocOutcome: [] },
+}
+
+const rowKey = (g: OutcomeRow) => `${g.memoId}-${g.id}`
+
 const OUTCOME_OPTIONS = [
-  { value: 'awaiting', label: 'Awaiting outcome' },
-  { value: 'partial', label: 'Partly collected' },
-  { value: 'full', label: 'Fully collected' },
-  { value: 'not_issued', label: 'Biller declined' },
+  { value: 'awaiting', label: COLLECTION_LABELS.awaiting },
+  { value: 'partial', label: COLLECTION_LABELS.partial },
+  { value: 'full', label: COLLECTION_LABELS.full },
+  { value: 'not_issued', label: COLLECTION_LABELS.not_issued },
 ]
 
 function sameValues(a: readonly string[] | undefined, b: readonly string[] | undefined): boolean {
@@ -64,7 +91,9 @@ function sameValues(a: readonly string[] | undefined, b: readonly string[] | und
 
 export function OutcomesTab() {
   const rowsQ = useOutcomeRows()
+  const now = useClock().now()
   const [filterValues, setFilterValues] = useState<FilterValues>(EMPTY_FILTERS)
+  const [needsOnly, setNeedsOnly] = useState(false)
   const [disposition, setDisposition] = useState<SliceFilter>('all')
   const [hoverSlice, setHoverSlice] = useState<DispositionKey | null>(null)
   const [selectedSlice, setSelectedSlice] = useState<DispositionKey | null>(null)
@@ -80,14 +109,7 @@ export function OutcomesTab() {
     { key: 'ocOutcome', label: 'Collection outcome', options: OUTCOME_OPTIONS },
   ]
 
-  const shownValues: FilterValues =
-    disposition === 'all'
-      ? filterValues
-      : {
-          ...filterValues,
-          ocPursuit: [disposition === 'eligible' ? 'eligible' : 'pursued'],
-          ocOutcome: disposition === 'denied' ? ['not_issued'] : (filterValues.ocOutcome ?? []),
-        }
+  const shownValues: FilterValues = disposition === 'all' ? filterValues : { ...filterValues, ...SLICE_CHIPS[disposition] }
 
   const onFilterChange = (next: FilterValues) => {
     const statusTouched = !sameValues(next.ocPursuit, shownValues.ocPursuit) || !sameValues(next.ocOutcome, shownValues.ocOutcome)
@@ -104,6 +126,11 @@ export function OutcomesTab() {
 
   if (!rowsQ.data) return null
 
+  // Pursuit filter value: pursued, or the unpursued state (eligible / not pursued / expired).
+  const pursuitKey = (g: OutcomeRow) => (g.pursuit === 'pursued' ? 'pursued' : groupStatusLine(g, now).key)
+  const needs = needsUpdate(allRows, now)
+  const needsKeys = new Set(needs.map((n) => rowKey(n.row)))
+
   let rows = allRows.filter(
     (g) =>
       matchesFilter(filterValues, 'ocPeriod', g.memoId) &&
@@ -112,24 +139,25 @@ export function OutcomesTab() {
   )
   const donutRows = rows
   if (disposition !== 'all') {
-    rows = rows.filter((g) => dispositionMatch(g, disposition))
+    rows = rows.filter((g) => dispositionMatch(g, disposition, now))
   } else {
     rows = rows.filter(
       (g) =>
-        matchesFilter(filterValues, 'ocPursuit', g.pursuit === 'pursued' ? 'pursued' : 'eligible') &&
+        matchesFilter(filterValues, 'ocPursuit', pursuitKey(g)) &&
         matchesFilter(filterValues, 'ocOutcome', g.collection?.status ?? ''),
     )
   }
+  if (needsOnly) rows = rows.filter((g) => needsKeys.has(rowKey(g)))
 
-  const disp = dispositionAmounts(donutRows)
-  const donut = dispositionDonut(donutRows)
-  const identified = fmtMoney(disp.eligible + disp.awaiting + disp.collected + disp.denied)
+  const disp = dispositionAmounts(donutRows, now)
+  const donut = dispositionDonut(donutRows, now)
   const metricValue: Record<SliceFilter, string> = {
-    all: identified,
-    eligible: fmtMoney(disp.eligible),
+    all: donut.total,
+    open: fmtMoney(disp.open),
     awaiting: fmtMoney(disp.awaiting),
     collected: fmtMoney(disp.collected),
-    denied: fmtMoney(disp.denied),
+    notRecovered: fmtMoney(disp.notRecovered),
+    notDisputed: fmtMoney(disp.notDisputed),
   }
   const activeKey = hoverSlice ?? selectedSlice
   const slicesWithUi = donut.slices.map((s) => ({
@@ -152,7 +180,11 @@ export function OutcomesTab() {
   }
 
   const table = rows.map((g) => {
-    const ci = collectionPill(g)
+    const sl = groupStatusLine(g, now)
+    const ci: { label: string; tone: StatusTone } =
+      g.pursuit === 'pursued'
+        ? { label: COLLECTION_LABELS[g.collection?.status ?? 'awaiting'], tone: COLLECTION_TONE[g.collection?.status ?? 'awaiting'] }
+        : { label: sl.label, tone: GROUP_STATUS_TONE[sl.key] }
     const reason =
       g.collection?.status === 'not_issued' && g.collection.reason
         ? {
@@ -173,7 +205,7 @@ export function OutcomesTab() {
   })
 
   const oc3pl = outcomesBy3pl(allRows)
-  const activeCount = activeFilterCount(filterValues) + (disposition !== 'all' ? 1 : 0)
+  const activeCount = activeFilterCount(filterValues) + (disposition !== 'all' ? 1 : 0) + (needsOnly ? 1 : 0)
   const groupClearVisible = filters.expanded && activeFilterCount(shownValues) > 0
   const showClearAll = activeCount > 0 && !groupClearVisible
   const clearAll = () => {
@@ -181,11 +213,34 @@ export function OutcomesTab() {
     setDisposition('all')
     setSelectedSlice(null)
     setOpenNotesId(null)
+    setNeedsOnly(false)
   }
+  const waitingCount = needs.filter((n) => n.reason === 'waiting').length
+  const deadlineCount = needs.length - waitingCount
 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {needs.length > 0 && (
+        <Banner
+          type="warning"
+          title={`${plural(needs.length, 'finding')} ${needs.length === 1 ? 'needs' : 'need'} your update`}
+          actions={
+            <Button size="small" aria-pressed={needsOnly} onClick={() => setNeedsOnly((v) => !v)}>
+              {needsOnly ? 'Show all findings' : 'Show them'}
+            </Button>
+          }
+        >
+          {[
+            waitingCount > 0 &&
+              `${plural(waitingCount, 'finding')} sent ${OUTCOME_NUDGE_DAYS} or more days ago ${waitingCount === 1 ? 'has' : 'have'} no outcome recorded yet.`,
+            deadlineCount > 0 &&
+              `${plural(deadlineCount, 'finding')} must be disputed within ${ACTION_NEEDED_WITHIN_DAYS} days.`,
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        </Banner>
+      )}
       <ActionTabs ariaLabel="Credit outcome totals">
         {METRIC_DEFS.map((md) => (
           <ActionTab
@@ -310,7 +365,7 @@ export function OutcomesTab() {
           Credit memo findings and dispute outcomes
         </h3>
         <p className="imp-small" style={{ margin: '6px 0 0' }}>
-          Review the current status of each variance group, including the credit memo and dispute in which it was pursued.
+          Review the current status of each variance group, including the credit memo and the dispute it was sent in.
         </p>
       </div>
 
@@ -324,7 +379,7 @@ export function OutcomesTab() {
                 <th>Credit memo</th>
                 <th>Biller</th>
                 <th className="num">Identified</th>
-                <th className="num">Pursued</th>
+                <th className="num">Disputed</th>
                 <th className="num">Collected</th>
                 <th>Dispute deadline</th>
                 <th>Dispute</th>
@@ -337,7 +392,7 @@ export function OutcomesTab() {
             <tbody>
               {table.map(({ g, ci, reason, isNotIssued, canExpand, notesOpen }) => (
                 <RowGroup
-                  key={`${g.memoId}-${g.id}`}
+                  key={rowKey(g)}
                   g={g}
                   ci={ci}
                   reason={reason}
@@ -345,7 +400,6 @@ export function OutcomesTab() {
                   canExpand={canExpand}
                   notesOpen={notesOpen}
                   onToggleNotes={() => setOpenNotesId((cur) => (cur === g.id ? null : g.id))}
-                  memoTo={`/memos/${g.memoId}`}
                 />
               ))}
             </tbody>
@@ -357,7 +411,7 @@ export function OutcomesTab() {
       <div className="db-card" style={{ gap: 14 }}>
         <div className="db-eyebrow">Biller credit outcomes</div>
         <p className="imp-small" style={{ margin: 0 }}>
-          Which findings your biller accepts or rejects, by Biller and variance-group category.
+          Which findings your billers pay back or deny, by Biller and variance-group category.
         </p>
         <TableScroll>
           <Table>
@@ -365,10 +419,10 @@ export function OutcomesTab() {
               <tr>
                 <th>Biller</th>
                 <th>Variance group</th>
-                <th className="num">Amount pursued</th>
+                <th className="num">Amount disputed</th>
                 <th className="num">Amount collected</th>
                 <th className="num">Fully / partly collected</th>
-                <th className="num">Biller declined</th>
+                <th className="num">Denied</th>
                 <th className="num">Collection rate</th>
               </tr>
             </thead>
@@ -400,17 +454,22 @@ function RowGroup({
   canExpand,
   notesOpen,
   onToggleNotes,
-  memoTo,
 }: {
   g: OutcomeRow
-  ci: ReturnType<typeof collectionPill>
+  ci: { label: string; tone: StatusTone }
   reason: { text: string; author: string; when: string } | null
   isNotIssued: boolean
   canExpand: boolean
   notesOpen: boolean
   onToggleNotes: () => void
-  memoTo: string
 }) {
+  const awaiting = g.pursuit === 'pursued' && (!g.collection || g.collection.status === 'awaiting')
+  const action =
+    g.pursuit !== 'pursued'
+      ? { to: `/memos/${g.memoId}`, label: 'Review finding' }
+      : awaiting
+        ? { to: `/memos/${g.memoId}?outcomes=1`, label: 'Record outcome' }
+        : { to: `/memos/${g.memoId}?dispute=1`, label: 'View dispute' }
   const chevron = notesOpen ? <ChevronUpIcon aria-hidden="true" /> : <ChevronDownIcon aria-hidden="true" />
   return (
     <>
@@ -442,7 +501,7 @@ function RowGroup({
           )}
         </td>
         <td>
-          <StatusChip tone={ci ? ci.tone : 'neutral'}>{ci ? ci.label : 'Eligible to pursue'}</StatusChip>
+          <StatusChip tone={ci.tone}>{ci.label}</StatusChip>
         </td>
         <td className="ds-muted nowrap">{g.collection?.date ? fmtDateLong(g.collection.date) : DASH}</td>
         <td>
@@ -457,8 +516,8 @@ function RowGroup({
           )}
         </td>
         <td>
-          <ButtonLink to={memoTo} size="small" iconRight={<ArrowRightIcon aria-hidden="true" />} style={{ whiteSpace: 'nowrap' }}>
-            {g.pursuit === 'pursued' ? 'View dispute' : 'Review finding'}
+          <ButtonLink to={action.to} size="small" iconRight={<ArrowRightIcon aria-hidden="true" />} style={{ whiteSpace: 'nowrap' }}>
+            {action.label}
           </ButtonLink>
         </td>
       </tr>

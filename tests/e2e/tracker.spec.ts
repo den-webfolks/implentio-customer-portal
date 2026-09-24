@@ -20,13 +20,35 @@ test('tracker filters narrow the memo list immediately (Figma filter group)', as
   await expect(page.getByText('8 credit memos', { exact: true })).toBeVisible()
 })
 
-test('outcomes tab slices filter the findings table', async ({ page }) => {
+test('outcomes tab covers every memo and its slices filter the findings table', async ({ page }) => {
   await page.goto('/tracker/outcomes')
-  await expect(page.getByText('Showing 9 of 9 findings')).toBeVisible()
-  await page.getByRole('button', { name: 'Eligible to pursue $6,527.70', exact: true }).click()
-  await expect(page.getByText(/Showing 4 of 9 findings/)).toBeVisible()
+  await expect(page.getByText('Showing 14 of 14 findings')).toBeVisible()
+  await page.getByRole('button', { name: 'Ready to dispute $9,387.70', exact: true }).click()
+  await expect(page.getByText(/Showing 5 of 14 findings/)).toBeVisible()
   await page.getByRole('button', { name: 'Clear all' }).click()
-  await expect(page.getByText('Showing 9 of 9 findings')).toBeVisible()
+  await page.getByRole('button', { name: 'Not disputed $6,527.70', exact: true }).click()
+  await expect(page.getByText(/Showing 4 of 14 findings/)).toBeVisible()
+})
+
+test('outcomes tab flags findings that need an update', async ({ page }) => {
+  await page.goto('/tracker/outcomes')
+  await expect(page.getByText('2 findings need your update')).toBeVisible()
+  await page.getByRole('button', { name: 'Show them' }).click()
+  await expect(page.getByText(/Showing 2 of 14 findings/)).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Record outcome' })).toHaveCount(2)
+})
+
+test('credits realized sums the outcomes the team recorded', async ({ page }) => {
+  await page.goto('/tracker/memos')
+  await expect(page.getByText('$11,700.00')).toBeVisible()
+  await expect(page.getByText('Recorded by your team')).toBeVisible()
+})
+
+test('a memo with a close deadline shows Action needed and the deadline', async ({ page }) => {
+  await page.goto('/tracker/memos?scenario=dispute-deadline&demo=1')
+  const card = page.locator('#memo-card-CM-2026-0630')
+  await expect(card.getByText('Action needed', { exact: true })).toBeVisible()
+  await expect(card.getByText('Dispute by Sep 19, 2026 · 2 days remaining')).toBeVisible()
 })
 
 test('a denied finding exposes its reason inline', async ({ page }) => {
@@ -38,6 +60,8 @@ test('a denied finding exposes its reason inline', async ({ page }) => {
 
 test('scenario dispute-finalized changes the golden memo CTA', async ({ page }) => {
   await page.goto('/tracker/memos?scenario=dispute-finalized&demo=1')
-  await expect(page.getByText('Dispute completed')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'View dispute details' })).toBeVisible()
+  const card = page.locator('#memo-card-CM-2026-0630')
+  await expect(card.getByText('Done', { exact: true })).toBeVisible()
+  await card.getByRole('link', { name: 'View dispute details' }).click()
+  await expect(page.locator('#disputes')).toBeInViewport()
 })

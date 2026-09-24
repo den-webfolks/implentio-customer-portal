@@ -35,11 +35,12 @@ test('escape closes the filter menu and returns focus to its trigger', async ({ 
 })
 
 test('escape closes only the top layer at a time', async ({ page }) => {
-  await page.goto('/memos/CM-2026-0630?scenario=dispute-awaiting&demo=1')
-  await page.getByRole('button', { name: 'Update dispute outcomes' }).first().click()
-  const modal = page.getByRole('dialog', { name: 'Update credit memo dispute' })
+  await page.goto('/memos/CM-2026-0630')
+  await page.locator('#finding-eg-base').getByRole('button', { name: 'Show me why' }).click()
+  await page.locator('#finding-eg-base').getByRole('button', { name: /^See all/ }).click()
+  const modal = page.getByRole('dialog', { name: /^All 510 packages/ })
   await expect(modal).toBeVisible()
-  await page.getByRole('combobox', { name: /^Outcome for / }).first().click()
+  await modal.getByRole('combobox', { name: 'Service level' }).click()
   await expect(page.getByRole('listbox')).toBeVisible()
   // First Escape closes the select menu, the second closes the modal.
   await page.keyboard.press('Escape')

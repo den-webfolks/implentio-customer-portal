@@ -9,19 +9,25 @@ import type {
   DownloadState,
   InvoiceIndexRow,
   OutcomeRow,
+  SendDisputeInput,
 } from '@/data/source'
 import { classifyInvoice } from '@/domain/memo'
+import { fmtDateShort, fmtDateTime } from '@/domain/dates'
+import { fmtMoney, r2 } from '@/domain/money'
+import { plural } from '@/domain/plural'
+import { COLLECTION_LABELS } from '@/domain/outcomes'
 import type {
   AccountSettings,
   ActivityEntry,
   BillerContact,
   Collection,
   CreditMemoSummary,
+  DisputeRecord,
   MemoDetail,
   TeamMember,
 } from '@/domain/types'
 import type { Clock } from '@/lib/clock'
-import { buildBaseSeed, demoDownloadEvent, type SeedState } from './seed'
+import { buildBaseSeed, demoDownloadEvent, withSeedDisputes, type SeedState } from './seed'
 import { getScenario, type Scenario } from './scenarios'
 
 export class FixtureDataSource implements AppDataSource {
@@ -32,7 +38,52 @@ export class FixtureDataSource implements AppDataSource {
   constructor(scenarioId: string | null | undefined, clock: Clock) {
     this.clock = clock
     this.scenario = getScenario(scenarioId)
-    this.store = this.scenario.seed(buildBaseSeed())
+    this.store = withSeedDisputes(this.scenario.seed(buildBaseSeed()))
+  }
+
+  // The memo pages share the golden memo's drill-down (see getMemoDetail), so
+  // the draft and the disputes sent against those findings are shared too.
+  // Tracker cards and Credit outcomes use each memo's own rows.
+
+  private golden(): CreditMemoSummary | undefined {
+    return this.store.memos.find((m) => m.id === this.store.goldenMemoId)
+  }
+
+  private log(memoId: string, icon: ActivityEntry['icon'], text: string) {
+    this.store.activity = [{ memoId, icon, text, time: fmtDateTime(this.clock.now()) }, ...this.store.activity]
+  }
+
+  /** Appends the previous outcome to the history and stamps the change. */
+  private nextCollection(prev: Collection | null, next: Collection): Collection {
+    const history = prev
+      ? [
+          ...prev.history,
+          {
+            status: prev.status,
+            amountN: prev.amountN,
+            date: prev.date,
+            changedBy: prev.changedBy,
+            changedAt: prev.changedAt,
+            reason: prev.reason,
+          },
+        ]
+      : []
+    return {
+      ...next,
+      changedBy: this.store.account.user.name,
+      changedAt: this.clock.now().toISOString(),
+      history,
+    }
+  }
+
+  private outcomeText(subject: string, c: Collection, pursuedN: number): string {
+    const amount =
+      c.status === 'full'
+        ? ` ${fmtMoney(pursuedN)}`
+        : c.status === 'partial'
+          ? ` ${fmtMoney(c.amountN ?? 0)} of ${fmtMoney(pursuedN)}`
+          : ''
+    return `Outcome recorded — ${subject}: ${COLLECTION_LABELS[c.status]}${amount}`
   }
 
   // ---- queries ----
@@ -72,17 +123,65 @@ export class FixtureDataSource implements AppDataSource {
     )
   }
 
+  // Shared across memo pages (see above), so the memo id isn't needed.
   getDisputeContext(): Promise<DisputeContext> {
     return Promise.resolve({
       excludedIds: [...this.store.disputeExcludedIds],
       draftDate: this.store.disputeDraftDate,
-      memoDisputeStatus: null,
     })
+  }
+
+  listDisputes(): Promise<DisputeRecord[]> {
+    return Promise.resolve(structuredClone(this.store.disputes))
   }
 
   listOutcomeRows(): Promise<OutcomeRow[]> {
     const rows: OutcomeRow[] = []
     for (const m of this.store.memos) {
+      if (m.id === this.store.goldenMemoId) {
+        if (m.status !== 'complete' || this.store.auditProcessing) continue
+        const base = { memoId: m.id, memoVersion: m.version, threePl: m.provider }
+        if (this.store.findingsUnavailable) {
+          const d = this.store.disputes.find((x) => x.scope === 'memo')
+          rows.push({
+            ...base,
+            id: `${m.id}-complete`,
+            wholeMemo: true,
+            title: 'Complete credit memo',
+            category: 'Complete credit memo',
+            carrier: m.carriers.join(', '),
+            amountN: m.netN ?? 0,
+            pursuit: d ? 'pursued' : null,
+            pursuedAt: d ? fmtDateShort(new Date(d.sentAt)) : null,
+            pursuedTs: d?.sentAt ?? null,
+            pursuedBy: d?.sentBy ?? null,
+            pursuedVia: d?.via ?? null,
+            disputeDeadline: null,
+            collection: d?.collection ?? null,
+            lastCheckedAt: d?.lastCheckedAt ?? null,
+          })
+          continue
+        }
+        for (const g of this.store.findingGroups) {
+          rows.push({
+            ...base,
+            id: g.id,
+            title: g.title,
+            category: g.category,
+            carrier: g.carriers.join(', '),
+            amountN: g.varN,
+            pursuit: g.pursuit,
+            pursuedAt: g.pursuedAt ?? null,
+            pursuedTs: g.pursuedTs ?? null,
+            pursuedBy: g.pursuedBy ?? null,
+            pursuedVia: g.pursuedVia ?? null,
+            disputeDeadline: g.disputeDeadline,
+            collection: g.collection,
+            lastCheckedAt: this.store.disputes.find((d) => d.groupIds.includes(g.id))?.lastCheckedAt ?? null,
+          })
+        }
+        continue
+      }
       for (const g of m.outcomeGroups ?? []) {
         rows.push({ ...g, memoId: m.id, memoVersion: m.version })
       }
@@ -150,8 +249,8 @@ export class FixtureDataSource implements AppDataSource {
     return Promise.resolve(structuredClone(this.store.account))
   }
 
-  getActivity(): Promise<ActivityEntry[]> {
-    return Promise.resolve(structuredClone(this.store.activity))
+  getActivity(memoId: string): Promise<ActivityEntry[]> {
+    return Promise.resolve(structuredClone(this.store.activity.filter((a) => a.memoId === memoId)))
   }
 
   // ---- mutations ----
@@ -161,18 +260,43 @@ export class FixtureDataSource implements AppDataSource {
       this.store.downloadedMemoIds.push(memoId)
     }
     this.store.memoDlEvents[memoId] = demoDownloadEvent(this.clock.now())
+    const memo = this.store.memos.find((m) => m.id === memoId)
+    this.log(memoId, 'dl', `Credit memo downloaded — ${memo?.version ?? 'current version'}`)
     return Promise.resolve()
   }
 
-  markGroupsPursued(input: { groupIds: string[]; via: 'connected' | 'manual' }): Promise<void> {
+  recordDisputeSent(input: SendDisputeInput): Promise<DisputeRecord> {
     const now = this.clock.now()
-    const pursuedAt = now.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
+    const memo = this.store.memos.find((m) => m.id === input.memoId) ?? this.golden()
+    const groupIds = input.scope === 'memo' ? [] : input.groupIds
+    const groups = this.store.findingGroups.filter((g) => groupIds.includes(g.id))
+    const amountN =
+      input.scope === 'memo' ? (memo?.netN ?? 0) : r2(groups.reduce((s, g) => s + g.varN, 0))
+    const record: DisputeRecord = {
+      id: `dsp-${this.store.disputes.length + 1}`,
+      memoId: input.memoId,
+      memoVersion: memo?.version ?? '',
+      biller: memo?.provider ?? 'Biller',
+      scope: input.scope,
+      groupIds,
+      amountN,
+      sentAt: now.toISOString(),
+      sentBy: this.store.account.user.name,
+      via: input.via,
+      senderEmail: input.senderEmail,
+      to: input.to,
+      cc: input.cc,
+      subject: input.subject,
+      body: input.body,
+      evidenceFile: input.evidenceFile,
+      collection:
+        input.scope === 'memo'
+          ? { status: 'awaiting', amountN: null, date: null, reason: '', history: [] }
+          : null,
+    }
+    const pursuedAt = fmtDateShort(now)
     this.store.findingGroups = this.store.findingGroups.map((g) =>
-      input.groupIds.includes(g.id)
+      groupIds.includes(g.id)
         ? {
             ...g,
             pursuit: 'pursued',
@@ -184,41 +308,65 @@ export class FixtureDataSource implements AppDataSource {
           }
         : g,
     )
-    return Promise.resolve()
+    this.store.disputes = [...this.store.disputes, record]
+    // Sending clears the draft; nothing is pre-selected for the next one.
+    this.store.disputeExcludedIds = this.store.findingGroups.map((g) => g.id)
+    this.store.disputeDraftDate = null
+    const what =
+      input.scope === 'memo' ? 'complete credit memo' : plural(groups.length, 'variance group')
+    this.log(
+      input.memoId,
+      'send',
+      `${input.via === 'manual' ? 'Dispute marked as sent' : 'Dispute sent'} to ${record.biller} — ${what} · ${fmtMoney(amountN)}`,
+    )
+    return Promise.resolve(structuredClone(record))
   }
 
   recordGroupOutcome(input: { groupId: string; collection: Collection }): Promise<void> {
-    this.store.findingGroups = this.store.findingGroups.map((g) => {
-      if (g.id !== input.groupId) return g
-      const history = g.collection
-        ? [
-            ...g.collection.history,
-            {
-              status: g.collection.status,
-              amountN: g.collection.amountN,
-              date: g.collection.date,
-              changedBy: g.collection.changedBy,
-              changedAt: g.collection.changedAt,
-              reason: g.collection.reason,
-            },
-          ]
-        : []
-      return {
-        ...g,
-        collection: {
-          ...input.collection,
-          changedBy: this.store.account.user.name,
-          changedAt: this.clock.now().toISOString(),
-          history,
-        },
-      }
-    })
+    const g = this.store.findingGroups.find((x) => x.id === input.groupId)
+    if (!g) return Promise.resolve()
+    const collection = this.nextCollection(g.collection, input.collection)
+    this.store.findingGroups = this.store.findingGroups.map((x) =>
+      x.id === input.groupId ? { ...x, collection } : x,
+    )
+    const memoId = this.store.disputes.find((d) => d.groupIds.includes(g.id))?.memoId ?? this.store.goldenMemoId
+    this.log(memoId, 'outcome', this.outcomeText(g.title, collection, g.varN))
     return Promise.resolve()
   }
 
-  includeGroupInAnotherRequest(groupId: string): Promise<void> {
-    this.store.findingGroups = this.store.findingGroups.map((g) =>
-      g.id === groupId ? { ...g, pursuit: null, excludedRequestDate: null } : g,
+  recordMemoDisputeOutcome(input: { disputeId: string; collection: Collection }): Promise<void> {
+    const d = this.store.disputes.find((x) => x.id === input.disputeId)
+    if (!d) return Promise.resolve()
+    const collection = this.nextCollection(d.collection, input.collection)
+    this.store.disputes = this.store.disputes.map((x) =>
+      x.id === input.disputeId ? { ...x, collection } : x,
+    )
+    this.log(d.memoId, 'outcome', this.outcomeText('complete credit memo', collection, d.amountN))
+    return Promise.resolve()
+  }
+
+  markDisputeChecked(disputeId: string): Promise<void> {
+    const d = this.store.disputes.find((x) => x.id === disputeId)
+    if (!d) return Promise.resolve()
+    const lastCheckedAt = this.clock.now().toISOString()
+    this.store.disputes = this.store.disputes.map((x) => (x.id === disputeId ? { ...x, lastCheckedAt } : x))
+    this.log(d.memoId, 'outcome', `No reply yet from ${d.biller}`)
+    return Promise.resolve()
+  }
+
+  setGroupNotPursued(input: { groupId: string; notPursued: boolean }): Promise<void> {
+    const g = this.store.findingGroups.find((x) => x.id === input.groupId)
+    if (!g || g.pursuit === 'pursued') return Promise.resolve()
+    this.store.findingGroups = this.store.findingGroups.map((x) =>
+      x.id === input.groupId ? { ...x, pursuit: input.notPursued ? 'excluded' : null } : x,
+    )
+    if (input.notPursued && !this.store.disputeExcludedIds.includes(g.id)) {
+      this.store.disputeExcludedIds = [...this.store.disputeExcludedIds, g.id]
+    }
+    this.log(
+      this.store.goldenMemoId,
+      'outcome',
+      input.notPursued ? `Marked won’t pursue — ${g.title}` : `Ready to dispute again — ${g.title}`,
     )
     return Promise.resolve()
   }
@@ -226,11 +374,6 @@ export class FixtureDataSource implements AppDataSource {
   setDisputeDraft(input: { excludedIds: string[]; draftDate: string | null }): Promise<void> {
     this.store.disputeExcludedIds = [...input.excludedIds]
     this.store.disputeDraftDate = input.draftDate
-    return Promise.resolve()
-  }
-
-  addActivity(entry: ActivityEntry): Promise<void> {
-    this.store.activity = [entry, ...this.store.activity]
     return Promise.resolve()
   }
 

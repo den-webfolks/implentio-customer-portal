@@ -1,8 +1,10 @@
 /** Memo detail — Activity & exports tab (template ~5272–5357). */
 import { useState } from 'react'
-import { ArrowDownTrayIcon, DocumentTextIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
+import { useLocation } from 'react-router'
+import { ArrowDownTrayIcon, ClipboardDocumentCheckIcon, DocumentTextIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
 import type { MemoDetail } from '@/domain/types'
 import { Button } from '@/ui/Button/Button'
+import { Link } from '@/ui/Link/Link'
 import { RadioGroup } from '@/ui/Form/Choice'
 import { StatusChip } from '@/ui/Chip/StatusChip'
 import { EmptyState } from '@/ui/Display/Display'
@@ -22,6 +24,7 @@ const ICON_KIND: Record<string, ActivityFilter> = {
   gen: 'reports',
   dl: 'downloads',
   send: 'disputes',
+  outcome: 'disputes',
 }
 
 export function ActivityTab({
@@ -32,8 +35,13 @@ export function ActivityTab({
   onDownloadExcel: () => void
 }) {
   const memo = detail.memo
-  const activityQ = useActivity()
+  const location = useLocation()
+  const activityQ = useActivity(memo.id)
   const [filter, setFilter] = useState<ActivityFilter>('all')
+
+  const disputeParams = new URLSearchParams(location.search)
+  disputeParams.set('dispute', '1')
+  const disputeHref = `/memos/${memo.id}?${disputeParams.toString()}`
 
   const events = (activityQ.data ?? []).filter(
     (a) => filter === 'all' || ICON_KIND[a.icon] === filter,
@@ -110,6 +118,8 @@ export function ActivityTab({
                     <ArrowDownTrayIcon width={16} height={16} aria-hidden="true" />
                   ) : a.icon === 'send' ? (
                     <PaperAirplaneIcon width={16} height={16} aria-hidden="true" />
+                  ) : a.icon === 'outcome' ? (
+                    <ClipboardDocumentCheckIcon width={16} height={16} aria-hidden="true" />
                   ) : (
                     <DocumentTextIcon width={16} height={16} aria-hidden="true" />
                   )}
@@ -119,6 +129,11 @@ export function ActivityTab({
               <div style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
                 <div style={{ flex: '1 1 320px', minWidth: 0 }}>
                   <div className="ds-body-base ds-w-semi" style={{ color: 'var(--ds-fg-default)' }}>{a.text}</div>
+                  {a.icon === 'send' && (
+                    <Link to={disputeHref} variant="accent" size="small" bold>
+                      View dispute details
+                    </Link>
+                  )}
                 </div>
                 <div style={{ flex: 'none', textAlign: 'end' }}>
                   <span className="imp-small" style={{ margin: 0, whiteSpace: 'nowrap' }}>

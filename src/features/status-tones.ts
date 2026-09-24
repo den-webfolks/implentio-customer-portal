@@ -7,7 +7,7 @@
  */
 import type { StatusTone } from '@/ui/Chip/StatusChip'
 import type { CollectionStatus } from '@/domain/types'
-import type { GroupStatusKey } from '@/domain/outcomes'
+import type { DisputeStatusKey, GroupStatusKey, MemoStatusKey, RecoveryBucketKey } from '@/domain/outcomes'
 
 export const COLLECTION_TONE: Record<CollectionStatus, StatusTone> = {
   awaiting: 'info',
@@ -23,6 +23,30 @@ export const GROUP_STATUS_TONE: Record<GroupStatusKey, StatusTone> = {
   fully_collected: 'success',
   declined: 'danger',
   not_pursued: 'muted',
+  expired: 'muted',
+}
+
+export const MEMO_STATUS_TONE: Record<MemoStatusKey, StatusTone> = {
+  action_needed: 'attention',
+  ready: 'neutral',
+  waiting: 'info',
+  done: 'success',
+}
+
+export const DISPUTE_STATUS_TONE: Record<DisputeStatusKey, StatusTone> = {
+  awaiting: 'info',
+  partly_recorded: 'attention',
+  done: 'success',
+}
+
+/** Money buckets: eligible = neutral, awaiting = info, collected = success,
+ *  not recovered = danger, not disputed = muted. */
+export const BUCKET_TONE: Record<RecoveryBucketKey, StatusTone> = {
+  open: 'neutral',
+  awaiting: 'info',
+  collected: 'success',
+  notRecovered: 'danger',
+  notDisputed: 'muted',
 }
 
 /** Solid colour per tone for charts (donut slices, legend swatches). */

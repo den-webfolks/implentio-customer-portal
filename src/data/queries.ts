@@ -2,8 +2,9 @@
  * Thin TanStack Query hooks over the AppDataSource seam. Feature api.ts
  * modules re-export/compose these; screens never touch the source directly.
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type { Collection } from '@/domain/types'
+import type { SendDisputeInput } from './source'
 import { useDataSource } from './DataSourceProvider'
 
 export const queryKeys = {
@@ -12,7 +13,17 @@ export const queryKeys = {
   downloads: ['downloads'] as const,
   outcomeRows: ['outcomeRows'] as const,
   account: ['account'] as const,
-  activity: ['activity'] as const,
+  activity: (memoId: string) => ['activity', memoId] as const,
+  disputes: (memoId: string) => ['disputes', memoId] as const,
+  disputeContext: (memoId: string) => ['disputeContext', memoId] as const,
+}
+
+/** Everything a dispute mutation can change: findings, drafts, dispute
+ *  records, the outcome ledger, activity, and the tracker cards. */
+function invalidateDisputeData(qc: QueryClient) {
+  for (const key of [['memo'], ['disputeContext'], ['disputes'], queryKeys.outcomeRows, ['activity'], queryKeys.memos]) {
+    void qc.invalidateQueries({ queryKey: key })
+  }
 }
 
 export function useMemos() {
@@ -48,9 +59,23 @@ export function useAccount() {
   return useQuery({ queryKey: queryKeys.account, queryFn: () => ds.getAccount() })
 }
 
-export function useActivity() {
+export function useActivity(memoId: string) {
   const ds = useDataSource()
-  return useQuery({ queryKey: queryKeys.activity, queryFn: () => ds.getActivity() })
+  return useQuery({ queryKey: queryKeys.activity(memoId), queryFn: () => ds.getActivity(memoId) })
+}
+
+export function useDisputes(memoId: string) {
+  const ds = useDataSource()
+  return useQuery({ queryKey: queryKeys.disputes(memoId), queryFn: () => ds.listDisputes(memoId) })
+}
+
+export function useDisputeContext(memoId: string | undefined) {
+  const ds = useDataSource()
+  return useQuery({
+    queryKey: queryKeys.disputeContext(memoId ?? 'none'),
+    queryFn: () => ds.getDisputeContext(memoId ?? ''),
+    enabled: !!memoId,
+  })
 }
 
 // ---- mutations ----
@@ -63,21 +88,17 @@ export function useRecordMemoDownload() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.downloads })
       void qc.invalidateQueries({ queryKey: queryKeys.memos })
-      void qc.invalidateQueries({ queryKey: queryKeys.activity })
+      void qc.invalidateQueries({ queryKey: ['activity'] })
     },
   })
 }
 
-export function useMarkGroupsPursued() {
+export function useRecordDisputeSent() {
   const ds = useDataSource()
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: { groupIds: string[]; via: 'connected' | 'manual' }) =>
-      ds.markGroupsPursued(input),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['memo'] })
-      void qc.invalidateQueries({ queryKey: queryKeys.outcomeRows })
-    },
+    mutationFn: (input: SendDisputeInput) => ds.recordDisputeSent(input),
+    onSuccess: () => invalidateDisputeData(qc),
   })
 }
 
@@ -87,9 +108,52 @@ export function useRecordGroupOutcome() {
   return useMutation({
     mutationFn: (input: { groupId: string; collection: Collection }) =>
       ds.recordGroupOutcome(input),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['memo'] })
-      void qc.invalidateQueries({ queryKey: queryKeys.outcomeRows })
+    onSuccess: () => invalidateDisputeData(qc),
+  })
+}
+
+export function useRecordMemoDisputeOutcome() {
+  const ds = useDataSource()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { disputeId: string; collection: Collection }) =>
+      ds.recordMemoDisputeOutcome(input),
+    onSuccess: () => invalidateDisputeData(qc),
+  })
+}
+
+export function useMarkDisputeChecked() {
+  const ds = useDataSource()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (disputeId: string) => ds.markDisputeChecked(disputeId),
+    onSuccess: () => invalidateDisputeData(qc),
+  })
+}
+
+export function useSetGroupNotPursued() {
+  const ds = useDataSource()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { groupId: string; notPursued: boolean }) => ds.setGroupNotPursued(input),
+    onSuccess: () => invalidateDisputeData(qc),
+  })
+}
+
+export function useSetDisputeDraft() {
+  const ds = useDataSource()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { excludedIds: string[]; draftDate: string | null }) =>
+      ds.setDisputeDraft(input),
+    // Ticking a finding updates at once; the refetch confirms it.
+    onMutate: (input) => {
+      qc.setQueriesData<{ excludedIds: string[]; draftDate: string | null }>({ queryKey: ['disputeContext'] }, (old) =>
+        old ? { ...old, ...input } : old,
+      )
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ['disputeContext'] })
     },
   })
 }
