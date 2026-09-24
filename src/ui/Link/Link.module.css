@@ -14,7 +14,7 @@
   color: var(--link-fg);
   font: var(--ds-weight-regular) 14px/1.46 var(--ds-font);
   letter-spacing: var(--ds-tracking-body);
-  text-align: left;
+  text-align: start;
   text-decoration: none;
   cursor: pointer;
 }

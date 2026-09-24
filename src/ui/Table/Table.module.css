@@ -16,7 +16,7 @@
   background: var(--ds-bg-default);
   color: var(--ds-fg-muted);
   font-weight: var(--ds-weight-regular);
-  text-align: left;
+  text-align: start;
   white-space: nowrap;
   vertical-align: bottom;
 }
@@ -34,11 +34,17 @@
 }
 
 .table :global(.num) {
-  text-align: right;
+  text-align: end;
+  white-space: nowrap;
+}
+
+/* Identifiers, dates and other atomic values never break mid-value. */
+.table :global(.nowrap) {
+  white-space: nowrap;
 }
 
 .table thead th:global(.num) > button {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .table td:global(.neg) {
@@ -126,4 +132,53 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ---------- Horizontal scroller with edge cues ---------- */
+
+.scrollFrame {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.scroll {
+  overflow: auto;
+}
+
+.scrollFrame::before,
+.scrollFrame::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  z-index: 5;
+  width: 24px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-out);
+}
+
+.scrollFrame::before {
+  inset-inline-start: 0;
+  border-inline-start: 1px solid var(--ds-stroke-disabled);
+  background: linear-gradient(to right, var(--ds-bg-default), transparent);
+}
+
+.scrollFrame::after {
+  inset-inline-end: 0;
+  border-inline-end: 1px solid var(--ds-stroke-disabled);
+  background: linear-gradient(to left, var(--ds-bg-default), transparent);
+}
+
+.scrollFrame:dir(rtl)::before {
+  background: linear-gradient(to left, var(--ds-bg-default), transparent);
+}
+
+.scrollFrame:dir(rtl)::after {
+  background: linear-gradient(to right, var(--ds-bg-default), transparent);
+}
+
+.scrollFrame[data-scroll-start]::before,
+.scrollFrame[data-scroll-end]::after {
+  opacity: 1;
 }

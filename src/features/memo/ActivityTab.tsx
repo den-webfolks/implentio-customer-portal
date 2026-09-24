@@ -61,7 +61,7 @@ export function ActivityTab({
               <div key={v.num} className="db-card" style={{ gap: 12, background: 'var(--ds-bg-disabled)' }}>
                 <div className="db-card-head">
                   <div>
-                    <h3 className="db-h3" style={{ margin: 0, fontSize: 16 }}>
+                    <h3 className="db-h3" style={{ margin: 0 }}>
                       {v.label} · Superseded
                     </h3>
                     <p className="imp-small" style={{ margin: '6px 0 0' }}>
@@ -75,12 +75,12 @@ export function ActivityTab({
                     {v.note}
                   </p>
                 )}
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 'var(--ds-space-3)', flexWrap: 'wrap' }}>
                   <Button size="small" onClick={onDownloadExcel}>
-                    Download Credit Memo
+                    Download credit memo
                   </Button>
                   <Button size="small" onClick={() => showToast('danger', 'Superseded version preview is not available in this release.')}>
-                    Review Summary
+                    Review summary
                   </Button>
                 </div>
               </div>
@@ -90,7 +90,7 @@ export function ActivityTab({
 
       <div className="db-card" style={{ gap: 16 }}>
         <div className="db-card-head">
-          <h3 className="db-h3" style={{ margin: 0, fontSize: 16 }}>
+          <h3 className="db-h3" style={{ margin: 0 }}>
             Credit memo activity
           </h3>
           <span className="imp-small" style={{ margin: 0 }}>
@@ -120,7 +120,7 @@ export function ActivityTab({
                 <div style={{ flex: '1 1 320px', minWidth: 0 }}>
                   <div className="ds-body-base ds-w-semi" style={{ color: 'var(--ds-fg-default)' }}>{a.text}</div>
                 </div>
-                <div style={{ flex: 'none', textAlign: 'right' }}>
+                <div style={{ flex: 'none', textAlign: 'end' }}>
                   <span className="imp-small" style={{ margin: 0, whiteSpace: 'nowrap' }}>
                     {a.time}
                   </span>

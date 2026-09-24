@@ -169,15 +169,61 @@ fonts, and every unused prototype class (`proto.css` now holds only layout helpe
   Escape handling; the wizard's header "Close" is now the Figma × button.
 - **Menus**: profile and filter menus are real `menu`/`menuitem`s with arrow-key support.
 
-## Follow-ups (not done in 2a)
+## Interface review fixes (2026-09-24)
 
-- Status copy is still uppercase in data (`READY TO DISPUTE`, `NEW`, `DOWNLOADED`); Figma chips are
-  sentence case — a copy change for product to approve.
-- Label conflicts from the audit remain: "Partially collected" vs "Partly collected", "Denied by
-  Biller" vs "Biller declined".
+A cross-discipline review (accessibility, layout, writing, typography, colour, UI polish) was run
+and its findings implemented at the user's request. This pulls some Phase 2b layout work forward
+and changes copy — each item below is a deliberate deviation or behaviour change.
+
+**Pending Figma confirmation (colour values chosen to pass WCAG AA from existing primitives):**
+- `--ds-fg-accent-text` → `orange-700` for money text (orange-500 was 3.29:1 on white, 2.93:1 on
+  orange-100). `--ds-fg-accent` stays for fills and large numbers on white / the navy hero.
+- Success / attention chip text = the Figma fg mixed 80/20 with neutral-900 (5.17:1 / 5.24:1;
+  Figma pairs measured 3.89:1 / 3.86:1). Figma has no green-700 / yellow-700 step.
+- `--ds-fg-disabled` is no longer used for readable text (2.78:1); those uses are `--ds-fg-muted`.
+- axe `color-contrast` is re-enabled in `tests/a11y/axe.spec.ts` and passes.
+
+**Layout (Phase 2b items pulled forward):**
+- Compact shell below 720px (`src/shell/useCompactShell.ts`): top bar + off-canvas nav drawer
+  (Radix Dialog) instead of the fixed 240px sidebar that overflowed every page at mobile widths.
+- Page-level breakpoints in `proto.css` are container queries on the `page` container
+  (AppLayout's page column) and the outcome modal's `om` container, not viewport media queries.
+- `TableScroll` (src/ui/Table) wraps wide tables with edge fades; the Modal body shows the same
+  cue when content is scrolled out of view (`useScrollEdges`).
+- Identifier / date / money cells don't wrap (`num`, `nowrap`); account grids stack below 520px.
+- Logical properties replace left/right across src (except the demo harness).
+- 12px (`--ds-space-3`) between adjacent bordered controls (modal footer, card action rows,
+  outcome choice grid, outcome select + disclosure).
+
+**Behaviour changes:**
+- Route navigation is real links: sidebar items, route tabs (`Tabs linkTo`), memo-card actions
+  and table row actions (`ButtonLink`). Cmd-click / new tab / copy link now work.
+- Sidebar icons are Heroicons (`currentColor`); nav state styling moved from inline styles to
+  CSS so hover / active / disabled render. The old `public/brand/nav-*.svg` assets are removed.
+- One filled primary per view: repeated per-card actions ("View affected packages", tracker
+  card CTAs, "Review summary") are Emphasis / Secondary.
+- Finding-card status is a `StatusChip`, not a bordered block that read as a button.
+- Danger toasts stay until dismissed; toasts pause on hover/focus; announcements go through
+  persistent live regions.
+- "Revoke access" asks for confirmation.
+- Finding jump respects `prefers-reduced-motion` and moves focus to the finding.
+- Forced-colors mode gets a system-colour focus outline on every focus stop and highlighted item.
+- Inputs render at 16px on touch devices (iOS zoom); pointer devices keep 14px.
+
+**Copy (writing review; product to confirm):**
+- One outcome vocabulary everywhere: "Biller declined", "Partly collected", "Unresolved".
+- Sentence case for table headers, tabs, buttons and chips ("Credit memos", "Download credit
+  memo", "Ready to dispute"); status/eyebrow strings stored in natural case, uppercased by CSS.
+
+## Follow-ups
+
+- Remaining review items (not yet done): dispute-wizard vocabulary ("dispute" / "request" /
+  "package"), wizard failure copy, filter empty states with a Clear action, count pluralisation,
+  skip link + per-route page titles, row-specific "Edit" names, text-wrap balance/pretty,
+  icon stroke at 12–16px, FindingCard/drawer keyframes → transitions with exits, inner-box radii.
 - Dark-navy primary button (Figma primary, emphasis off) has no documented use — not built.
-- Phase 2b: page shells, headers, sidebar, section spacing, `proto.css` layout classes, the
-  remaining `--imp-*` aliases, axe colour-contrast re-enable.
+- Phase 2b: page headers, section spacing, remaining `proto.css` layout classes, the remaining
+  `--imp-*` aliases.
 
 ## Decisions
 

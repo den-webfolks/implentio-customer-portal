@@ -1,4 +1,5 @@
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { forwardRef, type AnchorHTMLAttributes, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { Link as RouterLink } from 'react-router'
 import styles from './Button.module.css'
 
 /**
@@ -46,6 +47,24 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     </button>
   )
 })
+
+export interface ButtonLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>, ButtonStyleOptions {
+  /** Route to navigate to — a real link, so new tab / copy link work. */
+  to: string
+  iconLeft?: ReactNode
+  iconRight?: ReactNode
+}
+
+/** A route link styled as a Figma button, for navigation that must look like a button. */
+export function ButtonLink({ to, variant, size, fullWidth, iconLeft, iconRight, className, children, ...rest }: ButtonLinkProps) {
+  return (
+    <RouterLink to={to} className={[buttonClass({ variant, size, fullWidth }), className].filter(Boolean).join(' ')} {...rest}>
+      {iconLeft && <span className={styles.icon}>{iconLeft}</span>}
+      {children}
+      {iconRight && <span className={styles.icon}>{iconRight}</span>}
+    </RouterLink>
+  )
+}
 
 export type IconButtonSize = 'tiny' | 'small' | 'medium' | 'large'
 

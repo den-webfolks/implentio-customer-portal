@@ -1,6 +1,5 @@
 /** Parcel Credit Tracker — Credit Memos tab (template ~1217–1404). */
 import { useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router'
 import {
   ArrowDownTrayIcon,
   ArrowRightIcon,
@@ -12,7 +11,7 @@ import {
   PaperAirplaneIcon,
 } from '@heroicons/react/24/outline'
 import { InfoTip } from '@/ui/Tooltip/Tooltip'
-import { Button } from '@/ui/Button/Button'
+import { ButtonLink } from '@/ui/Button/Button'
 import { Link } from '@/ui/Link/Link'
 import { StatusChip, Tag, type StatusTone } from '@/ui/Chip/StatusChip'
 import { EmptyState } from '@/ui/Display/Display'
@@ -51,7 +50,7 @@ const FILTER_FIELDS: FilterField[] = [
     options: [
       { value: 'ready', label: 'Ready' },
       { value: 'updated', label: 'Updated' },
-      { value: 'generating', label: 'Audit In-Progress' },
+      { value: 'generating', label: 'Audit in progress' },
     ],
   },
   {
@@ -101,39 +100,45 @@ const CTA_ICON: Record<CtaKind, ReactNode> = {
   prep: <PaperAirplaneIcon aria-hidden="true" />,
 }
 
-const MUTED_TEXT = { font: 'var(--ds-weight-medium) 13px var(--ds-font)', color: 'var(--ds-fg-muted)' } as const
-const SUBTLE_TEXT = { font: 'var(--ds-weight-medium) 12px var(--ds-font)', color: 'var(--ds-fg-disabled)' } as const
+// Inline text styles on the Figma scale (body-base 14/1.46, body-small
+// 12/1.64, heading-huge 36, caption-small 12/1.3, caption-tiny 10/1.16).
+const MUTED_TEXT = { font: 'var(--ds-weight-medium) 14px/1.46 var(--ds-font)', color: 'var(--ds-fg-muted)' } as const
+const SUBTLE_TEXT = { font: 'var(--ds-weight-medium) 12px/1.64 var(--ds-font)', color: 'var(--ds-fg-muted)' } as const
 const BIG_NUMBER = {
-  font: 'var(--ds-weight-semi) 40px var(--ds-font)',
+  font: 'var(--ds-weight-semi) 36px var(--ds-font)',
   fontVariantNumeric: 'tabular-nums',
   letterSpacing: 'var(--ds-tracking-heading)',
   lineHeight: 1.05,
 } as const
-const HERO_LABEL = { font: 'var(--ds-weight-medium) 11px var(--ds-font)', color: 'var(--ds-fg-brand-muted)' } as const
+const HERO_LABEL = {
+  font: 'var(--ds-weight-medium) 12px/1.3 var(--ds-font)',
+  letterSpacing: 'var(--ds-tracking-caption)',
+  color: 'var(--ds-fg-brand-muted)',
+} as const
 const HERO_DIVIDER = 'inset 1px 0 0 var(--ds-neutral-800)'
 
 function MemoCard({
   m,
-  onOpen,
-  onCta,
+  openTo,
+  ctaTo,
   onDownload,
 }: {
   m: MemoCardView
-  onOpen: () => void
-  onCta: (kind: CtaKind) => void
+  openTo: string
+  ctaTo: (kind: CtaKind) => string
   onDownload: () => void
 }) {
   return (
     <div className="db-card" id={`memo-card-${m.id}`} style={{ padding: 0, overflow: 'hidden', position: 'relative', scrollMarginTop: 88 }}>
-      <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: ACCENT[m.accent] }} />
+      <span style={{ position: 'absolute', insetInlineStart: 0, insetBlock: 0, width: 6, background: ACCENT[m.accent] }} />
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 1, background: 'var(--ds-stroke-disabled)', alignItems: 'stretch' }}>
         <div style={{ flex: '1 1 250px', padding: '22px 24px 22px 30px', background: 'var(--ds-bg-default)', display: 'flex', flexDirection: 'column', gap: 13 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <h3 className="ds-heading-large" style={{ margin: 0, color: 'var(--ds-fg-default)', whiteSpace: 'nowrap' }}>
               {m.id}
             </h3>
-            {m.isNew && <StatusChip tone="neutral">NEW</StatusChip>}
-            {m.isUpdated && <StatusChip tone="info">UPDATED</StatusChip>}
+            {m.isNew && <StatusChip tone="neutral">New</StatusChip>}
+            {m.isUpdated && <StatusChip tone="info">Updated</StatusChip>}
           </div>
           {m.downloaded && (
             <span style={{ alignSelf: 'flex-start' }}>
@@ -142,7 +147,7 @@ function MemoCard({
               </StatusChip>
             </span>
           )}
-          <div style={{ font: 'var(--ds-weight-medium) 14px var(--ds-font)', color: 'var(--ds-fg-muted)' }}>
+          <div style={{ font: 'var(--ds-weight-medium) 14px/1.46 var(--ds-font)', color: 'var(--ds-fg-muted)' }}>
             {m.provider} &nbsp;·&nbsp;{' '}
             <strong style={{ color: 'var(--ds-fg-default)', fontWeight: 600 }}>{m.period}</strong>
           </div>
@@ -158,11 +163,11 @@ function MemoCard({
             <InfoTip text={CADENCE_TIP} />
           </div>
           {m.versionLabel && (
-            <div style={{ font: 'var(--ds-weight-semi) 13px var(--ds-font)', color: 'var(--ds-fg-disabled)' }}>{m.versionLabel}</div>
+            <div style={{ font: 'var(--ds-weight-semi) 12px/1.64 var(--ds-font)', color: 'var(--ds-fg-muted)' }}>{m.versionLabel}</div>
           )}
-          {m.preparedText && <div style={{ ...MUTED_TEXT, color: 'var(--ds-fg-disabled)' }}>{m.preparedText}</div>}
+          {m.preparedText && <div style={{ ...MUTED_TEXT, color: 'var(--ds-fg-muted)' }}>{m.preparedText}</div>}
           {m.demoLabel && (
-            <span className="ds-caption-tiny" style={{ alignSelf: 'flex-start', color: 'var(--ds-fg-disabled)', textTransform: 'uppercase' }}>
+            <span className="ds-caption-tiny" style={{ alignSelf: 'flex-start', color: 'var(--ds-fg-muted)', textTransform: 'uppercase' }}>
               {m.demoLabel}
             </span>
           )}
@@ -228,7 +233,7 @@ function MemoCard({
         >
           {m.generating && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
-              <StatusChip tone="attention">AUDIT IN PROGRESS</StatusChip>
+              <StatusChip tone="attention">Audit in progress</StatusChip>
               <p className="imp-small" style={{ margin: 0 }}>
                 Findings are being validated
               </p>
@@ -244,14 +249,14 @@ function MemoCard({
                       {m.cta.supporting}
                     </p>
                   </div>
-                  <Button variant="primary" size="small" fullWidth iconLeft={CTA_ICON[m.cta.primaryKind]} style={{ whiteSpace: 'nowrap' }} onClick={() => onCta(m.cta.primaryKind)}>
+                  <ButtonLink to={ctaTo(m.cta.primaryKind)} variant="emphasis" size="small" fullWidth iconLeft={CTA_ICON[m.cta.primaryKind]} style={{ whiteSpace: 'nowrap' }}>
                     {m.cta.primaryLabel}
-                  </Button>
+                  </ButtonLink>
                   {m.cta.contextual && (
                     <div className="imp-small" style={{ margin: '-4px 0 0', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                       <span>{m.cta.contextual.text}</span>
                       <span>·</span>
-                      <Link variant="accent" size="small" bold iconRight={<ArrowRightIcon aria-hidden="true" />} onClick={() => onCta('outcome')}>
+                      <Link to={ctaTo('outcome')} variant="accent" size="small" bold iconRight={<ArrowRightIcon aria-hidden="true" />}>
                         {m.cta.contextual.link}
                       </Link>
                     </div>
@@ -259,9 +264,9 @@ function MemoCard({
                 </>
               )}
               <div className="ia-tracker-secondary">
-                <Button variant="emphasis" size="small" iconLeft={<ListBulletIcon aria-hidden="true" />} style={{ whiteSpace: 'nowrap' }} onClick={onOpen}>
+                <ButtonLink to={openTo} size="small" iconLeft={<ListBulletIcon aria-hidden="true" />} style={{ whiteSpace: 'nowrap' }}>
                   Review findings
-                </Button>
+                </ButtonLink>
                 <Link variant="accent" size="small" bold iconLeft={<ArrowDownTrayIcon aria-hidden="true" />} style={{ whiteSpace: 'nowrap' }} onClick={onDownload}>
                   Download credit memo
                 </Link>
@@ -275,7 +280,6 @@ function MemoCard({
 }
 
 export function MemosTab() {
-  const navigate = useNavigate()
   const showToast = useToast()
   const memosQ = useMemos()
   const dlQ = useDownloadState()
@@ -311,9 +315,9 @@ export function MemosTab() {
     }
   }
 
-  const ctaNavigate = (m: MemoCardView, kind: CtaKind) => {
+  const ctaHref = (m: MemoCardView, kind: CtaKind) => {
     const param = { prep: 'prep', draft: 'prep', outcome: 'outcomes', view: 'dispute' }[kind]
-    navigate(`/memos/${m.id}?${param}=1`)
+    return `/memos/${m.id}?${param}=1`
   }
 
   return (
@@ -324,7 +328,7 @@ export function MemosTab() {
           Executive summary
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '18px 0', alignItems: 'stretch' }}>
-          <div style={{ paddingRight: 24, minWidth: 0 }}>
+          <div style={{ paddingInlineEnd: 24, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--ds-fg-brand-muted)' }}>
               <span style={HERO_LABEL}>Total variance identified</span>
               <InfoTip text={VARIANCE_TIP} color="var(--ds-fg-brand-muted)" />
@@ -333,7 +337,7 @@ export function MemosTab() {
               <div
                 style={{
                   ...BIG_NUMBER,
-                  fontSize: 'clamp(22px, 3.2vw, 44px)',
+                  fontSize: 'clamp(25px, 3.2vw, 36px)',
                   color: 'var(--ds-fg-accent)',
                   minWidth: 0,
                   whiteSpace: 'nowrap',
@@ -367,7 +371,7 @@ export function MemosTab() {
               <img src="/brand/credits-check.svg" alt="" style={{ width: 22, height: 22, flex: 'none' }} />
               <span
                 style={{
-                  font: 'var(--ds-weight-semi) clamp(20px, 2vw, 26px) var(--ds-font)',
+                  font: 'var(--ds-weight-semi) clamp(21px, 2vw, 25px)/1.3 var(--ds-font)',
                   fontVariantNumeric: 'tabular-nums',
                   color: 'var(--ds-green-100)',
                   letterSpacing: 'var(--ds-tracking-heading)',
@@ -377,11 +381,11 @@ export function MemosTab() {
                 {fmtMoney(CREDITS_REALIZED)}
               </span>
             </div>
-            <div style={{ ...HERO_LABEL, fontSize: 10, marginTop: 6 }}>Confirmed from ingested Biller credit records</div>
+            <div style={{ ...HERO_LABEL, font: 'var(--ds-weight-medium) 10px/1.16 var(--ds-font)', marginTop: 6 }}>Confirmed from ingested Biller credit records</div>
           </div>
           <div style={{ padding: '0 22px', boxShadow: HERO_DIVIDER, display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
             <div style={HERO_LABEL}>Credit memos ready</div>
-            <div style={{ font: 'var(--ds-weight-semi) 30px var(--ds-font)', fontVariantNumeric: 'tabular-nums' }}>{exec.memosReady}</div>
+            <div style={{ font: 'var(--ds-weight-semi) 30px/1.32 var(--ds-font)', fontVariantNumeric: 'tabular-nums' }}>{exec.memosReady}</div>
           </div>
           <div style={{ padding: '0 22px', boxShadow: HERO_DIVIDER, display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
             <div style={HERO_LABEL}>Reports downloaded</div>
@@ -409,8 +413,8 @@ export function MemosTab() {
         <MemoCard
           key={m.id}
           m={m}
-          onOpen={() => navigate(`/memos/${m.id}`)}
-          onCta={(kind) => ctaNavigate(m, kind)}
+          openTo={`/memos/${m.id}`}
+          ctaTo={(kind) => ctaHref(m, kind)}
           onDownload={() => download(m)}
         />
       ))}

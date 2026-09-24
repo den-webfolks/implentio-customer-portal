@@ -1,6 +1,5 @@
 /** Account-wide Invoices index (template ~1627–1737). */
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { useInvoiceIndex } from '@/data/queries'
 import type { InvoiceIndexRow } from '@/data/source'
@@ -11,7 +10,7 @@ import { ActionTab, ActionTabs } from '@/ui/Tabs/Tabs'
 import { TextField } from '@/ui/Form/TextField'
 import { Link } from '@/ui/Link/Link'
 import { EmptyState } from '@/ui/Display/Display'
-import { Table, SortableHeader, nextSort, type SortDirection } from '@/ui/Table/Table'
+import { Table, TableScroll, SortableHeader, nextSort, type SortDirection } from '@/ui/Table/Table'
 import { useFilters, FilterButton, FilterGroup, matchesFilter, type FilterField, type FilterValues } from '@/ui/Filters/Filters'
 
 const EXCEEDS_TIP =
@@ -42,7 +41,6 @@ function matchesCarrier(values: FilterValues, carriers: readonly string[]): bool
 }
 
 export function InvoicesPage() {
-  const navigate = useNavigate()
   const rowsQ = useInvoiceIndex()
   const [search, setSearch] = useState('')
   const [metric, setMetric] = useState<'all' | 'variance' | 'clear'>('all')
@@ -117,16 +115,17 @@ export function InvoicesPage() {
 
       <div className="db-card" style={{ padding: 0, gap: 0, overflow: 'visible', minHeight: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid var(--ds-stroke-disabled)', flexWrap: 'wrap', flex: 'none' }}>
-          <TextField
-            aria-label="Search invoice number"
-            placeholder="Search invoice number"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            iconLeft={<MagnifyingGlassIcon aria-hidden="true" />}
-            style={{ minWidth: 200 }}
-          />
+          <div style={{ flex: '0 1 252px', minWidth: 0 }}>
+            <TextField
+              aria-label="Search invoice number"
+              placeholder="Search invoice number"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              iconLeft={<MagnifyingGlassIcon aria-hidden="true" />}
+            />
+          </div>
           <FilterButton filters={filters} />
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }} aria-live="polite">
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginInlineStart: 'auto' }} aria-live="polite">
             <span className="imp-small" style={{ margin: 0 }}>
               Showing {rows.length} of {all.length} invoices
             </span>
@@ -137,21 +136,21 @@ export function InvoicesPage() {
             <FilterGroup filters={filters} />
           </div>
         )}
-        <div style={{ overflow: 'auto', maxHeight: 'calc(100vh - 300px)', minHeight: 320 }}>
+        <TableScroll scrollStyle={{ maxHeight: 'calc(100vh - 300px)', minHeight: 320 }}>
           <Table stickyHeader>
             <thead>
               <tr>
                 <th>Invoice</th>
-                <SortableHeader label="Invoice Date" direction={sort} onSort={() => setSort(nextSort)} />
+                <SortableHeader label="Invoice date" direction={sort} onSort={() => setSort(nextSort)} />
                 <th>Biller</th>
                 <th>Carriers</th>
                 <th>Warehouse</th>
-                <th className="num">Original Invoice Total</th>
-                <th className="num">Eligible Parcel Amount Reviewed</th>
-                <th className="num">Packages Reviewed</th>
-                <th>Parcel Review Status</th>
-                <th>Included in Credit Memo</th>
-                <th>Report Period</th>
+                <th className="num">Original invoice total</th>
+                <th className="num">Eligible parcel amount reviewed</th>
+                <th className="num">Packages reviewed</th>
+                <th>Parcel review status</th>
+                <th>Included in credit memo</th>
+                <th>Report period</th>
               </tr>
             </thead>
             <tbody>
@@ -175,7 +174,7 @@ export function InvoicesPage() {
                   </td>
                   <td>
                     {r.memoId ? (
-                      <Link variant="accent" bold onClick={() => navigate(`/memos/${r.memoId}`)}>
+                      <Link to={`/memos/${r.memoId}`} variant="accent" bold>
                         {r.memoId} →
                       </Link>
                     ) : (
@@ -187,7 +186,7 @@ export function InvoicesPage() {
               ))}
             </tbody>
           </Table>
-        </div>
+        </TableScroll>
         {rows.length === 0 && (
           <EmptyState
             title="No invoices match these filters"

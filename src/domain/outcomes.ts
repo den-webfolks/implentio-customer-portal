@@ -183,13 +183,13 @@ export function collectionPill(
       return { label: 'Fully collected', tone: 'success', sub: `Collected on ${fmtDateLong(c.date)}` }
     case 'partial':
       return {
-        label: 'Partially collected',
+        label: 'Partly collected',
         tone: 'attention',
         sub: `${fmtMoney(c.amountN ?? 0)} collected · ${fmtMoney(r2((g.amountN ?? 0) - (c.amountN ?? 0)))} remaining · ${fmtDateLong(c.date)}`,
       }
     case 'not_issued':
       return {
-        label: 'Denied by Biller',
+        label: 'Biller declined',
         tone: 'danger',
         sub: c.date ? `Reported ${fmtDateLong(c.date)}` : '',
       }

@@ -1,16 +1,17 @@
 .outcomeGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  gap: var(--ds-space-3);
 }
 
-@media (max-width: 768px) {
+/* `om` is the outcome modal's disputes list (proto.css .ia-om-root). */
+@container om (max-width: 620px) {
   .outcomeGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 480px) {
+@container om (max-width: 400px) {
   .outcomeGrid {
     grid-template-columns: 1fr;
   }

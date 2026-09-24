@@ -67,7 +67,16 @@
 }
 
 .close {
-  margin: -6px -6px 0 0;
+  margin-block-start: -6px;
+  margin-inline-end: -6px;
+}
+
+.bodyFrame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin: 0 -4px;
 }
 
 .body {
@@ -76,19 +85,48 @@
   gap: 16px;
   min-height: 0;
   overflow: auto;
-  margin: 0 -4px;
   padding: 0 4px;
+}
+
+/* Scroll cues: a fade plus hairline at whichever edge hides content. */
+.bodyFrame::before,
+.bodyFrame::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  z-index: 1;
+  height: 24px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-out);
+}
+
+.bodyFrame::before {
+  top: 0;
+  border-top: 1px solid var(--ds-stroke-disabled);
+  background: linear-gradient(var(--ds-bg-default), transparent);
+}
+
+.bodyFrame::after {
+  bottom: 0;
+  border-bottom: 1px solid var(--ds-stroke-disabled);
+  background: linear-gradient(transparent, var(--ds-bg-default));
+}
+
+.bodyFrame[data-scroll-start]::before,
+.bodyFrame[data-scroll-end]::after {
+  opacity: 1;
 }
 
 .footer {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--ds-space-3);
 }
 
 .footerEnd {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-left: auto;
+  gap: var(--ds-space-3);
+  margin-inline-start: auto;
 }

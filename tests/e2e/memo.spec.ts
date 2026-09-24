@@ -71,6 +71,6 @@ test('memo invoices tab filters by metric segments', async ({ page }) => {
 test('updated-v2 scenario shows the change banner and superseded version', async ({ page }) => {
   await page.goto('/memos/CM-2026-0531?scenario=updated-v2&demo=1')
   await expect(page.getByText('What changed:')).toBeVisible()
-  await page.getByRole('button', { name: 'Activity & exports' }).click()
+  await page.getByRole('link', { name: 'Activity & exports' }).click()
   await expect(page.getByText('Version 1 · Superseded')).toBeVisible()
 })

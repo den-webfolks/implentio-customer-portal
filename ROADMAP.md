@@ -25,7 +25,9 @@ DESIGN-SYSTEM.md.
 
 **2b — layouts.** Page shells, grids, containers, page headings, sidebar,
 section spacing and responsive composition move to the Figma design
-language. Also the moment to re-enable axe colour-contrast checks.
+language. Already landed early (interface review, 2026-09-24): the compact
+shell with a navigation drawer, container-query breakpoints, table scroll
+cues, and axe colour-contrast checks (re-enabled and passing).
 
 ## Phase 3 — Supabase + auth
 

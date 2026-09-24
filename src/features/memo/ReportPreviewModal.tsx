@@ -6,7 +6,7 @@ import { Modal } from '@/ui/Modal/Modal'
 import { Button } from '@/ui/Button/Button'
 import { StatusChip } from '@/ui/Chip/StatusChip'
 import { Statistic } from '@/ui/Display/Display'
-import { Table } from '@/ui/Table/Table'
+import { Table, TableScroll } from '@/ui/Table/Table'
 
 const cell = (n: number) => (Math.abs(n) < 0.005 ? '—' : fmtMoney(n))
 
@@ -30,23 +30,23 @@ export function ReportPreviewModal({
       description={`${memo.id} — Summary · ${memo.version}`}
       footer={
         <Button iconLeft={<ArrowDownTrayIcon aria-hidden="true" />} onClick={onDownload}>
-          Download Credit Memo
+          Download credit memo
         </Button>
       }
     >
       <div>
-        <StatusChip tone="muted">PDF Preview</StatusChip>
+        <StatusChip tone="muted">PDF preview</StatusChip>
       </div>
       <div style={{ background: 'var(--ds-bg-default)', border: '1px solid var(--ds-stroke-disabled)', borderRadius: 'var(--ds-radius-large)', padding: '28px 32px', boxShadow: 'var(--ds-shadow-popover)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, borderBottom: '1px solid var(--ds-stroke-emphasis)', paddingBottom: 16 }}>
           <div>
             <img src="/brand/implentio-wordmark.svg" alt="Implentio" style={{ height: 18, marginBottom: 10 }} />
-            <div className="ds-heading-small">Credit Memo Summary</div>
+            <div className="ds-heading-small">Credit memo summary</div>
             <div className="imp-small" style={{ margin: '4px 0 0' }}>
               Prepared for Implentio · {memo.id} · {memo.period} · {memo.version}
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
+          <div style={{ textAlign: 'end' }}>
             <Statistic bare size="large" type="accent" label="Total variance" value={memo.netN == null ? '—' : fmtMoney(memo.netN)} />
           </div>
         </div>
@@ -55,7 +55,7 @@ export function ReportPreviewModal({
             <div className="db-eyebrow" style={{ marginBottom: 8 }}>
               {mo.name}
             </div>
-            <div style={{ overflowX: 'auto' }}>
+            <TableScroll>
               <Table style={{ minWidth: 720 }}>
                 <thead>
                   <tr>
@@ -81,7 +81,7 @@ export function ReportPreviewModal({
                       <td className="num">{cell(row.peak)}</td>
                       <td className="num">{fmtMoney(row.invN)}</td>
                       <td className="num">{fmtMoney(row.expN)}</td>
-                      <td className="num" style={row.varN > 0.005 ? { color: 'var(--ds-fg-accent)', fontWeight: 600 } : undefined}>
+                      <td className="num" style={row.varN > 0.005 ? { color: 'var(--ds-fg-accent-text)', fontWeight: 600 } : undefined}>
                         {posMoney(row.varN)}
                       </td>
                     </tr>
@@ -99,10 +99,10 @@ export function ReportPreviewModal({
                   </tr>
                 </tbody>
               </Table>
-            </div>
+            </TableScroll>
           </div>
         ))}
-        <p className="ds-body-small" style={{ margin: '22px 0 0', color: 'var(--ds-fg-disabled)' }}>
+        <p className="ds-body-small" style={{ margin: '22px 0 0', color: 'var(--ds-fg-muted)' }}>
           Amounts represent audited variance for the period. This summary is a report preview and does not constitute an approved or submitted credit.
         </p>
       </div>

@@ -200,7 +200,7 @@
 }
 
 .statAccent .statValue {
-  color: var(--ds-fg-accent);
+  color: var(--ds-fg-accent-text);
 }
 
 .statSub {

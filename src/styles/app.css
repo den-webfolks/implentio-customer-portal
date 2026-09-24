@@ -14,6 +14,7 @@ body {
   font-weight: var(--ds-weight-regular);
   letter-spacing: var(--ds-tracking-body);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 button,
@@ -29,7 +30,8 @@ a {
   text-decoration: none;
 }
 
-a:hover {
+/* Bare anchors only — styled links (Link, ButtonLink, nav items) own their hover colour. */
+a:not([class]):hover {
   color: var(--ds-fg-dark-brand-emphasis);
 }
 
@@ -43,4 +45,16 @@ a:hover {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* Forced-colors (Windows High Contrast) drops box-shadows and repaints
+   borders/backgrounds, which is how the Figma focus rings and highlighted
+   menu/select items are drawn. Give every focus stop and highlighted item
+   a system-colour outline there. */
+@media (forced-colors: active) {
+  :focus-visible,
+  [data-highlighted] {
+    outline: 2px solid Highlight !important;
+    outline-offset: 2px;
+  }
 }

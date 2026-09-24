@@ -43,9 +43,11 @@ decisions, PRODUCT.md for the mined requirements, ROADMAP.md for phases.
    Fix a shared component rather than adding per-screen overrides. Icons are
    Heroicons (`@heroicons/react`).
 4. **Components now, layouts later:** until Phase 2b, don't redesign page
-   layout, grids, section spacing, page headers, or the sidebar. Don't change
-   copy or flows unless Figma guidance requires it — record such changes in
-   DESIGN-SYSTEM.md.
+   layout, grids, section spacing, or page headers. The responsive shell
+   (compact nav below 720px) and container-query breakpoints already landed —
+   adapt page helpers to the `page` container, not the viewport. Don't change
+   copy or flows unless Figma guidance or the user requires it — record such
+   changes in DESIGN-SYSTEM.md.
 5. The prototype in `prototype/` is a frozen reference — never edit it.
 
 ## Demo/scenario harness (temporary infrastructure)

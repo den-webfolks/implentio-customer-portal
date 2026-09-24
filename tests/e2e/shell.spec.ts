@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test('sidebar collapses to the rail and persists the preference', async ({ page }) => {
   await page.goto('/tracker/memos')
-  await expect(page.getByRole('button', { name: 'Parcel Credit Memos' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Parcel Credit Memos' })).toBeVisible()
   await page.getByLabel('Collapse navigation').click()
   await expect(page.getByLabel('Expand navigation', { exact: true })).toBeVisible()
   await page.reload()
@@ -31,9 +31,9 @@ test('profile menu opens, closes on Escape, and logout shows the signed-out card
   await page.goto('/tracker/memos')
   const trigger = page.getByRole('button', { name: /Tori Matthews/ })
   await trigger.click()
-  await expect(page.getByRole('menuitem', { name: 'Account Settings' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Account settings' })).toBeVisible()
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('menuitem', { name: 'Account Settings' })).toHaveCount(0)
+  await expect(page.getByRole('menuitem', { name: 'Account settings' })).toHaveCount(0)
   await expect(trigger).toBeFocused()
   await trigger.click()
   await page.getByRole('menuitem', { name: 'Log out' }).click()

@@ -12,7 +12,7 @@ import { Banner } from '@/ui/Banner/Banner'
 import { StatusChip } from '@/ui/Chip/StatusChip'
 import { EmptyState, Spinner } from '@/ui/Display/Display'
 import { Select } from '@/ui/Form/Select'
-import { Table } from '@/ui/Table/Table'
+import { Table, TableScroll } from '@/ui/Table/Table'
 import { FilterButton, FilterGroup, useFilters, type FilterField, type FilterValues } from '@/ui/Filters/Filters'
 import { useDisputeContext, useSetDisputeDraft, useIncludeInAnotherRequest } from './api'
 import { CHARGE_DEFS, FINDING_FILTER_KEYS, filterGroups, memoRollupRows, nextStepCard, recoveryStatus, serviceList, titleCase } from './derive'
@@ -40,7 +40,7 @@ const EYEBROW_ACCENT: CSSProperties = {
   font: 'var(--ds-weight-semi) 12px/1.3 var(--ds-font)',
   letterSpacing: 'var(--ds-tracking-caption)',
   textTransform: 'uppercase',
-  color: 'var(--ds-fg-accent)',
+  color: 'var(--ds-fg-accent-text)',
 }
 
 const SURFACE_BORDER = '1px solid var(--ds-stroke-disabled)'
@@ -122,7 +122,10 @@ export function SummaryTab({
   const scrollToFinding = (anchor: string) => {
     const el = document.getElementById(anchor)
     if (!el) return
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const reduceMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+    // Move focus with the view so keyboard and screen-reader users land on the finding.
+    el.focus({ preventScroll: true })
     el.classList.remove('ia-flash')
     requestAnimationFrame(() => el.classList.add('ia-flash'))
     setTimeout(() => el.classList.remove('ia-flash'), 1500)
@@ -156,16 +159,16 @@ export function SummaryTab({
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10, padding: '28px 30px', minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span style={EYEBROW_ACCENT}>Total variance identified</span>
-              <InfoTip text={VARIANCE_TIP} color="var(--ds-fg-accent)" />
+              <InfoTip text={VARIANCE_TIP} color="var(--ds-fg-accent-text)" />
             </div>
-            <div style={{ font: 'var(--ds-weight-semi) clamp(34px, 3.6vw, 48px)/1.05 var(--ds-font)', fontVariantNumeric: 'tabular-nums', letterSpacing: 'var(--ds-tracking-heading)', color: 'var(--ds-fg-accent)', whiteSpace: 'nowrap' }}>
+            <div style={{ font: 'var(--ds-weight-semi) clamp(34px, 3.6vw, 48px)/1.05 var(--ds-font)', fontVariantNumeric: 'tabular-nums', letterSpacing: 'var(--ds-tracking-heading)', color: 'var(--ds-fg-accent-text)', whiteSpace: 'nowrap' }}>
               {memo.netN == null ? '—' : fmtMoney(memo.netN)}
             </div>
             <div className="ds-body-base ds-muted">
               Found across {memo.orders?.toLocaleString('en-US') ?? '—'} packages on {memo.invoices ?? '—'} invoices
             </div>
             {memo.invoicesNoVariance != null && memo.invoicesNoVariance > 0 && (
-              <div className="ds-body-small" style={{ color: 'var(--ds-fg-disabled)' }}>
+              <div className="ds-body-small" style={{ color: 'var(--ds-fg-muted)' }}>
                 {auditedInvoices} invoices audited · {memo.invoicesNoVariance} had no significant variance
               </div>
             )}
@@ -173,7 +176,7 @@ export function SummaryTab({
               <div style={{ borderTop: SURFACE_BORDER, marginTop: 6, paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={EYEBROW_ACCENT}>{recovery.eyebrow}</span>
-                  <InfoTip text={RECOVERY_TIP} color="var(--ds-fg-accent)" />
+                  <InfoTip text={RECOVERY_TIP} color="var(--ds-fg-accent-text)" />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
                   <div style={{ position: 'relative', width: 120, height: 120, flex: 'none' }}>
@@ -205,14 +208,14 @@ export function SummaryTab({
               </div>
             )}
           </div>
-          <div className="ia-memo-rollup" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '22px 26px 20px', background: 'var(--ds-bg-default)', borderLeft: SURFACE_BORDER, minWidth: 0 }}>
+          <div className="ia-memo-rollup" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '22px 26px 20px', background: 'var(--ds-bg-default)', borderInlineStart: SURFACE_BORDER, minWidth: 0 }}>
             <div>
               <div className="ds-heading-tiny">Variance groups in this credit memo</div>
               <p className="imp-small" style={{ margin: '4px 0 0' }}>
                 See how the total variance is distributed across the groups explained below.
               </p>
             </div>
-            <div style={{ overflowX: 'auto' }}>
+            <TableScroll>
               <Table style={{ minWidth: 520 }}>
                 <thead>
                   <tr>
@@ -230,7 +233,7 @@ export function SummaryTab({
                           {r.title}
                         </Link>
                       </td>
-                      <td className="num" style={{ color: 'var(--ds-fg-accent)', fontWeight: 600 }}>
+                      <td className="num" style={{ color: 'var(--ds-fg-accent-text)', fontWeight: 600 }}>
                         {r.amount}
                       </td>
                       <td className="num">{r.packages}</td>
@@ -239,7 +242,7 @@ export function SummaryTab({
                   ))}
                   <tr className="total-row">
                     <td>Total</td>
-                    <td className="num" style={{ color: 'var(--ds-fg-accent)' }}>
+                    <td className="num" style={{ color: 'var(--ds-fg-accent-text)' }}>
                       {memo.netN == null ? '—' : fmtMoney(memo.netN)}
                     </td>
                     <td className="num">{memo.orders?.toLocaleString('en-US') ?? '—'}</td>
@@ -247,8 +250,8 @@ export function SummaryTab({
                   </tr>
                 </tbody>
               </Table>
-            </div>
-            <p className="ds-body-small" style={{ margin: 0, color: 'var(--ds-fg-disabled)' }}>
+            </TableScroll>
+            <p className="ds-body-small" style={{ margin: 0, color: 'var(--ds-fg-muted)' }}>
               Invoice counts are distinct per group; one invoice can appear in several groups, so the rows do not sum.
             </p>
           </div>
@@ -262,7 +265,7 @@ export function SummaryTab({
             </div>
             <div className="ds-heading-xlarge">{auditedInvoices} invoices audited</div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6, padding: '22px 26px', background: 'var(--ds-bg-default)', borderLeft: SURFACE_BORDER }}>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6, padding: '22px 26px', background: 'var(--ds-bg-default)', borderInlineStart: SURFACE_BORDER }}>
             <div className="ds-heading-tiny">All clear</div>
             <p className="imp-small" style={{ margin: 0 }}>
               All {auditedInvoices} invoices in this audit were reviewed and were within the significant-variance threshold.
@@ -380,7 +383,7 @@ export function SummaryTab({
               onValueChange={setHl}
               options={[{ value: NO_HIGHLIGHT, label: 'All charges' }, ...CHARGE_DEFS.map((c) => ({ value: c[0], label: `Highlight ${c[2].toLowerCase()}` }))]}
             />
-            <span className="imp-small" style={{ margin: 0, marginLeft: 'auto' }} aria-live="polite">
+            <span className="imp-small" style={{ margin: 0, marginInlineStart: 'auto' }} aria-live="polite">
               Showing {groupsFiltered.length} of {groups.length} findings
             </span>
           </div>
@@ -427,14 +430,14 @@ export function SummaryTab({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap', padding: '12px 16px', border: SURFACE_BORDER, borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-bg-brand-disabled)' }}>
           <div className="ds-body-base">
             Total variance in this report{' '}
-            <strong style={{ color: 'var(--ds-fg-accent)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{memo.netN == null ? '—' : fmtMoney(memo.netN)}</strong>
+            <strong style={{ color: 'var(--ds-fg-accent-text)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{memo.netN == null ? '—' : fmtMoney(memo.netN)}</strong>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 'var(--ds-space-3)', flexWrap: 'wrap' }}>
             <Button size="small" onClick={onDownloadExcel}>
-              Download Credit Memo
+              Download credit memo
             </Button>
-            <Button size="small" variant="primary" onClick={() => setReportOpen(true)}>
-              Review Summary
+            <Button size="small" variant="emphasis" onClick={() => setReportOpen(true)}>
+              Review summary
             </Button>
           </div>
         </div>

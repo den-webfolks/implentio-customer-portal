@@ -43,7 +43,7 @@ export function trackerDisputeCta(input: {
     if (!memoDisputeStatus)
       return {
         key: 'ready',
-        statusLabel: 'READY TO DISPUTE',
+        statusLabel: 'Ready to dispute',
         color: 'purple',
         supporting: 'No dispute has been started.',
         primaryKind: 'prep',
@@ -52,7 +52,7 @@ export function trackerDisputeCta(input: {
     if (memoDisputeStatus === 'awaiting')
       return {
         key: 'awaiting',
-        statusLabel: 'AWAITING BILLER RESPONSE',
+        statusLabel: 'Awaiting Biller response',
         color: 'amber',
         supporting: 'Awaiting a response from your biller.',
         primaryKind: 'outcome',
@@ -60,7 +60,7 @@ export function trackerDisputeCta(input: {
       }
     return {
       key: 'completed',
-      statusLabel: 'DISPUTE COMPLETED',
+      statusLabel: 'Dispute completed',
       color: 'green',
       supporting: 'This dispute has been finalized.',
       primaryKind: 'view',
@@ -87,7 +87,7 @@ export function trackerDisputeCta(input: {
   if (hasDraft)
     return {
       key: 'draft',
-      statusLabel: 'DISPUTE DRAFT',
+      statusLabel: 'Dispute draft',
       color: 'purple',
       supporting: `Started ${draftDate ?? fmtDateShort(now)} · Not yet sent.`,
       primaryKind: 'draft',
@@ -96,7 +96,7 @@ export function trackerDisputeCta(input: {
   if (eligible.length && pursued.length)
     return {
       key: 'more',
-      statusLabel: 'MORE FINDINGS AVAILABLE',
+      statusLabel: 'More findings available',
       color: 'purple',
       supporting: `${fmtCount(eligible.length)} ${eligible.length === 1 ? 'has' : 'have'} not been submitted.`,
       primaryKind: 'prep',
@@ -109,7 +109,7 @@ export function trackerDisputeCta(input: {
   if (eligible.length)
     return {
       key: 'ready',
-      statusLabel: 'READY TO DISPUTE',
+      statusLabel: 'Ready to dispute',
       color: 'purple',
       supporting: 'No dispute has been started.',
       primaryKind: 'prep',
@@ -118,7 +118,7 @@ export function trackerDisputeCta(input: {
   if (awaitingCount === 0)
     return {
       key: 'completed',
-      statusLabel: 'DISPUTE COMPLETED',
+      statusLabel: 'Dispute completed',
       color: 'green',
       supporting: `${pursued.length} of ${pursued.length} findings finalized.`,
       primaryKind: 'view',
@@ -127,7 +127,7 @@ export function trackerDisputeCta(input: {
   if (finalizedCount > 0)
     return {
       key: 'partial',
-      statusLabel: 'OUTCOMES PARTIALLY RECORDED',
+      statusLabel: 'Outcomes partly recorded',
       color: 'amber',
       supporting: `${finalizedCount} of ${pursued.length} findings finalized.`,
       primaryKind: 'outcome',
@@ -135,7 +135,7 @@ export function trackerDisputeCta(input: {
     }
   return {
     key: 'awaiting',
-    statusLabel: 'AWAITING BILLER RESPONSE',
+    statusLabel: 'Awaiting Biller response',
     color: 'amber',
     supporting: `${fmtCount(awaitingCount)} awaiting an outcome.`,
     primaryKind: 'outcome',
@@ -184,7 +184,7 @@ function dlAttribution(ev: DownloadEvent | undefined): string | null {
 
 const DEFAULT_CTA: TrackerCta = {
   key: 'ready',
-  statusLabel: 'READY TO DISPUTE',
+  statusLabel: 'Ready to dispute',
   color: 'purple',
   supporting: 'No dispute has been started.',
   primaryKind: 'prep',
@@ -384,7 +384,7 @@ const DONUT_DEFS: { key: DispositionKey; label: string; color: string }[] = [
   { key: 'eligible', label: 'Eligible to pursue', color: TONE_CHART_COLOR.neutral },
   { key: 'awaiting', label: 'Awaiting outcome', color: TONE_CHART_COLOR.info },
   { key: 'collected', label: 'Collected', color: TONE_CHART_COLOR.success },
-  { key: 'denied', label: 'Denied by Biller', color: TONE_CHART_COLOR.danger },
+  { key: 'denied', label: 'Biller declined', color: TONE_CHART_COLOR.danger },
 ]
 
 export function dispositionDonut(rows: readonly OutcomeRow[]): DonutData {

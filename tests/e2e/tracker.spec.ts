@@ -32,12 +32,12 @@ test('outcomes tab slices filter the findings table', async ({ page }) => {
 test('a denied finding exposes its reason inline', async ({ page }) => {
   await page.goto('/tracker/outcomes')
   await page.getByRole('button', { name: 'View reason' }).click()
-  await expect(page.getByText('Why the credit was not issued')).toBeVisible()
+  await expect(page.getByText('Why the Biller declined')).toBeVisible()
   await expect(page.getByText(/contract addendum/)).toBeVisible()
 })
 
 test('scenario dispute-finalized changes the golden memo CTA', async ({ page }) => {
   await page.goto('/tracker/memos?scenario=dispute-finalized&demo=1')
-  await expect(page.getByText('DISPUTE COMPLETED')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'View dispute details' })).toBeVisible()
+  await expect(page.getByText('Dispute completed')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'View dispute details' })).toBeVisible()
 })

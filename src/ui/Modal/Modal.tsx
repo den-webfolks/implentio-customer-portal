@@ -7,6 +7,7 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { IconButton } from '../Button/Button'
+import { useScrollEdges } from '../useScrollEdges'
 import styles from './Modal.module.css'
 
 export type ModalSize = 'medium' | 'large'
@@ -33,6 +34,7 @@ export function Modal({ open, onClose, title, description, size = 'medium', widt
   // Controlled dialogs have no Radix Trigger, so remember the opener and
   // return focus to it on close.
   const openerRef = useRef<HTMLElement | null>(null)
+  const [bodyRef, edges] = useScrollEdges('y')
   useEffect(() => {
     if (open && document.activeElement instanceof HTMLElement) {
       openerRef.current = document.activeElement
@@ -66,7 +68,12 @@ export function Modal({ open, onClose, title, description, size = 'medium', widt
                 <IconButton className={styles.close} ghost aria-label="Close" icon={<XMarkIcon aria-hidden="true" />} disabled={dismissDisabled} />
               </Dialog.Close>
             </div>
-            <div className={styles.body}>{children}</div>
+            {/* Fades + hairlines at the body's edges show when content is scrolled out of view. */}
+            <div className={styles.bodyFrame} data-scroll-start={edges.start || undefined} data-scroll-end={edges.end || undefined}>
+              <div ref={bodyRef} className={styles.body}>
+                {children}
+              </div>
+            </div>
             {(footer || footerStart) && (
               <div className={styles.footer}>
                 {footerStart}

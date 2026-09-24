@@ -1,15 +1,9 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 
-/**
- * Axe scans on every Phase-1 route and key overlay states.
- * color-contrast is excluded: Phase 1 reproduces the prototype's palette
- * verbatim (parity constraint); contrast fixes belong to the Phase 2
- * design-system pass.
- */
+/** Axe scans on every route and key overlay states, desktop and compact width. */
 const scan = (page: import('@playwright/test').Page) =>
   new AxeBuilder({ page })
-    .disableRules(['color-contrast'])
     .analyze()
     .then((r) => r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical'))
 
@@ -50,4 +44,23 @@ test('axe: invite modal open', async ({ page }) => {
   await page.getByRole('button', { name: 'Invite member' }).click()
   await expect(page.getByRole('dialog', { name: 'Invite team member' })).toBeVisible()
   expect(await scan(page)).toEqual([])
+})
+
+test.describe('compact shell (375px)', () => {
+  test.use({ viewport: { width: 375, height: 800 } })
+
+  for (const route of ['/tracker/memos', '/memos/CM-2026-0630', '/account']) {
+    test(`axe: ${route}`, async ({ page }) => {
+      await page.goto(route)
+      await page.waitForLoadState('networkidle')
+      expect(await scan(page)).toEqual([])
+    })
+  }
+
+  test('axe: navigation drawer open', async ({ page }) => {
+    await page.goto('/tracker/memos')
+    await page.getByRole('button', { name: 'Open navigation' }).click()
+    await expect(page.getByRole('dialog', { name: 'Navigation' })).toBeVisible()
+    expect(await scan(page)).toEqual([])
+  })
 })

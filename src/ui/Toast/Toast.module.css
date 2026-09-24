@@ -3,7 +3,7 @@
 .toast {
   position: fixed;
   bottom: 24px;
-  right: 24px;
+  inset-inline-end: 24px;
   z-index: var(--ds-z-toast);
   display: flex;
   align-items: center;

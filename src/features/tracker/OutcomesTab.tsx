@@ -1,17 +1,16 @@
 /** Parcel Credit Tracker — Credit Outcomes tab (template ~1406–1563). */
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
 import { ArrowRightIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline'
 import { fmtMoney } from '@/domain/money'
 import { fmtDateLong } from '@/domain/dates'
 import { collectionPill, outcomesBy3pl } from '@/domain/outcomes'
 import type { OutcomeRow } from '@/data/source'
-import { Button } from '@/ui/Button/Button'
+import { Button, ButtonLink } from '@/ui/Button/Button'
 import { Link } from '@/ui/Link/Link'
 import { StatusChip } from '@/ui/Chip/StatusChip'
 import { EmptyState } from '@/ui/Display/Display'
 import { ActionTab, ActionTabs, type ActionTabType } from '@/ui/Tabs/Tabs'
-import { Table } from '@/ui/Table/Table'
+import { Table, TableScroll } from '@/ui/Table/Table'
 import {
   FilterButton,
   FilterGroup,
@@ -42,7 +41,7 @@ const METRIC_DEFS: { key: SliceFilter; label: string; type: ActionTabType }[] = 
   { key: 'eligible', label: 'Eligible to pursue', type: 'neutral' },
   { key: 'awaiting', label: 'Awaiting outcome', type: 'neutral' },
   { key: 'collected', label: 'Collected', type: 'positive' },
-  { key: 'denied', label: 'Denied by Biller', type: 'negative' },
+  { key: 'denied', label: 'Biller declined', type: 'negative' },
 ]
 
 const PURSUIT_OPTIONS = [
@@ -52,9 +51,9 @@ const PURSUIT_OPTIONS = [
 
 const OUTCOME_OPTIONS = [
   { value: 'awaiting', label: 'Awaiting outcome' },
-  { value: 'partial', label: 'Partially collected' },
+  { value: 'partial', label: 'Partly collected' },
   { value: 'full', label: 'Fully collected' },
-  { value: 'not_issued', label: 'Denied by Biller' },
+  { value: 'not_issued', label: 'Biller declined' },
 ]
 
 function sameValues(a: readonly string[] | undefined, b: readonly string[] | undefined): boolean {
@@ -64,7 +63,6 @@ function sameValues(a: readonly string[] | undefined, b: readonly string[] | und
 }
 
 export function OutcomesTab() {
-  const navigate = useNavigate()
   const rowsQ = useOutcomeRows()
   const [filterValues, setFilterValues] = useState<FilterValues>(EMPTY_FILTERS)
   const [disposition, setDisposition] = useState<SliceFilter>('all')
@@ -179,10 +177,6 @@ export function OutcomesTab() {
   const groupClearVisible = filters.expanded && activeFilterCount(shownValues) > 0
   const showClearAll = activeCount > 0 && !groupClearVisible
 
-  const openMemo = (memoId: string, pursued: boolean) => {
-    void pursued
-    navigate(`/memos/${memoId}`)
-  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -246,7 +240,7 @@ export function OutcomesTab() {
                 <div className="ds-caption-tiny" style={{ color: 'var(--ds-fg-muted)', textTransform: 'uppercase' }}>
                   Total identified
                 </div>
-                <div style={{ font: 'var(--ds-weight-semi) 22px var(--ds-font)', color: 'var(--ds-fg-default)', fontVariantNumeric: 'tabular-nums' }}>
+                <div style={{ font: 'var(--ds-weight-semi) 21px/1.32 var(--ds-font)', color: 'var(--ds-fg-default)', fontVariantNumeric: 'tabular-nums' }}>
                   {donut.total}
                 </div>
               </div>
@@ -264,7 +258,7 @@ export function OutcomesTab() {
                 >
                   <span style={{ width: 11, height: 11, borderRadius: 'var(--ds-radius-full)', background: s.color, flex: 'none', marginTop: 3 }} />
                   <span style={{ flex: '1 1 auto', minWidth: 0 }}>
-                    <span style={{ display: 'block', font: 'var(--ds-weight-semi) 13px var(--ds-font)', color: 'var(--ds-fg-default)' }}>{s.label}</span>
+                    <span style={{ display: 'block', font: 'var(--ds-weight-semi) 14px/1.46 var(--ds-font)', color: 'var(--ds-fg-default)' }}>{s.label}</span>
                     <span className="imp-small" style={{ display: 'block', margin: 0 }}>
                       {s.amount} · {s.pct}
                     </span>
@@ -287,7 +281,7 @@ export function OutcomesTab() {
           {showClearAll && (
             <Button
               size="small"
-              style={{ marginLeft: 'auto' }}
+              style={{ marginInlineStart: 'auto' }}
               onClick={() => {
                 setFilterValues(EMPTY_FILTERS)
                 setDisposition('all')
@@ -313,7 +307,7 @@ export function OutcomesTab() {
 
       {/* Findings table */}
       <div className="db-card" style={{ gap: 0, padding: 0 }}>
-        <div style={{ overflowX: 'auto' }}>
+        <TableScroll>
           <Table>
             <thead>
               <tr>
@@ -342,12 +336,12 @@ export function OutcomesTab() {
                   canExpand={canExpand}
                   notesOpen={notesOpen}
                   onToggleNotes={() => setOpenNotesId((cur) => (cur === g.id ? null : g.id))}
-                  onOpenMemo={() => openMemo(g.memoId, g.pursuit === 'pursued')}
+                  memoTo={`/memos/${g.memoId}`}
                 />
               ))}
             </tbody>
           </Table>
-        </div>
+        </TableScroll>
       </div>
 
       {/* Biller credit outcomes */}
@@ -356,7 +350,7 @@ export function OutcomesTab() {
         <p className="imp-small" style={{ margin: 0 }}>
           Which findings your biller accepts or rejects, by Biller and variance-group category.
         </p>
-        <div style={{ overflowX: 'auto' }}>
+        <TableScroll>
           <Table>
             <thead>
               <tr>
@@ -364,8 +358,8 @@ export function OutcomesTab() {
                 <th>Variance group</th>
                 <th className="num">Amount pursued</th>
                 <th className="num">Amount collected</th>
-                <th className="num">Fully / partially collected</th>
-                <th className="num">Credit not issued</th>
+                <th className="num">Fully / partly collected</th>
+                <th className="num">Biller declined</th>
                 <th className="num">Collection rate</th>
               </tr>
             </thead>
@@ -383,7 +377,7 @@ export function OutcomesTab() {
               ))}
             </tbody>
           </Table>
-        </div>
+        </TableScroll>
       </div>
     </div>
   )
@@ -397,7 +391,7 @@ function RowGroup({
   canExpand,
   notesOpen,
   onToggleNotes,
-  onOpenMemo,
+  memoTo,
 }: {
   g: OutcomeRow
   ci: ReturnType<typeof collectionPill>
@@ -406,7 +400,7 @@ function RowGroup({
   canExpand: boolean
   notesOpen: boolean
   onToggleNotes: () => void
-  onOpenMemo: () => void
+  memoTo: string
 }) {
   const chevron = notesOpen ? <ChevronUpIcon aria-hidden="true" /> : <ChevronDownIcon aria-hidden="true" />
   return (
@@ -421,19 +415,27 @@ function RowGroup({
             g.title
           )}
         </td>
-        <td className="ds-muted">{g.memoId}</td>
+        <td className="ds-muted nowrap">{g.memoId}</td>
         <td className="ds-muted">{g.threePl || DASH}</td>
         <td className="num">{fmtMoney(g.amountN ?? 0)}</td>
         <td className="num">{g.pursuit === 'pursued' ? fmtMoney(g.amountN ?? 0) : DASH}</td>
         <td className="num">{g.collection?.amountN != null ? fmtMoney(g.collection.amountN) : DASH}</td>
-        <td className="ds-muted">{g.disputeDeadline ? fmtDateLong(g.disputeDeadline) : DASH}</td>
-        <td className="ds-muted">
-          {g.pursuit === 'pursued' ? `${g.threePl || 'Biller'} dispute · ${g.pursuedAt ?? DASH}` : DASH}
+        <td className="ds-muted nowrap">{g.disputeDeadline ? fmtDateLong(g.disputeDeadline) : DASH}</td>
+        <td className="ds-muted nowrap">
+          {g.pursuit === 'pursued' ? (
+            <>
+              {g.threePl || 'Biller'} dispute
+              <br />
+              {g.pursuedAt ?? DASH}
+            </>
+          ) : (
+            DASH
+          )}
         </td>
         <td>
           <StatusChip tone={ci ? ci.tone : 'neutral'}>{ci ? ci.label : 'Eligible to pursue'}</StatusChip>
         </td>
-        <td className="ds-muted">{g.collection?.date ? fmtDateLong(g.collection.date) : DASH}</td>
+        <td className="ds-muted nowrap">{g.collection?.date ? fmtDateLong(g.collection.date) : DASH}</td>
         <td>
           {reason ? (
             <Link variant="accent" size="small" bold iconRight={chevron} aria-expanded={notesOpen} onClick={onToggleNotes}>
@@ -446,16 +448,16 @@ function RowGroup({
           )}
         </td>
         <td>
-          <Button size="small" iconRight={<ArrowRightIcon aria-hidden="true" />} style={{ whiteSpace: 'nowrap' }} onClick={onOpenMemo}>
+          <ButtonLink to={memoTo} size="small" iconRight={<ArrowRightIcon aria-hidden="true" />} style={{ whiteSpace: 'nowrap' }}>
             {g.pursuit === 'pursued' ? 'View dispute' : 'Review finding'}
-          </Button>
+          </ButtonLink>
         </td>
       </tr>
       {notesOpen && reason && (
         <tr>
           <td colSpan={12} style={{ background: 'var(--ds-bg-disabled)', padding: '14px 16px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: '70ch' }}>
-              <span style={{ font: 'var(--ds-weight-semi) 12px var(--ds-font)', color: 'var(--ds-fg-muted)' }}>Why the credit was not issued</span>
+              <span style={{ font: 'var(--ds-weight-semi) 12px/1.64 var(--ds-font)', color: 'var(--ds-fg-muted)' }}>Why the Biller declined</span>
               <p className="ds-body-base" style={{ margin: 0, color: 'var(--ds-fg-default)' }}>
                 “{reason.text}”
               </p>

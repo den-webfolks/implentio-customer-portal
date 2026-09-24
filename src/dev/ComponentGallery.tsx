@@ -1,8 +1,8 @@
 /* Dev-only component gallery: every shared UI component rendered in
    isolation with its variants and states. Demo state stays local. */
 import { useState, type ReactNode } from 'react'
-import { ArrowDownTrayIcon, EnvelopeIcon, MagnifyingGlassIcon, PaperAirplaneIcon, PlusIcon, TrashIcon, XMarkIcon, ChevronDownIcon, CheckIcon, NoSymbolIcon, ClockIcon } from '@heroicons/react/24/outline'
-import { Button, IconButton } from '@/ui/Button/Button'
+import { ArrowDownTrayIcon, EnvelopeIcon, MagnifyingGlassIcon, PaperAirplaneIcon, PlusIcon, TrashIcon, XMarkIcon, ChevronDownIcon, CheckIcon, NoSymbolIcon, ClockIcon, ListBulletIcon } from '@heroicons/react/24/outline'
+import { Button, ButtonLink, IconButton } from '@/ui/Button/Button'
 import { Link } from '@/ui/Link/Link'
 import { TextField, TextArea } from '@/ui/Form/TextField'
 import { Select } from '@/ui/Form/Select'
@@ -15,7 +15,7 @@ import { useToast } from '@/ui/Toast/ToastProvider'
 import { Banner } from '@/ui/Banner/Banner'
 import { Tabs, ActionTab, ActionTabs } from '@/ui/Tabs/Tabs'
 import { Stepper, Avatar, Statistic, StatisticGroup, EmptyState, Spinner } from '@/ui/Display/Display'
-import { Table, SortableHeader, ValueDiff, nextSort, type SortDirection } from '@/ui/Table/Table'
+import { Table, TableScroll, SortableHeader, ValueDiff, nextSort, type SortDirection } from '@/ui/Table/Table'
 import { useFilters, FilterButton, FilterGroup, matchesFilter, type FilterField, type FilterValues } from '@/ui/Filters/Filters'
 
 const SECTIONS = [
@@ -180,11 +180,11 @@ export function ComponentGallery() {
         ))}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {TEXT_STYLES.map(([cls, name]) => (
-            <div key={cls} style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
+            <div key={cls} style={{ display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
               <code className="ds-body-small ds-muted" style={{ width: 160, flex: 'none' }}>
                 {name}
               </code>
-              <span className={cls}>Credit memo CM-2026-0630 — $10,459.83</span>
+              <span className={cls} style={{ minWidth: 0, overflowWrap: 'anywhere' }}>Credit memo CM-2026-0630 — $10,459.83</span>
             </div>
           ))}
         </div>
@@ -203,7 +203,7 @@ export function ComponentGallery() {
       <Section
         id="buttons"
         source="src/ui/Button/Button.tsx — Figma ❖ Button (button, icon-button)"
-        note="Primary + Secondary; secondary variations: Emphasis (secondary action), Danger (reject/delete), Success (approve/accept), Attention. Sizes small 32 / medium 36 (default)."
+        note="Primary + Secondary; secondary variations: Emphasis (secondary action), Danger (reject/delete), Success (approve/accept), Attention. Sizes small 32 / medium 36 (default). One primary per view: repeated per-card actions use Emphasis or Secondary."
       >
         {(['medium', 'small'] as const).map((size) => (
           <Example key={size} label={`Variants · ${size}`}>
@@ -249,6 +249,14 @@ export function ComponentGallery() {
             Primary disabled
           </Button>
           <Button disabled>Secondary disabled</Button>
+        </Example>
+        <Example label="ButtonLink · navigation that must look like a button (a real link: new tab, copy link)">
+          <ButtonLink to="/tracker/memos" size="small" iconLeft={<ListBulletIcon aria-hidden="true" />}>
+            Review findings
+          </ButtonLink>
+          <ButtonLink to="/tracker/memos" variant="emphasis" size="small">
+            Prepare dispute
+          </ButtonLink>
         </Example>
         <Example label="IconButton · tiny 24 / small 32 / medium 36 / large 44 · ghost · disabled">
           <IconButton size="tiny" aria-label="Search" icon={<MagnifyingGlassIcon aria-hidden="true" />} />
@@ -559,6 +567,7 @@ export function ComponentGallery() {
       </Section>
 
       <Section id="table" source="src/ui/Table/Table.tsx — Figma Row & Cols (table-label, table-row.bg, value-difference)">
+        <TableScroll>
         <Table>
           <thead>
             <tr>
@@ -596,6 +605,7 @@ export function ComponentGallery() {
             </tr>
           </tbody>
         </Table>
+        </TableScroll>
       </Section>
 
       <Section id="empty" source="src/ui/Display/Display.tsx — Figma empty-state (with / without filters) · Spinner (no Figma source)">

@@ -1,6 +1,6 @@
 /** Credit memo detail page (template ~4570–4606 + tab routing).
  *  Tabs live in the path: /memos/:id (summary), /invoices, /activity. */
-import { useLocation, useNavigate, useParams } from 'react-router'
+import { useLocation, useParams } from 'react-router'
 import { ArrowDownTrayIcon, ChevronLeftIcon } from '@heroicons/react/24/outline'
 import { InfoTip } from '@/ui/Tooltip/Tooltip'
 import { Link } from '@/ui/Link/Link'
@@ -17,7 +17,7 @@ const CADENCE_TIP =
   'Audit cadence is based on your reporting cadence with each biller and may vary by carrier. To request a change, contact your Implentio customer representative.'
 
 const TABS = [
-  { key: 'summary', label: 'Summary & Findings', path: '' },
+  { key: 'summary', label: 'Summary & findings', path: '' },
   { key: 'invoices', label: 'Invoices', path: '/invoices' },
   { key: 'activity', label: 'Activity & exports', path: '/activity' },
 ] as const
@@ -26,7 +26,6 @@ export type MemoTabKey = (typeof TABS)[number]['key']
 
 export function MemoPage({ tab }: { tab: MemoTabKey }) {
   const { memoId } = useParams()
-  const navigate = useNavigate()
   const location = useLocation()
   const showToast = useToast()
   const detailQ = useMemoDetail(memoId ?? '')
@@ -61,7 +60,7 @@ export function MemoPage({ tab }: { tab: MemoTabKey }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-        <nav aria-label="Breadcrumb" className="ds-body-small" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ds-fg-disabled)' }}>
+        <nav aria-label="Breadcrumb" className="ds-body-small" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ds-fg-muted)' }}>
           <Link to="/tracker/memos" variant="accent" size="small" iconLeft={<ChevronLeftIcon aria-hidden="true" />}>
             Parcel Credit Tracker
           </Link>
@@ -76,7 +75,7 @@ export function MemoPage({ tab }: { tab: MemoTabKey }) {
       </div>
 
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
-        <div style={{ minWidth: 340, flex: '1 1 380px' }}>
+        <div style={{ minWidth: 0, flex: '1 1 380px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
             <span className="ds-caption-tiny ds-muted" style={{ textTransform: 'uppercase' }}>
               Parcel credit memo
@@ -108,10 +107,7 @@ export function MemoPage({ tab }: { tab: MemoTabKey }) {
         tabs={TABS}
         active={tab}
         ariaLabel="Credit memo sections"
-        onSelect={(key) => {
-          const t = TABS.find((x) => x.key === key)
-          if (t) navigate(`/memos/${memo.id}${t.path}${location.search}`)
-        }}
+        linkTo={(key) => `/memos/${memo.id}${TABS.find((x) => x.key === key)?.path ?? ''}${location.search}`}
       />
 
       {tab === 'summary' && <SummaryTab detail={detail} onDownloadExcel={downloadExcel} />}

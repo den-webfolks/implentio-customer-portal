@@ -78,7 +78,7 @@ export function OutcomeModal({ detail, onClose }: { detail: MemoDetail; onClose:
         : 'partial'
   const overallChip = (
     <StatusChip tone={COLLECTION_TONE[overall]}>
-      {overall === 'partial' ? 'Partially resolved' : STATUS_LABEL[overall]}
+      {overall === 'partial' ? 'Partly collected' : STATUS_LABEL[overall]}
     </StatusChip>
   )
   const threePl = detail.memo.provider
@@ -160,7 +160,7 @@ export function OutcomeModal({ detail, onClose }: { detail: MemoDetail; onClose:
         </Button>
       }
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+      <div className="ia-om-root" style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
         <div style={{ border: '1px solid var(--ds-stroke-disabled)', borderRadius: 'var(--ds-radius-large)', boxShadow: 'var(--ds-shadow-disabled)', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
           <div style={{ minWidth: 0, flex: '1 1 220px' }}>
             <div className="ds-heading-small" style={{ color: 'var(--ds-fg-default)' }}>Credit memo dispute</div>
@@ -172,7 +172,7 @@ export function OutcomeModal({ detail, onClose }: { detail: MemoDetail; onClose:
           <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--ds-stroke-disabled)', flex: 'none' }} />
           <Statistic bare size="small" label="Total collected" value={fmtMoney(totalCollected)} />
           <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--ds-stroke-disabled)', flex: 'none' }} />
-          <Statistic bare size="small" label="Remaining unresolved" value={fmtMoney(remaining)} />
+          <Statistic bare size="small" label="Unresolved" value={fmtMoney(remaining)} />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -193,7 +193,7 @@ export function OutcomeModal({ detail, onClose }: { detail: MemoDetail; onClose:
               </Button>
               <IconButton
                 size="small"
-                aria-label="Toggle dispute"
+                aria-label={`Findings in ${threePl} dispute`}
                 aria-expanded={expanded}
                 onClick={() => setExpanded((e) => !e)}
                 icon={expanded ? <ChevronUpIcon aria-hidden="true" /> : <ChevronDownIcon aria-hidden="true" />}
@@ -264,7 +264,7 @@ export function OutcomeModal({ detail, onClose }: { detail: MemoDetail; onClose:
                           {fmtMoney(g.varN)}
                         </span>
                         <div className="ia-om-c-outcome" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          <div className={styles.outcomeCell} style={{ display: 'flex', alignItems: 'center', gap: 8, ...toneVars }}>
+                          <div className={styles.outcomeCell} style={{ display: 'flex', alignItems: 'center', gap: 'var(--ds-space-3)', ...toneVars }}>
                             <Select
                               aria-label={`Outcome for ${g.title}`}
                               size="small"
@@ -280,7 +280,7 @@ export function OutcomeModal({ detail, onClose }: { detail: MemoDetail; onClose:
                             />
                             <IconButton
                               size="small"
-                              aria-label="Toggle finding"
+                              aria-label={`Outcome details for ${g.title}`}
                               aria-expanded={panelOpen}
                               onClick={() => setOpenPanel(panelOpen ? null : g.id)}
                               icon={panelOpen ? <ChevronDownIcon aria-hidden="true" /> : <ChevronRightIcon aria-hidden="true" />}
@@ -295,7 +295,7 @@ export function OutcomeModal({ detail, onClose }: { detail: MemoDetail; onClose:
                         </div>
                       </div>
                       {panelOpen && (
-                        <div style={{ margin: '0 0 14px 20px', borderLeft: '2px solid var(--ds-stroke-brand-muted)', padding: '12px 16px', background: 'var(--ds-bg-disabled)', borderRadius: '0 var(--ds-radius-large) var(--ds-radius-large) 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ marginBlockEnd: 14, marginInlineStart: 20, borderInlineStart: '2px solid var(--ds-stroke-brand-muted)', padding: '12px 16px', background: 'var(--ds-bg-disabled)', borderStartEndRadius: 'var(--ds-radius-large)', borderEndEndRadius: 'var(--ds-radius-large)', display: 'flex', flexDirection: 'column', gap: 10 }}>
                           <div className="ia-om-detail-grid">
                             {(d.status === 'full' || d.status === 'partial') && (
                               <TextField
@@ -333,8 +333,8 @@ export function OutcomeModal({ detail, onClose }: { detail: MemoDetail; onClose:
                               />
                             )}
                             {showRemaining && (
-                              <div style={{ flex: '0 0 150px', borderLeft: '1px solid var(--ds-stroke-disabled)', paddingLeft: 16 }}>
-                                <Statistic bare size="small" label="Remains unresolved" value={fmtMoney(Math.max(0, r2(g.varN - parsedAmt)))} />
+                              <div style={{ flex: '0 0 150px', borderInlineStart: '1px solid var(--ds-stroke-disabled)', paddingInlineStart: 16 }}>
+                                <Statistic bare size="small" label="Unresolved" value={fmtMoney(Math.max(0, r2(g.varN - parsedAmt)))} />
                               </div>
                             )}
                           </div>
@@ -359,10 +359,10 @@ export function OutcomeModal({ detail, onClose }: { detail: MemoDetail; onClose:
                 })}
                 <div style={{ borderTop: '1px solid var(--ds-stroke-muted)', padding: '12px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 20, flexWrap: 'wrap' }}>
                   <span className="ds-body-base" style={{ fontWeight: 'var(--ds-weight-medium)', color: 'var(--ds-fg-muted)' }}>
-                    Collected <strong style={{ fontWeight: 'var(--ds-weight-semi)', color: 'var(--ds-fg-default)', fontVariantNumeric: 'tabular-nums', marginLeft: 6 }}>{fmtMoney(totalCollected)}</strong>
+                    Collected <strong style={{ fontWeight: 'var(--ds-weight-semi)', color: 'var(--ds-fg-default)', fontVariantNumeric: 'tabular-nums', marginInlineStart: 6 }}>{fmtMoney(totalCollected)}</strong>
                   </span>
                   <span className="ds-body-base" style={{ fontWeight: 'var(--ds-weight-medium)', color: 'var(--ds-fg-muted)' }}>
-                    Unresolved <strong style={{ fontWeight: 'var(--ds-weight-semi)', color: 'var(--ds-fg-default)', fontVariantNumeric: 'tabular-nums', marginLeft: 6 }}>{fmtMoney(remaining)}</strong>
+                    Unresolved <strong style={{ fontWeight: 'var(--ds-weight-semi)', color: 'var(--ds-fg-default)', fontVariantNumeric: 'tabular-nums', marginInlineStart: 6 }}>{fmtMoney(remaining)}</strong>
                   </span>
                 </div>
               </div>

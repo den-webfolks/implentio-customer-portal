@@ -1,19 +1,18 @@
 /** Parcel Credit Tracker (template ~1196–1624). Tabs live in the path:
  *  /tracker/memos and /tracker/outcomes. */
-import { useNavigate, useParams } from 'react-router'
+import { useParams } from 'react-router'
 import { Tabs } from '@/ui/Tabs/Tabs'
 import { MemosTab } from './MemosTab'
 import { OutcomesTab } from './OutcomesTab'
 
 const TABS = [
-  { key: 'memos', label: 'Credit Memos' },
-  { key: 'outcomes', label: 'Credit Outcomes' },
+  { key: 'memos', label: 'Credit memos' },
+  { key: 'outcomes', label: 'Credit outcomes' },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
 
 export function TrackerPage() {
-  const navigate = useNavigate()
   const { tab } = useParams()
   const active: TabKey = tab === 'outcomes' ? 'outcomes' : 'memos'
 
@@ -29,7 +28,7 @@ export function TrackerPage() {
                 src="/brand/title-swash.svg"
                 alt=""
                 aria-hidden="true"
-                style={{ position: 'absolute', left: 0, right: 0, bottom: -9, width: '100%', height: 10, pointerEvents: 'none' }}
+                style={{ position: 'absolute', insetInline: 0, bottom: -9, width: '100%', height: 10, pointerEvents: 'none' }}
               />
             </span>
           </h1>
@@ -40,7 +39,7 @@ export function TrackerPage() {
         </p>
       </div>
 
-      <Tabs tabs={TABS} active={active} onSelect={(k) => navigate(`/tracker/${k}`)} ariaLabel="Parcel Credit Tracker views" />
+      <Tabs tabs={TABS} active={active} linkTo={(k) => `/tracker/${k}`} ariaLabel="Parcel Credit Tracker views" />
 
       {active === 'memos' ? <MemosTab /> : <OutcomesTab />}
     </div>

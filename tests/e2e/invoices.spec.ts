@@ -17,6 +17,6 @@ test('invoices index searches, filters, and links to memos', async ({ page }) =>
   await page.getByRole('button', { name: 'Remove Parcel review status filter' }).click()
   await expect(page.getByText('Showing 20 of 20 invoices')).toBeVisible()
 
-  await page.getByRole('button', { name: 'CM-2026-0630 →' }).first().click()
+  await page.getByRole('link', { name: 'CM-2026-0630 →' }).first().click()
   await expect(page).toHaveURL(/\/memos\/CM-2026-0630$/)
 })

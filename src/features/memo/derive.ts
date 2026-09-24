@@ -81,7 +81,7 @@ export function recoveryStatus(groups: readonly FindingGroup[], now: Date): Reco
     return seg
   })
   const resolved = awaiting <= 0.005 && eligible <= 0.005 && collected + declined > 0
-  return { total: fmtMoney(total), slices, eyebrow: resolved ? 'RESOLVED' : 'RECOVERY STATUS' }
+  return { total: fmtMoney(total), slices, eyebrow: resolved ? 'Resolved' : 'Recovery status' }
 }
 
 // ---------- next-step card ---------------------------------------------------
@@ -129,7 +129,7 @@ export function nextStepCard(input: {
   if (findingsUnavailable) {
     if (!memoDisputeStatus)
       return card({
-        eyebrow: 'NEXT STEP',
+        eyebrow: 'Next step',
         heading: `Prepare your dispute for ${provider}`,
         lines: [],
         description:
@@ -138,14 +138,14 @@ export function nextStepCard(input: {
       })
     if (memoDisputeStatus === 'awaiting')
       return card({
-        eyebrow: 'NEXT STEP',
+        eyebrow: 'Next step',
         heading: `Track your dispute with ${provider}`,
         lines: [line('clock', 'Awaiting a response from your biller')],
         description: '',
         actions: [action('outcome', 'primary', 'Update dispute outcomes')],
       })
     return card({
-      eyebrow: 'RESOLVED',
+      eyebrow: 'Resolved',
       heading: `Your dispute with ${provider} is complete`,
       lines: [line('check', 'Dispute finalized')],
       description: '',
@@ -183,7 +183,7 @@ export function nextStepCard(input: {
     const actions = [action('prep', 'primary', prepLabel)]
     if (awaitingAmt > 0.005) actions.push(action('outcome', 'secondary', 'Update dispute outcomes'))
     return card({
-      eyebrow: 'NEXT STEPS',
+      eyebrow: 'Next steps',
       heading: `Continue your work with ${provider}`,
       lines: [
         line('prep', `${fmtMoney(eligibleAmt)} across ${fmtCount(eligible.length)} remains eligible for another dispute`),
@@ -207,7 +207,7 @@ export function nextStepCard(input: {
     )
     if (fullyResolved)
       return card({
-        eyebrow: 'RESOLVED',
+        eyebrow: 'Resolved',
         heading: `Your dispute with ${provider} is complete`,
         lines: [line('check', `${fmtCount(pursued.length)} finalized · ${fmtMoney(collected)} collected`)],
         description: 'All findings have a final outcome.',
@@ -215,7 +215,7 @@ export function nextStepCard(input: {
         resolvedTreatment: true,
       })
     return card({
-      eyebrow: 'NEXT STEP',
+      eyebrow: 'Next step',
       heading: `Track your dispute with ${provider}`,
       lines: [line('clock', `${fmtMoney(awaitingAmt)} across ${fmtCount(awaitingCount)} awaiting an outcome`)],
       description: 'Record collection outcomes as your biller responds.',
@@ -227,7 +227,7 @@ export function nextStepCard(input: {
     const selected = eligible.filter((g) => !excludedIds.includes(g.id))
     const selAmt = selected.reduce((s, g) => s + (g.varN || 0), 0)
     return card({
-      eyebrow: 'NEXT STEP',
+      eyebrow: 'Next step',
       heading: `Continue preparing your dispute for ${provider}`,
       lines: [line('prep', `${fmtMoney(selAmt)} selected across ${fmtCount(selected.length)}`)],
       description: 'Your dispute draft has not been sent yet.',
@@ -235,7 +235,7 @@ export function nextStepCard(input: {
     })
   }
   return card({
-    eyebrow: 'NEXT STEP',
+    eyebrow: 'Next step',
     heading: `Prepare your dispute for ${provider}`,
     lines: [line('prep', `${fmtMoney(eligibleAmt)} eligible across ${fmtCount(eligible.length)}`)],
     description: 'Select the findings to include, then review and send your dispute package.',

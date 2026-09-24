@@ -1,7 +1,9 @@
 import { lazy, Suspense, useState } from 'react'
 import { Outlet, useSearchParams } from 'react-router'
 import { Button } from '@/ui/Button/Button'
-import { Sidebar } from './Sidebar'
+import { CompactNav, Sidebar } from './Sidebar'
+import { useCompactShell } from './useCompactShell'
+import styles from './AppLayout.module.css'
 import { isDemoMode } from '@/demo/demo-mode'
 
 const HarnessBar = lazy(() => import('@/demo/HarnessBar'))
@@ -45,6 +47,7 @@ export function AppLayout() {
   const [loggedOut, setLoggedOut] = useState(false)
   const [searchParams] = useSearchParams()
   const demo = isDemoMode()
+  const compact = useCompactShell()
 
   if (loggedOut) {
     // Signing back in reloads the app, which reseeds the fixture store —
@@ -53,22 +56,15 @@ export function AppLayout() {
   }
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        minHeight: '100vh',
-        background: 'var(--ds-neutral-100)',
-        color: 'var(--ds-fg-default)',
-      }}
-    >
-      <Sidebar onLogout={() => setLoggedOut(true)} />
-      <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+    <div className={compact ? `${styles.shell} ${styles.shellCompact}` : styles.shell}>
+      {compact ? <CompactNav onLogout={() => setLoggedOut(true)} /> : <Sidebar onLogout={() => setLoggedOut(true)} />}
+      <main className={styles.main}>
         {demo && (
           <Suspense fallback={null}>
             <HarnessBar activeScenarioId={searchParams.get('scenario') ?? ''} />
           </Suspense>
         )}
-        <div style={{ padding: '22px 24px 56px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className={compact ? `${styles.content} ${styles.contentCompact}` : styles.content}>
           <Outlet />
         </div>
       </main>

@@ -12,8 +12,9 @@ import { Banner } from '@/ui/Banner/Banner'
 import { Checkbox } from '@/ui/Form/Choice'
 import { TextField } from '@/ui/Form/TextField'
 import { Statistic } from '@/ui/Display/Display'
-import { Table } from '@/ui/Table/Table'
-import { GROUP_STATUS_TONE, toneColors } from '@/features/status-tones'
+import { Table, TableScroll } from '@/ui/Table/Table'
+import { GROUP_STATUS_TONE } from '@/features/status-tones'
+import { StatusChip } from '@/ui/Chip/StatusChip'
 import {
   CHARGE_DEFS,
   chargeCells,
@@ -77,7 +78,6 @@ export function FindingCard({
 
   const inDisputeSel = !excludedIds.includes(g.id)
   const sl = groupStatusLine({ ...g, amountN: g.varN, threePl: provider, inDisputeSel }, now)
-  const colors = toneColors(GROUP_STATUS_TONE[sl.key])
   const inDispute = g.pursuit === 'pursued' ? true : inDisputeSel
   const disputeLocked = g.pursuit === 'pursued' || groupExpired(g, now)
   const disputeControlLabel =
@@ -111,7 +111,7 @@ export function FindingCard({
   )
 
   return (
-    <div className="db-card" id={`finding-${g.id}`} style={{ gap: 14, scrollMarginTop: 88 }}>
+    <div className="db-card" id={`finding-${g.id}`} tabIndex={-1} style={{ gap: 14, scrollMarginTop: 88 }}>
       <div className="ia-fcard">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
@@ -139,7 +139,7 @@ export function FindingCard({
               {g.supportCopy}
             </p>
             {mixEntry && highlightLabel && (
-              <p className="imp-small" style={{ margin: 0, color: 'var(--ds-fg-accent)', fontWeight: 'var(--ds-weight-semi)' }}>
+              <p className="imp-small" style={{ margin: 0, color: 'var(--ds-fg-accent-text)', fontWeight: 'var(--ds-weight-semi)' }}>
                 {highlightLabel} contributes {posMoney(mixEntry.amount)}
                 {mixEntry.amount < 0 ? ' favourable' : ' unfavourable'} inside this finding — the group net variance of {posMoney(g.varN)} is unchanged.
               </p>
@@ -206,8 +206,8 @@ export function FindingCard({
           </div>
 
           {!expanded && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 11 }}>
-              <Button variant="primary" size="small" aria-expanded={expanded} iconRight={<ChevronDownIcon aria-hidden="true" />} onClick={() => setExpanded(true)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ds-space-3)', flexWrap: 'wrap', marginTop: 11 }}>
+              <Button variant="emphasis" size="small" aria-expanded={expanded} iconRight={<ChevronDownIcon aria-hidden="true" />} onClick={() => setExpanded(true)}>
                 View affected packages
               </Button>
               {inclusionCheckbox}
@@ -230,14 +230,15 @@ export function FindingCard({
               <div style={{ padding: '9px 14px' }}>
                 <Statistic bare size="small" label="Total invoiced" value={fmtMoney(g.invoicedN)} />
               </div>
-              <div style={{ padding: '9px 14px', borderLeft: '1px solid var(--ds-stroke-disabled)' }}>
+              <div style={{ padding: '9px 14px', borderInlineStart: '1px solid var(--ds-stroke-disabled)' }}>
                 <Statistic bare size="small" label="Total expected" value={fmtMoney(g.expectedN)} />
               </div>
             </div>
           </div>
-          <div style={{ width: '100%', minHeight: 48, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', border: `1px solid ${colors.fg}`, borderRadius: 'var(--ds-radius-large)', boxSizing: 'border-box', background: colors.bg }}>
-            <span className="ds-body-base ds-w-semi" style={{ color: colors.fg }}>{sl.label}</span>
-          </div>
+          {/* A status chip, not a bordered block: the block read as a button beside the real ones. */}
+          <span style={{ alignSelf: 'flex-start' }}>
+            <StatusChip tone={GROUP_STATUS_TONE[sl.key]}>{sl.label}</StatusChip>
+          </span>
           {sl.secondary && (
             <span className="imp-small" style={{ margin: 0 }}>
               {sl.secondary}
@@ -275,7 +276,7 @@ export function FindingCard({
           <p className="imp-small" style={{ margin: '0 0 10px' }}>
             Amounts include the complete invoiced and expected charges for packages assigned to this finding. Charge-level differences are shown in the package details below.
           </p>
-          <div style={{ ...SURFACE, overflowX: 'auto' }}>
+          <TableScroll style={SURFACE}>
             <Table className="ia-svc-table">
               <thead>
                 <tr>
@@ -320,7 +321,7 @@ export function FindingCard({
                 )}
               </tbody>
             </Table>
-          </div>
+          </TableScroll>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
             <Button size="small" aria-expanded={expanded} iconRight={<ChevronUpIcon aria-hidden="true" />} onClick={() => setExpanded(false)}>
               Hide affected packages
@@ -381,7 +382,7 @@ function RecRows({
       </tr>
       {open && (
         <tr>
-          <td className="ia-svc-detail" colSpan={6} style={{ padding: 0, background: 'var(--ds-bg-disabled)', borderLeft: '3px solid var(--ds-stroke-brand-emphasis)' }}>
+          <td className="ia-svc-detail" colSpan={6} style={{ padding: 0, background: 'var(--ds-bg-disabled)', borderInlineStart: '3px solid var(--ds-stroke-brand-emphasis)' }}>
             <div style={{ padding: '14px 16px 16px 22px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
                 <div className="db-eyebrow" style={{ margin: 0 }}>
@@ -391,7 +392,7 @@ function RecRows({
                   {g.carriers.join(', ')} {rec.label} · {g.title}
                 </span>
               </div>
-              <div className="ia-pkg-scroll" style={{ ...SURFACE, overflowX: 'auto' }}>
+              <TableScroll className="ia-pkg-scroll" style={SURFACE}>
                 <Table className="ia-pkg-table">
                   <thead>
                     <tr>
@@ -452,7 +453,7 @@ function RecRows({
                           <td style={{ color: 'var(--ds-fg-muted)', background: rowBg }}>{o.az || o.ez || '—'}</td>
                           <td className="num" style={{ background: rowBg ?? GROUP_BG.total }}>{fmtMoney(o.te)}</td>
                           <td className="num" style={{ background: rowBg ?? GROUP_BG.total }}>{fmtMoney(o.ti)}</td>
-                          <td className="num" style={{ background: rowBg ?? GROUP_BG.total, color: 'var(--ds-fg-accent)', fontWeight: 600 }}>{posMoney(o.tv)}</td>
+                          <td className="num" style={{ background: rowBg ?? GROUP_BG.total, color: 'var(--ds-fg-accent-text)', fontWeight: 600 }}>{posMoney(o.tv)}</td>
                           {cells.map((c) => (
                             <td key={`e-${c.key}`} className="num" style={{ background: rowBg, ...hlStyle(c.highlighted) }}>{c.exp}</td>
                           ))}
@@ -466,7 +467,7 @@ function RecRows({
                               style={{
                                 background: rowBg,
                                 ...hlStyle(c.highlighted),
-                                ...(c.diffZero ? {} : c.diffNegative ? { color: 'var(--ds-fg-success)', fontWeight: 600 } : { color: 'var(--ds-fg-accent)', fontWeight: 600 }),
+                                ...(c.diffZero ? {} : c.diffNegative ? { color: 'var(--ds-fg-success)', fontWeight: 600 } : { color: 'var(--ds-fg-accent-text)', fontWeight: 600 }),
                               }}
                             >
                               {c.diff}
@@ -483,7 +484,7 @@ function RecRows({
                         <td colSpan={5}></td>
                         <td className="num">{fmtMoney(r2(shownPkgs.reduce((a, x) => a + x.te, 0)))}</td>
                         <td className="num">{fmtMoney(r2(shownPkgs.reduce((a, x) => a + x.ti, 0)))}</td>
-                        <td className="num" style={{ color: 'var(--ds-fg-accent)' }}>{posMoney(r2(shownPkgs.reduce((a, x) => a + x.tv, 0)))}</td>
+                        <td className="num" style={{ color: 'var(--ds-fg-accent-text)' }}>{posMoney(r2(shownPkgs.reduce((a, x) => a + x.tv, 0)))}</td>
                         {CHARGE_DEFS.map((c) => (
                           <td key={`re-${c[0]}`} className="num">{sumCell(shownPkgs, c[0], 1)}</td>
                         ))}
@@ -497,7 +498,7 @@ function RecRows({
                     )}
                   </tbody>
                 </Table>
-              </div>
+              </TableScroll>
               <p className="imp-small" style={{ margin: '8px 0 0' }}>
                 Each row is one package-level billing record. Total expected and total invoiced are the sums of the applicable charge components, each charge variance is invoiced minus expected, and the package net variance equals the sum of its charge variances. Favourable differences appear in green because they offset unfavourable charges within the same package.
               </p>

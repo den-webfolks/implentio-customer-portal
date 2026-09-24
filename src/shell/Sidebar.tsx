@@ -1,6 +1,23 @@
-import { useState } from 'react'
-import { useLocation, useNavigate } from 'react-router'
-import { ArrowRightStartOnRectangleIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpDownIcon, Cog6ToothIcon } from '@heroicons/react/24/outline'
+import { useState, type ComponentType, type ReactNode, type SVGProps } from 'react'
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router'
+import * as Dialog from '@radix-ui/react-dialog'
+import {
+  ArchiveBoxIcon,
+  ArrowRightStartOnRectangleIcon,
+  Bars3Icon,
+  ChartBarIcon,
+  CubeIcon,
+  DocumentTextIcon,
+  ScaleIcon,
+  TableCellsIcon,
+  TruckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronUpDownIcon,
+  Cog6ToothIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline'
+import { IconButton } from '@/ui/Button/Button'
 import { Avatar } from '@/ui/Display/Display'
 import { Tooltip } from '@/ui/Tooltip/Tooltip'
 import { Menu, MenuItem, MenuSeparator } from '@/ui/Menu/Menu'
@@ -13,7 +30,7 @@ const SHOW_BI_NAV = true
 interface NavItem {
   key: string
   label: string
-  icon: string
+  icon: ComponentType<SVGProps<SVGSVGElement>>
   to: string
   /** Route prefixes that mark this item active. */
   activeOn: string[]
@@ -34,7 +51,7 @@ const NAV_GROUPS: NavGroup[] = [
       {
         key: 'bi',
         label: 'Logistics Cost Performance',
-        icon: '/brand/nav-bi.svg',
+        icon: ChartBarIcon,
         to: '/bi',
         activeOn: ['/bi'],
       },
@@ -47,14 +64,14 @@ const NAV_GROUPS: NavGroup[] = [
       {
         key: 'parcel',
         label: 'Parcel Credit Memos',
-        icon: '/brand/nav-parcel.svg',
+        icon: ArchiveBoxIcon,
         to: '/tracker/memos',
         activeOn: ['/tracker', '/memos'],
       },
       {
         key: 'fcm',
         label: 'Fulfillment Credit Memos',
-        icon: '/brand/nav-fcm.svg',
+        icon: CubeIcon,
         to: '/reports/fcm',
         activeOn: ['/reports/fcm'],
       },
@@ -67,14 +84,14 @@ const NAV_GROUPS: NavGroup[] = [
       {
         key: 'lcc',
         label: 'Least Cost Carrier',
-        icon: '/brand/nav-lcc.svg',
+        icon: TruckIcon,
         to: '/reports/lcc',
         activeOn: ['/reports/lcc'],
       },
       {
         key: 'pwv',
         label: 'Product Weight Validator',
-        icon: '/brand/nav-pwv.svg',
+        icon: ScaleIcon,
         to: '/reports/pwv',
         activeOn: ['/reports/pwv'],
       },
@@ -87,7 +104,7 @@ const NAV_GROUPS: NavGroup[] = [
       {
         key: 'invoices',
         label: 'Invoices',
-        icon: '/brand/nav-invoices.svg',
+        icon: DocumentTextIcon,
         to: '/invoices',
         activeOn: ['/invoices'],
       },
@@ -158,7 +175,7 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
             <ChevronRightIcon width={18} height={18} aria-hidden="true" />
           </button>
         </div>
-        <div className={styles.railNav}>
+        <nav aria-label="Primary" className={styles.railNav}>
           {groups.map((g) => (
             <div key={g.label} style={{ display: 'contents' }}>
               <div className="ia-rail-init" aria-hidden="true">
@@ -166,16 +183,9 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
               </div>
               {g.items.map((item) => (
                 <Tooltip key={item.key} content={item.label} side="right">
-                  <button
-                    type="button"
-                    className="ia-rail-btn"
-                    onClick={() => navigate(item.to)}
-                    aria-label={item.label}
-                    aria-current={isActive(item) ? 'page' : undefined}
-                    style={{ background: isActive(item) ? 'var(--ds-bg-brand-disabled)' : 'transparent' }}
-                  >
-                    <img src={item.icon} alt="" style={{ width: 20, height: 20 }} />
-                  </button>
+                  <RouterLink to={item.to} className="ia-rail-btn" aria-label={item.label} aria-current={isActive(item) ? 'page' : undefined}>
+                    <item.icon width={20} height={20} aria-hidden="true" />
+                  </RouterLink>
                 </Tooltip>
               ))}
             </div>
@@ -185,10 +195,10 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
           </div>
           <Tooltip content="Rate Cards — Future" side="right">
             <span className="ia-rail-btn" role="link" aria-disabled="true" tabIndex={0} aria-label="Rate Cards — Future">
-              <img src="/brand/nav-ratecards.svg" alt="" style={{ width: 20, height: 20, opacity: 0.32 }} />
+              <TableCellsIcon width={20} height={20} aria-hidden="true" />
             </span>
           </Tooltip>
-        </div>
+        </nav>
         <div className={styles.railFooter}>
           <Tooltip content="Tori Matthews · Implentio Operations" side="right">
             <button
@@ -207,39 +217,127 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
 
   return (
     <aside className={`ia-aside ${styles.asideExpanded}`}>
+      <NavBody
+        groups={groups}
+        isActive={isActive}
+        onNavigate={navigate}
+        onLogout={onLogout}
+        profileOpen={profileOpen}
+        onProfileOpenChange={setProfileOpen}
+        brandAction={
+          <button
+            type="button"
+            className={`ia-nav-toggle ${styles.brandAction}`}
+            onClick={toggleNav}
+            aria-expanded={true}
+            aria-label="Collapse navigation"
+          >
+            <ChevronLeftIcon width={18} height={18} aria-hidden="true" />
+          </button>
+        }
+      />
+    </aside>
+  )
+}
+
+/**
+ * Compact shell (below COMPACT_SHELL_QUERY): a sticky top bar whose menu
+ * button opens the full navigation in an off-canvas drawer, so the page
+ * column keeps the whole viewport width.
+ */
+export function CompactNav({ onLogout }: { onLogout: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const navigate = useNavigate()
+  const isActive = useIsActive()
+  const groups = NAV_GROUPS.filter(
+    (g) => SHOW_BI_NAV || g.items.some((i) => i.key !== 'bi'),
+  )
+  const go = (to: string) => {
+    setOpen(false)
+    navigate(to)
+  }
+  return (
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      <header className={styles.topBar}>
+        <Dialog.Trigger asChild>
+          <IconButton ghost aria-label="Open navigation" icon={<Bars3Icon aria-hidden="true" />} />
+        </Dialog.Trigger>
+        <a href="/" className={styles.brandLink} aria-label="Implentio home">
+          <img src="/brand/implentio-wordmark.svg" alt="Implentio" style={{ height: 18, width: 'auto' }} />
+        </a>
+      </header>
+      <Dialog.Portal>
+        <Dialog.Overlay className={styles.drawerOverlay} />
+        <Dialog.Content className={styles.drawer} aria-describedby={undefined}>
+          <Dialog.Title className="visually-hidden">Navigation</Dialog.Title>
+          <NavBody
+            groups={groups}
+            isActive={isActive}
+            onNavigate={go}
+            onLinkClick={() => setOpen(false)}
+            onLogout={() => {
+              setOpen(false)
+              onLogout()
+            }}
+            profileOpen={profileOpen}
+            onProfileOpenChange={setProfileOpen}
+            brandAction={
+              <Dialog.Close asChild>
+                <IconButton ghost size="small" className={styles.brandAction} aria-label="Close navigation" icon={<XMarkIcon aria-hidden="true" />} />
+              </Dialog.Close>
+            }
+          />
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+
+/** The expanded navigation: brand row, grouped links, profile menu. */
+function NavBody({
+  groups,
+  isActive,
+  onNavigate,
+  onLinkClick,
+  onLogout,
+  profileOpen,
+  onProfileOpenChange,
+  brandAction,
+}: {
+  groups: NavGroup[]
+  isActive: (item: NavItem) => boolean
+  onNavigate: (to: string) => void
+  /** Called when a nav link is followed (the drawer closes itself). */
+  onLinkClick?: () => void
+  onLogout: () => void
+  profileOpen: boolean
+  onProfileOpenChange: (open: boolean) => void
+  brandAction: ReactNode
+}) {
+  return (
+    <>
       <div className={styles.brandRow}>
         <a href="/" className={styles.brandLink} aria-label="Implentio home">
           <img src="/brand/implentio-wordmark.svg" alt="Implentio" style={{ height: 20, width: 'auto' }} />
         </a>
-        <button
-          type="button"
-          className="ia-nav-toggle"
-          onClick={toggleNav}
-          aria-expanded={true}
-          aria-label="Collapse navigation"
-          style={{ marginLeft: 'auto' }}
-        >
-          <ChevronLeftIcon width={18} height={18} aria-hidden="true" />
-        </button>
+        {brandAction}
       </div>
+      <nav aria-label="Primary" style={{ display: 'contents' }}>
       {groups.map((g, gi) => (
         <div key={g.label} className="db-nav-section" style={gi === 0 ? { marginTop: 12 } : undefined}>
           <div className={`db-nav-h ${styles.navHead}`}>{g.label}</div>
           {g.items.map((item) => (
-            <button
+            <RouterLink
               key={item.key}
+              to={item.to}
               className={isActive(item) ? 'db-nav-item is-active' : 'db-nav-item'}
-              onClick={() => navigate(item.to)}
-              style={{ color: 'var(--ds-fg-default)' }}
+              aria-current={isActive(item) ? 'page' : undefined}
+              onClick={onLinkClick}
             >
-              <img
-                className="db-nav-icon"
-                src={item.icon}
-                alt=""
-                style={{ width: 18, height: 18, flex: 'none', alignSelf: 'flex-start', marginTop: 1 }}
-              />
+              <item.icon className="db-nav-icon" aria-hidden="true" />
               <span>{item.label}</span>
-            </button>
+            </RouterLink>
           ))}
         </div>
       ))}
@@ -249,10 +347,11 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
           <span>Rate Cards</span>
         </div>
       </div>
+      </nav>
       <div className="db-side-footer" style={{ marginTop: 'auto' }}>
         <Menu
           open={profileOpen}
-          onOpenChange={setProfileOpen}
+          onOpenChange={onProfileOpenChange}
           side="top"
           align="start"
           className={styles.profileMenu}
@@ -267,8 +366,8 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
             </button>
           }
         >
-          <MenuItem icon={<Cog6ToothIcon aria-hidden="true" />} onSelect={() => navigate('/account/profile')}>
-            Account Settings
+          <MenuItem icon={<Cog6ToothIcon aria-hidden="true" />} onSelect={() => onNavigate('/account/profile')}>
+            Account settings
           </MenuItem>
           <MenuSeparator />
           <MenuItem danger icon={<ArrowRightStartOnRectangleIcon aria-hidden="true" />} onSelect={onLogout}>
@@ -276,6 +375,6 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
           </MenuItem>
         </Menu>
       </div>
-    </aside>
+    </>
   )
 }

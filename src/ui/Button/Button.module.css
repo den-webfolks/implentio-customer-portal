@@ -10,6 +10,7 @@
   --btn-pressed: var(--ds-inner-pressed-muted);
 
   display: inline-flex;
+  text-decoration: none;
   align-items: center;
   justify-content: center;
   gap: 8px;

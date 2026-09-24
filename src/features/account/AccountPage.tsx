@@ -13,6 +13,7 @@ import { TextField } from '@/ui/Form/TextField'
 import { Select } from '@/ui/Form/Select'
 import { Checkbox } from '@/ui/Form/Choice'
 import { StatusChip, type StatusTone } from '@/ui/Chip/StatusChip'
+import styles from './AccountPage.module.css'
 import { Avatar, Spinner } from '@/ui/Display/Display'
 
 const EMAIL_TONE: Record<EmailAccount['status'], StatusTone> = {
@@ -31,11 +32,11 @@ function errorProps<F extends string>(error: FieldError<F>, field: F) {
   return error?.field === field ? { validation: 'invalid' as const, message: error.text } : {}
 }
 
-function KeyValue({ label, children, breakAll = false }: { label: string; children: ReactNode; breakAll?: boolean }) {
+function KeyValue({ label, children, wrapAnywhere = false }: { label: string; children: ReactNode; wrapAnywhere?: boolean }) {
   return (
     <div>
       <div className="ds-caption-small ds-muted">{label}</div>
-      <div className="ds-body-base" style={{ fontWeight: 500, wordBreak: breakAll ? 'break-all' : undefined }}>
+      <div className="ds-body-base" style={{ fontWeight: 500, overflowWrap: wrapAnywhere ? 'anywhere' : undefined }}>
         {children}
       </div>
     </div>
@@ -64,6 +65,7 @@ export function AccountPage() {
   const [connectProvider, setConnectProvider] = useState<EmailProvider | null>(null)
   const [connectPhase, setConnectPhase] = useState<'intro' | 'redirect'>('intro')
   const [disconnectProvider, setDisconnectProvider] = useState<EmailProvider | null>(null)
+  const [revokeTarget, setRevokeTarget] = useState<TeamMember | null>(null)
 
   if (!accountQ.data) return null
   const account = accountQ.data
@@ -151,7 +153,7 @@ export function AccountPage() {
         {status === 'connected' && (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px 18px', background: 'var(--ds-bg-disabled)', borderRadius: 'var(--ds-radius-large)', padding: '12px 14px' }}>
-              <KeyValue label="Connected email" breakAll>
+              <KeyValue label="Connected email" wrapAnywhere>
                 {acct.address}
               </KeyValue>
               <KeyValue label="Connected by">{account.user.name}</KeyValue>
@@ -165,7 +167,7 @@ export function AccountPage() {
               <Button size="small" variant="danger" onClick={() => setDisconnectProvider(provider)}>
                 Disconnect
               </Button>
-              <Link variant="accent" size="small" underline style={{ marginLeft: 'auto' }} onClick={() => m.setEmailStatus.mutate({ provider, status: 'expired' })}>
+              <Link variant="accent" size="small" underline style={{ marginInlineStart: 'auto' }} onClick={() => m.setEmailStatus.mutate({ provider, status: 'expired' })}>
                 Preview: simulate token expiration
               </Link>
             </div>
@@ -194,8 +196,8 @@ export function AccountPage() {
     )
   }
 
-  const teamHead = (text: string, align?: 'right') => (
-    <div className="ds-body-small ds-muted" style={{ padding: '8px 0', textAlign: align }}>
+  const teamHead = (text: string, align?: 'end') => (
+    <div className={`ds-body-small ds-muted ${styles.teamHead}`} style={{ padding: '8px 0', textAlign: align }}>
       {text}
     </div>
   )
@@ -204,7 +206,7 @@ export function AccountPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 720 }}>
       <div>
         <h1 className="db-h1" style={{ margin: 0 }}>
-          Account Settings
+          Account settings
         </h1>
         <p className="imp-small" style={{ margin: '8px 0 0' }}>
           View the account information associated with your Implentio profile.
@@ -213,7 +215,7 @@ export function AccountPage() {
 
       <div className="db-card" style={{ gap: 18 }}>
         <span className="db-eyebrow">Profile information</span>
-        <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 0, borderTop: DIVIDER }}>
+        <div className={styles.infoGrid}>
           {infoRow('Name', account.user.name)}
           {infoRow('Company', 'Implentio')}
           {infoRow('Email address', account.user.email)}
@@ -234,11 +236,11 @@ export function AccountPage() {
         <p className="imp-small" style={{ margin: 0 }}>
           People associated with Implentio. Roles and permissions are not configurable in this release.
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto auto', gap: 0, borderTop: DIVIDER }}>
+        <div className={styles.teamGrid}>
           {teamHead('Name')}
           {teamHead('Email')}
-          {teamHead('Status', 'right')}
-          <div style={{ padding: '8px 0' }} />
+          {teamHead('Status', 'end')}
+          <div className={styles.teamHead} style={{ padding: '8px 0' }} />
           {account.team.map((p) => (
             <MemberRow key={p.id} member={p} onEdit={() => setEditMember({ ...p })} />
           ))}
@@ -294,10 +296,10 @@ export function AccountPage() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px 18px' }}>
                 <KeyValue label="Contact">{c.contact}</KeyValue>
-                <KeyValue label="Email" breakAll>
+                <KeyValue label="Email" wrapAnywhere>
                   {c.email}
                 </KeyValue>
-                <KeyValue label="CC recipients" breakAll>
+                <KeyValue label="CC recipients" wrapAnywhere>
                   {c.cc || '—'}
                 </KeyValue>
                 <KeyValue label="Dispute routing">{c.dispute ? 'Default dispute contact' : '—'}</KeyValue>
@@ -392,9 +394,8 @@ export function AccountPage() {
                   size="small"
                   variant="danger"
                   onClick={() => {
-                    m.revoke.mutate(editMember.id)
+                    setRevokeTarget(editMember)
                     setEditMember(null)
-                    showToast('positive', 'Access revoked')
                   }}
                 >
                   Revoke access
@@ -518,6 +519,30 @@ export function AccountPage() {
           Prepared messages will no longer send from this account. You can reconnect at any time; manual download and copy remain available.
         </p>
       </Modal>
+
+      <Modal
+        open={!!revokeTarget}
+        onClose={() => setRevokeTarget(null)}
+        title={`Revoke access for ${revokeTarget?.name ?? ''}?`}
+        width={440}
+        footerStart={<Button onClick={() => setRevokeTarget(null)}>Cancel</Button>}
+        footer={
+          <Button
+            variant="danger"
+            onClick={() => {
+              if (revokeTarget) m.revoke.mutate(revokeTarget.id)
+              setRevokeTarget(null)
+              showToast('positive', 'Access revoked')
+            }}
+          >
+            Revoke access
+          </Button>
+        }
+      >
+        <p className="imp-small" style={{ margin: 0 }}>
+          {revokeTarget?.name} will no longer be able to sign in to Implentio. You can invite them again later.
+        </p>
+      </Modal>
     </div>
   )
 }
@@ -526,16 +551,16 @@ function MemberRow({ member, onEdit }: { member: TeamMember; onEdit: () => void 
   const cell = { padding: '12px 0', borderTop: DIVIDER } as const
   return (
     <>
-      <div className="ds-body-base" style={{ ...cell, fontWeight: 600 }}>
+      <div className={`ds-body-base ${styles.memberName}`} style={{ ...cell, fontWeight: 600 }}>
         {member.name}
       </div>
-      <div className="ds-body-base ds-muted" style={{ ...cell, wordBreak: 'break-all' }}>
+      <div className={`ds-body-base ds-muted ${styles.memberEmail}`} style={{ ...cell, overflowWrap: 'anywhere' }}>
         {member.email}
       </div>
-      <div style={{ ...cell, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+      <div className={styles.memberStatus} style={{ ...cell, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
         <StatusChip tone={member.status === 'Active' ? 'success' : 'muted'}>{member.status}</StatusChip>
       </div>
-      <div style={{ ...cell, padding: '12px 0 12px 16px', textAlign: 'right' }}>
+      <div className={styles.memberEdit} style={{ ...cell, paddingBlock: 12, paddingInline: '16px 0', textAlign: 'end' }}>
         <Button size="small" onClick={onEdit}>
           Edit
         </Button>

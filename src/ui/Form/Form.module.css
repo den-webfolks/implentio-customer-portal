@@ -105,6 +105,14 @@
   letter-spacing: inherit;
 }
 
+/* iOS Safari zooms the page when a focused field's text is under 16px.
+   Touch devices get 16px; pointer devices keep Figma's 14px. */
+@media (hover: none) and (pointer: coarse) {
+  .input {
+    font-size: 16px;
+  }
+}
+
 .input::placeholder {
   color: var(--ds-fg-muted);
 }
@@ -173,7 +181,7 @@
 .trigger {
   width: auto;
   justify-content: space-between;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 

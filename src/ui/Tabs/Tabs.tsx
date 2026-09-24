@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Link as RouterLink } from 'react-router'
 import styles from './Tabs.module.css'
 
 export interface TabDef<K extends string> {
@@ -10,32 +11,45 @@ export interface TabDef<K extends string> {
 /**
  * Figma ❖ Tab / tab-group (underline tabs). Tabs switch views or routes,
  * so the active one carries aria-current rather than tablist semantics.
+ * Route tabs pass `linkTo` and render real links (new tab, copy link, and
+ * screen readers announce them as links); view tabs pass `onSelect`.
  */
 export function Tabs<K extends string>({
   tabs,
   active,
   onSelect,
+  linkTo,
   ariaLabel,
 }: {
   tabs: readonly TabDef<K>[]
   active: K
-  onSelect: (key: K) => void
+  onSelect?: (key: K) => void
+  linkTo?: (key: K) => string
   ariaLabel?: string
 }) {
   return (
     <nav className={styles.row} aria-label={ariaLabel}>
-      {tabs.map((t) => (
-        <button
-          key={t.key}
-          type="button"
-          disabled={t.disabled}
-          aria-current={t.key === active ? 'page' : undefined}
-          className={[styles.tab, t.key === active ? styles.active : ''].filter(Boolean).join(' ')}
-          onClick={() => onSelect(t.key)}
-        >
-          <span className={styles.tabLabel}>{t.label}</span>
-        </button>
-      ))}
+      {tabs.map((t) => {
+        const className = [styles.tab, t.key === active ? styles.active : ''].filter(Boolean).join(' ')
+        const current = t.key === active ? 'page' : undefined
+        const label = <span className={styles.tabLabel}>{t.label}</span>
+        return linkTo && !t.disabled ? (
+          <RouterLink key={t.key} to={linkTo(t.key)} aria-current={current} className={className}>
+            {label}
+          </RouterLink>
+        ) : (
+          <button
+            key={t.key}
+            type="button"
+            disabled={t.disabled}
+            aria-current={current}
+            className={className}
+            onClick={() => onSelect?.(t.key)}
+          >
+            {label}
+          </button>
+        )
+      })}
     </nav>
   )
 }

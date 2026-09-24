@@ -75,6 +75,11 @@
   --ds-fg-danger: var(--ds-red-500);
   --ds-fg-info: var(--ds-blue-500);
   --ds-fg-accent: var(--ds-orange-500);
+  /* Accent as readable text (money amounts at text sizes). orange-500 is
+     3.29:1 on white / 2.93:1 on orange-100 — fails AA; orange-700 is
+     7.58:1 / 6.75:1. Pending Figma confirmation (DESIGN-SYSTEM.md). Keep
+     --ds-fg-accent for fills and display numbers on dark surfaces. */
+  --ds-fg-accent-text: var(--ds-orange-700);
 
   --ds-stroke-strong: var(--ds-neutral-900);
   --ds-stroke-emphasis: var(--ds-neutral-900-a24);
@@ -101,9 +106,12 @@
   /* Status chips (Figma: status/*) */
   --ds-status-neutral-fg: var(--ds-fg-brand-emphasis);
   --ds-status-neutral-bg: var(--ds-bg-brand-disabled);
-  --ds-status-success-fg: var(--ds-fg-success);
+  /* Success/attention chip text darkened 20% toward neutral-900: the
+     Figma pairs measure 3.89:1 / 3.86:1 (fail AA); these are 5.17:1 /
+     5.24:1. Pending Figma confirmation (DESIGN-SYSTEM.md). */
+  --ds-status-success-fg: color-mix(in srgb, var(--ds-fg-success) 80%, var(--ds-neutral-900));
   --ds-status-success-bg: var(--ds-bg-success-muted);
-  --ds-status-attention-fg: var(--ds-fg-warning);
+  --ds-status-attention-fg: color-mix(in srgb, var(--ds-fg-warning) 80%, var(--ds-neutral-900));
   --ds-status-attention-bg: var(--ds-bg-warning-muted);
   --ds-status-danger-fg: var(--ds-fg-danger);
   --ds-status-danger-bg: var(--ds-bg-danger-muted);

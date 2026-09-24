@@ -209,7 +209,7 @@ function DisputeWizardInner({
 
   const cellBorder = '1px solid var(--ds-stroke-disabled)'
   const kpi = (l: string, v: string, big = false, accent = false) => (
-    <div style={{ padding: '14px 18px', borderBottom: big ? undefined : cellBorder, borderRight: cellBorder }}>
+    <div style={{ padding: '14px 18px', borderBottom: big ? undefined : cellBorder, borderInlineEnd: cellBorder }}>
       <Statistic bare label={l} value={v} size={big ? 'medium' : 'tiny'} type={accent ? 'accent' : 'neutral'} />
     </div>
   )
@@ -311,7 +311,7 @@ function DisputeWizardInner({
                               {pkgCount.toLocaleString('en-US')} packages · {invCount} invoices
                             </span>
                           </span>
-                          <span className="ds-w-semi" style={{ flex: 'none', fontVariantNumeric: 'tabular-nums', color: 'var(--ds-fg-accent)' }}>
+                          <span className="ds-w-semi" style={{ flex: 'none', fontVariantNumeric: 'tabular-nums', color: 'var(--ds-fg-accent-text)' }}>
                             {fmtMoney(g.varN)}
                           </span>
                         </span>
@@ -419,7 +419,7 @@ function DisputeWizardInner({
               }
             />
             <p className="imp-small" style={{ margin: 0 }}>
-              Changes here apply to this message only. The saved Biller contact in Account Settings is not changed.
+              Changes here apply to this message only. The saved Biller contact in Account settings is not changed.
             </p>
           </div>
 
@@ -438,7 +438,7 @@ function DisputeWizardInner({
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderTop: cellBorder, paddingTop: 12 }}>
               <span className="ds-body-base ds-muted">Attachment</span>
-              <span className="ds-body-base ds-w-medium" style={{ wordBreak: 'break-all' }}>
+              <span className="ds-body-base ds-w-medium" style={{ overflowWrap: 'anywhere' }}>
                 {filename}
               </span>
             </div>

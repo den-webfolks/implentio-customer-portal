@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test('account page shows profile, team, contacts, and integrations', async ({ page }) => {
   await page.goto('/account')
-  await expect(page.getByRole('heading', { name: 'Account Settings' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Account settings' })).toBeVisible()
   await expect(page.getByText('tori@implentio.com').first()).toBeVisible()
   await expect(page.getByText('Renee Alvarez')).toBeVisible()
   await expect(page.getByText('Dana Reyes')).toBeVisible()

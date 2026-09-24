@@ -10,7 +10,7 @@ import { StatusChip } from '@/ui/Chip/StatusChip'
 import { ActionTab, ActionTabs } from '@/ui/Tabs/Tabs'
 import { TextField } from '@/ui/Form/TextField'
 import { EmptyState } from '@/ui/Display/Display'
-import { Table, SortableHeader, nextSort, type SortDirection } from '@/ui/Table/Table'
+import { Table, TableScroll, SortableHeader, nextSort, type SortDirection } from '@/ui/Table/Table'
 import { useFilters, FilterButton, FilterGroup, matchesFilter, type FilterField, type FilterValues } from '@/ui/Filters/Filters'
 import { STATUS_PILL } from '../invoices/InvoicesPage'
 
@@ -134,16 +134,17 @@ export function MemoInvoicesTab({ detail }: { detail: MemoDetail }) {
 
       <div className="db-card" style={{ padding: 0, gap: 0, overflow: 'visible', minHeight: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid var(--ds-stroke-disabled)', flexWrap: 'wrap', flex: 'none' }}>
-          <TextField
-            aria-label="Search invoice number"
-            placeholder="Search invoice number"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            iconLeft={<MagnifyingGlassIcon aria-hidden="true" />}
-            style={{ minWidth: 200 }}
-          />
+          <div style={{ flex: '0 1 252px', minWidth: 0 }}>
+            <TextField
+              aria-label="Search invoice number"
+              placeholder="Search invoice number"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              iconLeft={<MagnifyingGlassIcon aria-hidden="true" />}
+            />
+          </div>
           <FilterButton filters={filters} />
-          <span style={{ margin: '0 0 0 auto' }} aria-live="polite">
+          <span style={{ marginInlineStart: 'auto' }} aria-live="polite">
             <span className="imp-small" style={{ margin: 0 }}>
               Showing {rows.length} of {all.length} invoices
             </span>
@@ -154,18 +155,18 @@ export function MemoInvoicesTab({ detail }: { detail: MemoDetail }) {
             <FilterGroup filters={filters} />
           </div>
         )}
-        <div style={{ overflowX: 'auto' }}>
+        <TableScroll>
           <Table>
             <thead>
               <tr>
                 <th>Invoice</th>
-                <SortableHeader label="Invoice Date" direction={sort} onSort={() => setSort(nextSort)} />
+                <SortableHeader label="Invoice date" direction={sort} onSort={() => setSort(nextSort)} />
                 <th>Carriers</th>
                 <th>Warehouse</th>
-                <th className="num">Original Invoice Total</th>
-                <th className="num">Eligible Parcel Amount Reviewed</th>
-                <th className="num">Packages Reviewed</th>
-                <th>Parcel Review Status</th>
+                <th className="num">Original invoice total</th>
+                <th className="num">Eligible parcel amount reviewed</th>
+                <th className="num">Packages reviewed</th>
+                <th>Parcel review status</th>
               </tr>
             </thead>
             <tbody>
@@ -185,7 +186,7 @@ export function MemoInvoicesTab({ detail }: { detail: MemoDetail }) {
               ))}
             </tbody>
           </Table>
-        </div>
+        </TableScroll>
         {rows.length === 0 && <EmptyState title="No results match these filters" />}
       </div>
     </div>
