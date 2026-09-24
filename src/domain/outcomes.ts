@@ -1,25 +1,64 @@
-/** Credit-outcome derivations: eligibility, per-group status, memo rollup,
- *  and the tracker's outcome summaries. Ports template ~7508–7614 with
- *  semantic keys instead of inline CSS (styling belongs to components). */
+/** Credit-outcome derivations: eligibility, per-finding status, the one memo
+ *  status every screen shows, the money buckets that reconcile to the total
+ *  identified, and the tracker's outcome summaries. Started as a port of
+ *  template ~7508–7614; Phase 1 of the dispute-flow plan (DESIGN-SYSTEM.md)
+ *  made it the single source for dispute status. */
 
-import type { Collection, DisputeState, OutcomeGroup } from './types'
+import type { Collection, CollectionStatus, DisputeState, OutcomeGroup } from './types'
 import { fmtMoney, r2 } from './money'
-import { deadlineCountdown, fmtDateLong } from './dates'
+import { daysSince, daysUntilDeadline, deadlineCountdown, fmtDateLong } from './dates'
 
-type Groupish = DisputeState & { amountN?: number | null; threePl?: string }
+type Groupish = DisputeState & { amountN?: number | null; threePl?: string; lastCheckedAt?: string | null }
 
 /** A group can still be disputed: already pursued, no deadline, or before it. */
 export function groupEligible(g: Groupish, now: Date): boolean {
   if (g.pursuit === 'pursued') return true
   if (!g.disputeDeadline) return true
-  return new Date(g.disputeDeadline + 'T23:59:59').getTime() >= now.getTime()
+  return daysUntilDeadline(g.disputeDeadline, now) >= 0
 }
 
+/** The dispute window closed before the group was pursued. */
 export function groupExpired(g: Groupish, now: Date): boolean {
   return g.pursuit !== 'pursued' && !groupEligible(g, now)
 }
 
-// ---------- Per-group status line (outcomes ledger) ------------------------
+// Status wording is plain language, pending PM confirmation (DESIGN-SYSTEM.md,
+// "Parcel dispute flow — Phase 2"); the keys keep their original meaning.
+export const COLLECTION_LABELS: Record<CollectionStatus, string> = {
+  awaiting: 'Waiting on Biller',
+  full: 'Fully collected',
+  partial: 'Partly collected',
+  not_issued: 'Denied',
+}
+
+/** A new collection outcome for something disputed for `pursuedN`. A partial
+ *  collection equal to the full amount is recorded as fully collected. */
+export function outcomeCollection(
+  status: CollectionStatus,
+  pursuedN: number,
+  opts: { amountN?: number; date?: string | null; reason?: string } = {},
+): Collection {
+  const amt = opts.amountN ?? 0
+  const final: CollectionStatus = status === 'partial' && Math.abs(amt - pursuedN) < 0.005 ? 'full' : status
+  return {
+    status: final,
+    amountN: final === 'full' ? pursuedN : final === 'not_issued' ? 0 : final === 'partial' ? r2(amt) : null,
+    date: opts.date ?? null,
+    reason: final === 'not_issued' || final === 'partial' ? (opts.reason ?? '') : '',
+    history: [],
+  }
+}
+
+/** Amount recorded as collected on a pursued group (full or partial). */
+function collectedOf(g: Groupish): number {
+  const c = g.collection
+  if (g.pursuit !== 'pursued' || !c) return 0
+  if (c.status === 'full') return c.amountN ?? g.amountN ?? 0
+  if (c.status === 'partial') return Math.min(c.amountN ?? 0, g.amountN ?? 0)
+  return 0
+}
+
+// ---------- Per-finding status line ----------------------------------------
 
 export type GroupStatusKey =
   | 'eligible'
@@ -28,6 +67,7 @@ export type GroupStatusKey =
   | 'partly_collected'
   | 'declined'
   | 'not_pursued'
+  | 'expired'
 
 export interface GroupStatusLine {
   key: GroupStatusKey
@@ -39,13 +79,23 @@ export interface GroupStatusLine {
   muted?: boolean
 }
 
-const STATUS_LABELS: Record<GroupStatusKey, string> = {
-  eligible: 'Eligible to pursue',
-  awaiting_outcome: 'Awaiting outcome',
-  fully_collected: 'Fully collected',
-  partly_collected: 'Partly collected',
-  declined: 'Biller declined',
-  not_pursued: 'Not pursued',
+export const STATUS_LABELS: Record<GroupStatusKey, string> = {
+  eligible: 'Ready to dispute',
+  awaiting_outcome: COLLECTION_LABELS.awaiting,
+  fully_collected: COLLECTION_LABELS.full,
+  partly_collected: COLLECTION_LABELS.partial,
+  declined: COLLECTION_LABELS.not_issued,
+  not_pursued: 'Won’t pursue',
+  expired: 'Expired',
+}
+
+const joinParts = (parts: (string | null | false | undefined)[]) =>
+  parts.filter(Boolean).join(' · ')
+
+function deadlineText(g: Groupish, now: Date): string {
+  return g.disputeDeadline
+    ? `Dispute by ${fmtDateLong(g.disputeDeadline)} · ${deadlineCountdown(g.disputeDeadline, now)}`
+    : ''
 }
 
 export function groupStatusLine(
@@ -55,29 +105,36 @@ export function groupStatusLine(
   if (g.pursuit === 'pursued') {
     const c = g.collection
     const sentLine = `Sent to ${g.threePl || 'Biller'}` + (g.pursuedAt ? ` on ${g.pursuedAt}` : '')
+    const on = c?.date ? fmtDateLong(c.date) : null
+    const edit = { actionLabel: 'Edit outcome', showAction: true }
     if (c?.status === 'full')
       return {
         key: 'fully_collected',
         label: STATUS_LABELS.fully_collected,
-        secondary: `${sentLine} · Collected ${fmtDateLong(c.date)}`,
-        actionLabel: 'Edit outcome',
-        showAction: true,
+        secondary: joinParts([sentLine, on ? `Collected ${on}` : 'Collected']),
+        ...edit,
       }
-    if (c?.status === 'partial')
+    if (c?.status === 'partial') {
+      const collected = collectedOf(g)
+      const notRecovered = r2((g.amountN ?? 0) - collected)
       return {
         key: 'partly_collected',
         label: STATUS_LABELS.partly_collected,
-        secondary: `${sentLine} · ${fmtMoney(c.amountN ?? 0)} collected ${fmtDateLong(c.date)}`,
-        actionLabel: 'Edit outcome',
-        showAction: true,
+        secondary: joinParts([
+          sentLine,
+          `${fmtMoney(collected)} collected`,
+          notRecovered > 0.005 && `${fmtMoney(notRecovered)} not recovered`,
+          on,
+        ]),
+        ...edit,
       }
+    }
     if (c?.status === 'not_issued')
       return {
         key: 'declined',
         label: STATUS_LABELS.declined,
-        secondary: `${sentLine} · Updated ${fmtDateLong(c.date)}`,
-        actionLabel: 'Edit outcome',
-        showAction: true,
+        secondary: joinParts([sentLine, on && `Updated ${on}`]),
+        ...edit,
       }
     return {
       key: 'awaiting_outcome',
@@ -88,147 +145,258 @@ export function groupStatusLine(
     }
   }
 
-  const deadlineText = g.disputeDeadline
-    ? `Dispute by ${fmtDateLong(g.disputeDeadline)} · ${deadlineCountdown(g.disputeDeadline, now)}`
-    : ''
+  // A customer decision is never relabelled Expired (product note n359);
+  // it can be undone only while the window is open (n360).
   if (g.pursuit === 'excluded') {
+    const open = groupEligible(g, now)
     return {
       key: 'not_pursued',
       label: STATUS_LABELS.not_pursued,
       muted: true,
-      secondary:
-        deadlineText +
-        (g.excludedRequestDate ? ` · Excluded from the ${g.excludedRequestDate} request` : ''),
-      actionLabel: 'Include in another request',
-      showAction: true,
-      subtleAction: true,
-    }
-  }
-  if (g.inDisputeSel) {
-    return {
-      key: 'eligible',
-      label: STATUS_LABELS.eligible,
-      secondary: `Included in dispute · ${deadlineText}`,
-      showAction: false,
-    }
-  }
-  return { key: 'eligible', label: STATUS_LABELS.eligible, secondary: deadlineText, showAction: false }
-}
-
-// ---------- Dispute pill (findings list) -----------------------------------
-
-export type DisputePillTone = 'pursued' | 'expired' | 'neutral' | 'warn' | 'urgent'
-
-export interface DisputePill {
-  label: string
-  sub: string
-  tone: DisputePillTone
-  expired: boolean
-  expl?: string
-}
-
-export function disputePill(g: Groupish, now: Date): DisputePill {
-  if (g.pursuit === 'pursued') {
-    return {
-      label: `Pursued with ${g.threePl || 'Biller'}`,
-      sub:
-        (g.pursuedAt ? `Sent ${g.pursuedAt}` : '') +
-        (g.amountN != null ? ` · ${fmtMoney(g.amountN)} pursued` : ''),
-      tone: 'pursued',
-      expired: false,
+      secondary: joinParts(['You chose not to pursue this', open && deadlineText(g, now)]),
+      actionLabel: 'Undo',
+      showAction: open,
+      subtleAction: open,
     }
   }
   if (groupExpired(g, now)) {
     return {
-      label: 'Expired',
-      sub:
-        `Dispute window closed ${fmtDateLong(g.disputeDeadline)}` +
-        (g.amountN != null ? ` · ${fmtMoney(g.amountN)} not pursued` : ''),
-      tone: 'expired',
-      expired: true,
-      expl: `This finding was not pursued before the applicable ${g.threePl || 'Biller'} dispute window closed on ${fmtDateLong(g.disputeDeadline)}.`,
+      key: 'expired',
+      label: STATUS_LABELS.expired,
+      muted: true,
+      secondary: joinParts([
+        `Dispute window closed ${fmtDateLong(g.disputeDeadline)}`,
+        g.amountN != null && `${fmtMoney(g.amountN)} not disputed`,
+      ]),
+      showAction: false,
     }
   }
-  if (!g.disputeDeadline) return { label: 'Eligible', sub: '', tone: 'neutral', expired: false }
-  const days = Math.ceil(
-    (new Date(g.disputeDeadline + 'T23:59:59').getTime() - now.getTime()) / 86400000,
-  )
-  const tone: DisputePillTone = days <= 3 ? 'urgent' : days <= 7 ? 'warn' : 'neutral'
   return {
-    label: `Dispute by ${fmtDateLong(g.disputeDeadline)}`,
-    sub: deadlineCountdown(g.disputeDeadline, now),
-    tone,
-    expired: false,
+    key: 'eligible',
+    label: STATUS_LABELS.eligible,
+    secondary: joinParts([g.inDisputeSel && 'Included in dispute', deadlineText(g, now)]),
+    actionLabel: 'Won’t pursue',
+    showAction: true,
+    subtleAction: true,
   }
 }
 
-// ---------- Collection pill -------------------------------------------------
+// ---------- Finding phase -----------------------------------------------------
 
-/** Tones follow the design-system status mapping (DESIGN-SYSTEM.md). */
-export interface CollectionPill {
-  label: string
-  tone: 'info' | 'attention' | 'success' | 'danger'
-  sub: string
+/** Where a finding sits in the customer's work: still open to dispute,
+ *  waiting on the Biller, or closed (collected, partly collected, declined,
+ *  not pursued, or expired). */
+export type FindingPhase = 'open' | 'waiting' | 'closed'
+
+export function findingPhase(g: Groupish, now: Date): FindingPhase {
+  if (g.pursuit === 'pursued')
+    return !g.collection || g.collection.status === 'awaiting' ? 'waiting' : 'closed'
+  if (g.pursuit === 'excluded') return 'closed'
+  return groupExpired(g, now) ? 'closed' : 'open'
 }
 
-export function collectionPill(
-  g: Groupish,
-): CollectionPill | null {
-  const c: Collection | null = g.collection
-  if (g.pursuit !== 'pursued' || !c?.status) return null
-  switch (c.status) {
-    case 'awaiting':
-      return { label: 'Awaiting outcome', tone: 'info', sub: '' }
+// ---------- Recovery buckets -------------------------------------------------
+
+/** Five non-overlapping money buckets; together they equal the total
+ *  identified. A partly collected finding splits across Collected and Not
+ *  recovered (partly collected is final — decision 5). */
+export type RecoveryBucketKey = 'open' | 'awaiting' | 'collected' | 'notRecovered' | 'notDisputed'
+
+export type RecoveryBuckets = Record<RecoveryBucketKey, number>
+
+export const RECOVERY_BUCKETS: { key: RecoveryBucketKey; label: string }[] = [
+  { key: 'open', label: 'Ready to dispute' },
+  { key: 'awaiting', label: 'Waiting on Biller' },
+  { key: 'collected', label: 'Collected' },
+  { key: 'notRecovered', label: 'Not recovered' },
+  { key: 'notDisputed', label: 'Not disputed' },
+]
+
+function itemBuckets(g: Groupish, now: Date): Partial<RecoveryBuckets> {
+  const amt = g.amountN ?? 0
+  if (g.pursuit !== 'pursued')
+    return findingPhase(g, now) === 'open' ? { open: amt } : { notDisputed: amt }
+  switch (g.collection?.status) {
     case 'full':
-      return { label: 'Fully collected', tone: 'success', sub: `Collected on ${fmtDateLong(c.date)}` }
-    case 'partial':
-      return {
-        label: 'Partly collected',
-        tone: 'attention',
-        sub: `${fmtMoney(c.amountN ?? 0)} collected · ${fmtMoney(r2((g.amountN ?? 0) - (c.amountN ?? 0)))} remaining · ${fmtDateLong(c.date)}`,
-      }
+      return { collected: amt }
     case 'not_issued':
-      return {
-        label: 'Biller declined',
-        tone: 'danger',
-        sub: c.date ? `Reported ${fmtDateLong(c.date)}` : '',
-      }
+      return { notRecovered: amt }
+    case 'partial': {
+      const collected = collectedOf(g)
+      return { collected, notRecovered: r2(amt - collected) }
+    }
+    default:
+      return { awaiting: amt }
   }
 }
 
-// ---------- Memo rollup ------------------------------------------------------
+export function recoveryBuckets(items: readonly Groupish[], now: Date): RecoveryBuckets {
+  const out: RecoveryBuckets = { open: 0, awaiting: 0, collected: 0, notRecovered: 0, notDisputed: 0 }
+  for (const g of items) {
+    const b = itemBuckets(g, now)
+    for (const k of Object.keys(b) as RecoveryBucketKey[]) out[k] += b[k] ?? 0
+  }
+  for (const k of Object.keys(out) as RecoveryBucketKey[]) out[k] = r2(out[k])
+  return out
+}
 
-export type MemoRollupKey =
-  | 'outcome_recorded'
-  | 'pursued'
-  | 'partially_pursued'
-  | 'available'
-  | 'expired'
+/** Whether an item carries money in a bucket (table filtering by slice). */
+export function bucketMatch(g: Groupish, key: RecoveryBucketKey, now: Date): boolean {
+  return (itemBuckets(g, now)[key] ?? 0) > 0.005
+}
 
-export interface MemoRollup {
-  key: MemoRollupKey
+// ---------- Memo status -------------------------------------------------------
+
+export type MemoStatusKey = 'action_needed' | 'ready' | 'waiting' | 'done'
+
+export const MEMO_STATUS_LABELS: Record<MemoStatusKey, string> = {
+  action_needed: 'Action needed',
+  ready: 'Ready to dispute',
+  waiting: 'Waiting on Biller',
+  done: 'Done',
+}
+
+/** An open finding due within this many days, today included (today,
+ *  tomorrow, the day after), makes the memo "Action needed". */
+export const ACTION_NEEDED_WITHIN_DAYS = 3
+
+interface CountAmount {
+  count: number
+  amountN: number
+}
+
+export interface MemoStatus {
+  key: MemoStatusKey
   label: string
+  total: CountAmount
+  open: CountAmount
+  waiting: CountAmount
+  closed: CountAmount
+  /** Open findings selected in the unsent dispute draft. */
+  selected: CountAmount
+  hasDraft: boolean
+  draftDate: string | null
+  collectedN: number
+  notRecoveredN: number
+  /** Earliest deadline among open findings (ISO date), and days left to it. */
+  nextDeadline: string | null
+  daysLeft: number | null
 }
 
-export function memoRollupStatus(groups: readonly Groupish[], now: Date): MemoRollup | null {
-  if (!groups.length) return null
-  const pursued = groups.filter((g) => g.pursuit === 'pursued')
-  const eligible = groups.filter((g) => g.pursuit !== 'pursued' && !groupExpired(g, now))
-  const outcomeRecorded =
-    pursued.length > 0 && pursued.every((g) => g.collection && g.collection.status !== 'awaiting')
-  if (pursued.length === groups.length)
-    return outcomeRecorded
-      ? { key: 'outcome_recorded', label: 'Outcome recorded' }
-      : { key: 'pursued', label: 'Pursued with Biller' }
-  if (pursued.length > 0)
-    return outcomeRecorded
-      ? { key: 'outcome_recorded', label: 'Outcome recorded' }
-      : { key: 'partially_pursued', label: 'Partially pursued' }
-  if (eligible.length > 0) return { key: 'available', label: 'Available to pursue' }
-  return { key: 'expired', label: 'Expired without action' }
+/** The unsent dispute draft: findings not in `excludedIds` are selected. */
+export interface DraftSelection {
+  excludedIds: readonly string[]
+  draftDate: string | null
 }
 
-// ---------- Tracker outcome summaries ---------------------------------------
+/** The one memo-level dispute status, shared by the tracker card, the
+ *  next-step card, and Credit outcomes. Null when there is nothing to dispute.
+ *  Without a draft, nothing is selected. */
+export function memoStatus(
+  items: readonly (Groupish & { id: string })[],
+  ctx: { draft?: DraftSelection | null; now: Date },
+): MemoStatus | null {
+  if (!items.length) return null
+  const { draft = null, now } = ctx
+  const tally = (arr: readonly Groupish[]): CountAmount => ({
+    count: arr.length,
+    amountN: r2(arr.reduce((s, g) => s + (g.amountN ?? 0), 0)),
+  })
+  const open = items.filter((g) => findingPhase(g, now) === 'open')
+  const waiting = items.filter((g) => findingPhase(g, now) === 'waiting')
+  const closed = items.filter((g) => findingPhase(g, now) === 'closed')
+  const selected = draft ? open.filter((g) => !draft.excludedIds.includes(g.id)) : []
+  const deadlines = open.map((g) => g.disputeDeadline).filter((d): d is string => !!d).sort()
+  const nextDeadline = deadlines[0] ?? null
+  const daysLeft = nextDeadline ? daysUntilDeadline(nextDeadline, now) : null
+  const buckets = recoveryBuckets(items, now)
+
+  const key: MemoStatusKey = open.length
+    ? daysLeft != null && daysLeft < ACTION_NEEDED_WITHIN_DAYS
+      ? 'action_needed'
+      : 'ready'
+    : waiting.length
+      ? 'waiting'
+      : 'done'
+  return {
+    key,
+    label: MEMO_STATUS_LABELS[key],
+    total: tally(items),
+    open: tally(open),
+    waiting: tally(waiting),
+    closed: tally(closed),
+    selected: tally(selected),
+    hasDraft: selected.length > 0,
+    draftDate: selected.length > 0 ? (draft?.draftDate ?? null) : null,
+    collectedN: buckets.collected,
+    notRecoveredN: buckets.notRecovered,
+    nextDeadline,
+    daysLeft,
+  }
+}
+
+// ---------- One sent dispute ----------------------------------------------------
+
+export type DisputeStatusKey = 'awaiting' | 'partly_recorded' | 'done'
+
+export const DISPUTE_STATUS_LABELS: Record<DisputeStatusKey, string> = {
+  awaiting: 'Waiting on Biller',
+  partly_recorded: 'Some outcomes recorded',
+  done: 'Done',
+}
+
+/** Status of one sent dispute from the collection outcomes of what it covered. */
+export function disputeStatus(collections: readonly (Collection | null)[]): DisputeStatusKey {
+  const waiting = collections.filter((c) => !c || c.status === 'awaiting').length
+  if (waiting === 0) return 'done'
+  return waiting === collections.length ? 'awaiting' : 'partly_recorded'
+}
+
+// ---------- Tracker helpers -------------------------------------------------------
+
+/** Credits the customer has recorded as received (decision 8: customer-
+ *  reported until Implentio ingests Biller credit records). */
+export function creditsRealized(rows: readonly Groupish[]): number {
+  return r2(rows.reduce((s, g) => s + collectedOf(g), 0))
+}
+
+/** Days after sending before an awaiting outcome needs a nudge. */
+export const OUTCOME_NUDGE_DAYS = 7
+
+export interface NeedsUpdateItem<T> {
+  row: T
+  reason: 'waiting' | 'deadline'
+  /** Days waited since sending, or days left to the deadline. */
+  days: number
+}
+
+/** When the customer last heard nothing back: the send, or a later "no reply yet". */
+function sentDate(g: Groupish): Date | null {
+  const dates = [g.pursuedTs ?? g.pursuedAt, g.lastCheckedAt]
+    .filter((raw): raw is string => !!raw)
+    .map((raw) => new Date(raw))
+    .filter((d) => !isNaN(d.getTime()))
+    .sort((a, b) => b.getTime() - a.getTime())
+  return dates[0] ?? null
+}
+
+/** Findings that need the customer: awaiting an outcome for a week or more,
+ *  or open with the deadline close. */
+export function needsUpdate<T extends Groupish>(rows: readonly T[], now: Date): NeedsUpdateItem<T>[] {
+  const out: NeedsUpdateItem<T>[] = []
+  for (const row of rows) {
+    const phase = findingPhase(row, now)
+    if (phase === 'waiting') {
+      const sent = sentDate(row)
+      const days = sent ? daysSince(sent, now) : null
+      if (days != null && days >= OUTCOME_NUDGE_DAYS) out.push({ row, reason: 'waiting', days })
+    } else if (phase === 'open' && row.disputeDeadline) {
+      const days = daysUntilDeadline(row.disputeDeadline, now)
+      if (days < ACTION_NEEDED_WITHIN_DAYS) out.push({ row, reason: 'deadline', days })
+    }
+  }
+  return out
+}
 
 export interface OutcomeCount {
   count: number
@@ -257,11 +425,11 @@ export function outcomesSummary(
 ): OutcomesSummary {
   const sum = (arr: { amountN?: number | null }[]) =>
     r2(arr.reduce((a, g) => a + (g.amountN ?? 0), 0))
-  const collectedOf = (g: OutcomeGroup) => g.collection?.amountN ?? 0
+  const collectedAmtOf = (g: OutcomeGroup) => g.collection?.amountN ?? 0
   const pursuedRows = rows.filter((g) => g.pursuit === 'pursued')
   const eligibleRows = rows.filter((g) => g.pursuit !== 'pursued')
   const pursuedAmt = sum(pursuedRows)
-  const collectedAmt = r2(pursuedRows.reduce((a, g) => a + collectedOf(g), 0))
+  const collectedAmt = r2(pursuedRows.reduce((a, g) => a + collectedAmtOf(g), 0))
   const rate = pursuedAmt > 0 ? Math.round((collectedAmt / pursuedAmt) * 100) : 0
   const withStatus = (s: Collection['status']) =>
     pursuedRows.filter((g) => g.collection?.status === s)
@@ -282,8 +450,8 @@ export function outcomesSummary(
       pursued: cnt(pursuedRows),
       eligible: cnt(eligibleRows),
       awaiting: cnt(withStatus('awaiting')),
-      partial: cnt(withStatus('partial'), collectedOf),
-      full: cnt(withStatus('full'), collectedOf),
+      partial: cnt(withStatus('partial'), collectedAmtOf),
+      full: cnt(withStatus('full'), collectedAmtOf),
       notIssued: cnt(withStatus('not_issued')),
     },
     rows,

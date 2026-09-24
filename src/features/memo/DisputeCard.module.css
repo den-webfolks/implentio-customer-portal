@@ -1,0 +1,46 @@
+/* Finding rows on a dispute card: fixed columns (finding | amount | answer)
+   so rows line up whatever state they're in; stacked in a narrow page. */
+.row {
+  display: grid;
+  /* The answer column fits the three options on one line. */
+  grid-template-columns: minmax(0, 1fr) 96px 432px;
+  grid-template-areas: 'title amount answer';
+  column-gap: 16px;
+  row-gap: 6px;
+  align-items: start;
+  padding: 12px 0;
+}
+
+.row + .row {
+  border-top: 1px solid var(--ds-stroke-disabled);
+}
+
+.title {
+  grid-area: title;
+  align-self: center;
+  min-width: 0;
+}
+
+.amount {
+  grid-area: amount;
+  align-self: center;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.answer {
+  grid-area: answer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+@container page (max-width: 900px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title amount'
+      'answer answer';
+  }
+}

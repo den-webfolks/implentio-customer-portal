@@ -37,9 +37,9 @@ describe('base seed', () => {
 })
 
 describe('scenarios', () => {
-  it('defines all 17 prototype scenarios', () => {
-    expect(scenarios).toHaveLength(17)
-    expect(new Set(scenarios.map((s) => s.id)).size).toBe(17)
+  it('defines the 17 prototype scenarios plus dispute-deadline', () => {
+    expect(scenarios).toHaveLength(18)
+    expect(new Set(scenarios.map((s) => s.id)).size).toBe(18)
   })
 
   it('falls back to report-ready for unknown ids', () => {
@@ -114,7 +114,14 @@ describe('scenarios', () => {
       case 'dispute-plus-new': {
         expect(s.findingGroups.find((g) => g.id === 'eg-res')?.pursuit).toBeNull()
         expect(s.findingGroups.find((g) => g.id === 'eg-base')?.pursuit).toBe('pursued')
-        expect(s.disputeExcludedIds).toEqual([])
+        expect(s.disputeExcludedIds.sort()).toEqual(['eg-multi', 'eg-res'])
+        break
+      }
+      case 'dispute-deadline': {
+        const res = s.findingGroups.find((g) => g.id === 'eg-res')
+        expect(res).toMatchObject({ pursuit: null, disputeDeadline: '2026-09-19' })
+        expect(s.findingGroups.find((g) => g.id === 'eg-multi')?.disputeDeadline).toBe('2026-09-15')
+        expect(s.disputeExcludedIds.sort()).toEqual(['eg-multi', 'eg-res'])
         break
       }
     }

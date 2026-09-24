@@ -232,6 +232,131 @@ and changes copy — each item below is a deliberate deviation or behaviour chan
   reduced motion.
 - Inner boxes nested in 8px surfaces use `--ds-radius-small`.
 
+## Parcel dispute flow — Phase 1 (2026-09-24)
+
+Flow and copy changes from Phase 1 of the parcel-credit-memo improvement plan ("make the current
+flow trustworthy"), made at the user's request. Decisions referenced as D1–D8 are the user's
+answers of 2026-09-24. No page layout changed; everything uses existing `src/ui` components.
+
+**One status everywhere** (`memoStatus` in `src/domain/outcomes.ts`): the tracker card, the
+memo's next-step card and Credit outcomes read the same derivation. Memo statuses:
+*Action needed* (attention; an open finding is due today, tomorrow or the day after) · *Ready
+to dispute* (neutral) · *Waiting on Biller* (info) · *Done* (success). They replace the
+tracker's six labels ("Dispute draft", "More findings available", "Awaiting Biller response",
+"Outcomes partly recorded", "Dispute completed") and the next-step eyebrows ("Next step",
+"Next steps", "Resolved"). A draft now shows as supporting text under *Ready to dispute*.
+
+**Behaviour changes:**
+- Deadline line "Dispute by {date} · N days remaining" on the tracker card and the next-step card
+  while findings are open. Countdown uses calendar days (it read one day too many; a passed
+  deadline read "Due today").
+- Findings left out of a dispute stay *Eligible to pursue* until their deadline (D1). New subtle
+  action **Won't pursue** → status *Not pursued* (muted) with **Undo** while the deadline is open.
+  A finding whose deadline passed unsent shows **Expired** (muted) — "Dispute window closed
+  {date} · {amount} not disputed". *Not pursued* never turns into *Expired* (note n359).
+- *Partly collected* is a final outcome (D5); the unpaid part is **Not recovered**. The memo is
+  *Done* once every finding is collected, partly collected, declined, not pursued or expired.
+- Every send is stored as a dispute record (D2), including the whole-memo (findings-unavailable)
+  dispute, which now moves the memo to *Waiting on Biller* and takes its own outcome.
+- New read-only **Dispute details** dialog (per dispute: status, sent by/method, date, to, cc,
+  subject, evidence package, findings with outcomes). Opened by "View dispute details" on the
+  tracker card (`?dispute=1`, previously ignored), the next-step card (previously opened the edit
+  modal), Credit outcomes rows and Activity entries.
+- Outcome modal groups findings by the dispute they were sent in, each with its own status and
+  "Apply one outcome to all" (it said "across 1 dispute" for sends on Sep 8 and Sep 15). Bulk
+  apply no longer offers *Partly collected* (it saved every finding with no amount).
+- `?prep=1` / `?outcomes=1` / `?dispute=1` are removed when the dialog closes, so switching tabs
+  no longer reopens it.
+- Activity is per memo and written by the actions themselves: sends, manual-send confirmations,
+  outcomes, won't-pursue / undo, downloads; dispute entries link to the details.
+- Credit outcomes covers every published memo, including the golden memo's findings. Its five
+  metric tabs and donut slices — *Eligible to pursue*, *Awaiting outcome*, *Collected*, *Not
+  recovered*, *Not disputed* — never overlap and add up to *Total identified* (the memo recovery
+  donut uses the same five). Pursuit filter gains *Not pursued* and *Expired*; the Outcome
+  column shows *Expired* / *Not pursued* instead of always "Eligible to pursue".
+- Credit outcomes shows a warning banner "N findings need your update" (outcome not recorded 7+
+  days after sending, or deadline within 3 days) with "Show them" to filter the table. Row
+  actions: *Record outcome* (awaiting), *View dispute* (other sent), *Review finding* (rest).
+- The dispute wizard lists open findings biggest first, never pre-selected (D6), and leaves out
+  findings marked *Not pursued*. Sending clears the draft to nothing selected.
+
+**Copy (product to confirm):**
+- "Credits realized" = sum of recorded collected amounts (D8), caption "Recorded by your team"
+  (was a fixed $9,294.74 "Confirmed from ingested Biller credit records"); tooltip says Implentio
+  doesn't read Biller credit records yet.
+- "Unresolved" (outcome modal) is replaced by *Awaiting outcome* and *Not recovered*.
+- Done card: "Your dispute with {Biller} is complete · N findings closed · $X collected · $Y not
+  recovered"; all-expired memo: "Nothing left to dispute with {Biller}".
+- "Variance group" naming is unchanged (D7 still open).
+
+**Demo scaffolding:** new scenario `dispute-deadline` (Action needed + Expired). Placeholder memos
+without dispute data keep the old static card ("Ready to dispute" → prepare).
+
+## Parcel dispute flow — Phase 2 (2026-09-24)
+
+"Shorten the path" from the improvement plan, at the user's request. **This redesigns the memo
+Summary & findings layout ahead of Phase 2b** (rule 4), for this page only. It was **built in code
+with no Figma frames yet** — recreate in Figma on request. Only existing `src/ui` components and
+`--ds-*` tokens are used. Wording is plain language, **pending PM** (one copy file:
+`src/domain/finding-copy.ts`, plus the status labels in `src/domain/outcomes.ts`).
+
+**Memo page as one workspace** (`SummaryTab`): a compact summary block — status and deadline; a
+**headline that follows the state** (Total overcharged before anything is sent → *Still to
+dispute* / *Waiting on QuickBox* / *Collected*, each "of $X overcharged"), where the money is once
+it's split, one guiding sentence; and a "Biggest findings" table (amount, status; the small ones
+fold into one row; a row jumps to its card) → one highlighted card per sent dispute → findings biggest first (with
+more than 3, those covering 95% of the amount show and the rest collapse into "N smaller
+findings") → Latest report. A sticky selection bar appears on the first tick with the total, the
+deadline and **Review & send**. Findings are chosen once, never pre-selected (D6).
+
+**Finding cards in layers:** ① everyday problem ("Shipping price higher than your contract rate")
+with the industry term as a tag, carriers/packages, one example line, amount and status; ② "Show me
+why": billed / should have been / difference, one example in words plus the expert sentence, how
+it was worked out; ③ "See all N packages" opens a focused package view — "Differences only" by
+default (billed, should have been, difference, and only the charges that differ), "Full breakdown"
+= the old 26-column table, service-level filter, search, charge highlight, Export.
+
+**Review & send** (`ReviewSendModal`) replaces the 3-step wizard: what's included (with Change),
+To/CC, CC-support toggle, subject, the whole message editable as the Biller will see it (a reason
+line per finding, "Reset to suggested text"), and how to send — from a connected Gmail/Outlook, or
+"Download the email" (`.eml` with the evidence attached, `X-Unsent` so Outlook opens a draft; web
+Gmail can't open it) followed by "I sent it". Link: `?send=1` (was `?prep=1`).
+
+**Dispute cards** (`DisputeCard`), one per send, tinted and accented while waiting: "Dispute sent to
+QuickBox · Sep 8, 2026 · 4 findings · $9,365.06 · Waiting 9 days" and the Biller's answer recorded
+**finding by finding, in place**, with a single-choice toggle per row (`RadioGroup`, bordered,
+row): **Fully collected** and **Denied** save on click; **Partly collected** opens one compact
+"$ ___ of $35.10 · Save · Cancel" line (Enter saves, Escape cancels). Only one row is open at a
+time, rows keep fixed columns (finding | amount | answer), and a recorded row shows its outcome with
+**Change** (and **Add reason** after a denial). **No reply
+yet** records the check and resets the 7-day nudge. **What was sent** expands in the card (sender,
+date, to, cc, subject, evidence). There is no whole-dispute "collected in full" shortcut — answers
+are recorded per finding (user feedback, 2026-09-24). **Show details** holds the rest on demand:
+sender and method, date, To/CC as mailto links, subject, the evidence file with Download, the
+message as sent (stored on the dispute record), outcome history (who recorded what, when, and what
+it was before), and a link to the memo's activity. Finding names in the card link to their cards.
+
+**Fewer dialogs:** the outcome editor and "Dispute details" dialogs are gone from the memo page —
+both live in the dispute cards. `?outcomes=1` / `?dispute=1` links (tracker, Credit outcomes,
+Activity) scroll to the dispute cards; `?dispute=1` also opens "What was sent". Remaining dialogs:
+Review & send, the package view, the report preview, and "How findings are calculated".
+
+**Removed:** the next-step card, the page-level charge highlight, the inline service-level table
+and package drill on cards, the wizard (`DisputeWizard`), `OutcomeModal` and `DisputeDetailsModal`,
+and the recovery donut (replaced by the "where the money is" list). The rollup table returned as
+the summary's findings table. The
+`Stepper` component is no longer used by the app (still in the gallery).
+
+**Wording changes (pending PM):** Awaiting outcome → *Waiting on Biller*; Biller declined →
+*Denied*; Eligible to pursue → *Ready to dispute*; Not pursued → *Won't pursue*; Outcomes partly
+recorded → *Some outcomes recorded*; Pursued → *Disputed* (Credit outcomes). *Fully collected* /
+*Partly collected* / *Collected* stay (user decision, 2026-09-24 — not "credited"). Tracker card actions:
+*Choose findings to dispute* / *Review & send* / *Record outcome* / *View dispute details*. The
+dispute email is written in the customer's voice ("We reviewed our parcel invoices…"). "Variance
+group" is unchanged (D7).
+
+**Other:** ticking a finding updates immediately (optimistic draft update).
+
 ## Follow-ups
 
 - Reverted at user request: "View affected packages", the tracker card CTA, and "Review summary"

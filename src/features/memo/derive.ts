@@ -1,13 +1,16 @@
 /**
- * Memo-detail derivations — ports recoveryStatus (~12839), nextStepCard
- * (~12738), and the findings view-model (~13962–14075) from the prototype.
+ * Memo-detail derivations — the recovery donut and next-step card (first
+ * ported from recoveryStatus ~12839 / nextStepCard ~12738, now built on the
+ * shared memo status in domain/outcomes) and the findings view-model
+ * (~13962–14075).
  */
-import type { FindingGroup, MemoDetail, PackageRecord } from '@/domain/types'
+import type { Collection, DisputeRecord, DisputeState, FindingGroup, MemoDetail, PackageRecord } from '@/domain/types'
 import { fmtMoney, posMoney, r2 } from '@/domain/money'
 import { excelDate } from '@/domain/dates'
-import { groupExpired, groupStatusLine } from '@/domain/outcomes'
+import { groupStatusLine, type MemoStatus } from '@/domain/outcomes'
+import { plural } from '@/domain/plural'
+import { findingProblem } from '@/domain/finding-copy'
 import { matchesFilter, type FilterValues } from '@/ui/Filters/Filters'
-import { TONE_CHART_COLOR } from '@/features/status-tones'
 
 const DASH = '—'
 
@@ -22,225 +25,146 @@ export const CHARGE_DEFS = [
 
 export type ChargeField = (typeof CHARGE_DEFS)[number][0]
 
-// ---------- recovery donut ---------------------------------------------------
+// ---------- dispute items -----------------------------------------------------
 
-export interface RecoverySlice {
-  label: string
-  color: string
-  amount: string
-  dashArray: string
-  dashOffset: string
-}
+/** One thing the customer can dispute on this memo: a finding, or the
+ *  complete credit memo when no finding breakdown was published. */
+export type DisputeItem = DisputeState & { id: string; title: string; amountN: number; threePl: string }
 
-export interface RecoveryStatus {
-  total: string
-  slices: RecoverySlice[]
-  eyebrow: string
-}
+export const COMPLETE_MEMO_TITLE = 'Complete credit memo'
 
-export function recoveryStatus(groups: readonly FindingGroup[], now: Date): RecoveryStatus | null {
-  if (!groups.length) return null
-  const total = groups.reduce((s, g) => s + (g.varN || 0), 0)
-  if (!total) return null
-  let collected = 0
-  let declined = 0
-  let awaiting = 0
-  let eligible = 0
-  for (const g of groups) {
-    if (g.pursuit !== 'pursued') {
-      if (g.pursuit !== 'excluded' && !groupExpired(g, now)) eligible += g.varN || 0
-      continue
-    }
-    const c = g.collection
-    if (c?.status === 'full') collected += g.varN || 0
-    else if (c?.status === 'not_issued') declined += g.varN || 0
-    else if (c?.status === 'partial') {
-      const amt = c.amountN ?? 0
-      collected += amt
-      awaiting += Math.max(0, (g.varN || 0) - amt)
-    } else awaiting += g.varN || 0
+export function memoDisputeItems(detail: MemoDetail, disputes: readonly DisputeRecord[]): DisputeItem[] {
+  const provider = detail.memo.provider
+  if (detail.findingsUnavailable) {
+    const d = disputes.find((x) => x.scope === 'memo')
+    return [
+      {
+        id: d?.id ?? 'complete',
+        title: COMPLETE_MEMO_TITLE,
+        amountN: detail.memo.netN ?? 0,
+        threePl: provider,
+        pursuit: d ? 'pursued' : null,
+        pursuedTs: d?.sentAt ?? null,
+        disputeDeadline: null,
+        collection: d?.collection ?? null,
+      },
+    ]
   }
-  const cats = [
-    { label: 'Collected', color: TONE_CHART_COLOR.success, amt: collected },
-    { label: 'Biller declined', color: TONE_CHART_COLOR.danger, amt: declined },
-    { label: 'Awaiting outcome', color: TONE_CHART_COLOR.info, amt: awaiting },
-    { label: 'Eligible to pursue', color: TONE_CHART_COLOR.neutral, amt: eligible },
-  ]
-  const CIRC = 2 * Math.PI * 50
-  let cum = 0
-  const slices = cats.map((c) => {
-    const dash = (c.amt / total) * CIRC
-    const seg: RecoverySlice = {
-      label: c.label,
-      color: c.color,
-      amount: fmtMoney(c.amt),
-      dashArray: `${dash.toFixed(2)} ${Math.max(CIRC - dash, 0).toFixed(2)}`,
-      dashOffset: (-cum).toFixed(2),
-    }
-    cum += dash
-    return seg
-  })
-  const resolved = awaiting <= 0.005 && eligible <= 0.005 && collected + declined > 0
-  return { total: fmtMoney(total), slices, eyebrow: resolved ? 'Resolved' : 'Recovery status' }
+  return detail.findingGroups.map((g) => ({
+    id: g.id,
+    title: g.title,
+    amountN: g.varN,
+    threePl: provider,
+    pursuit: g.pursuit,
+    disputeDeadline: g.disputeDeadline,
+    pursuedAt: g.pursuedAt,
+    pursuedTs: g.pursuedTs,
+    pursuedBy: g.pursuedBy,
+    pursuedVia: g.pursuedVia,
+    collection: g.collection,
+  }))
 }
 
-// ---------- next-step card ---------------------------------------------------
-
-export interface NextStepLine {
-  icon: 'prep' | 'clock' | 'check'
-  text: string
+/** A sent dispute with the current outcome of everything it covered. */
+export interface DisputeSection {
+  record: DisputeRecord
+  rows: { id: string; title: string; amountN: number; collection: Collection | null }[]
 }
 
-export interface NextStepAction {
-  kind: 'prep' | 'outcome' | 'view'
-  variant: 'primary' | 'secondary' | 'tertiary'
-  label: string
+export function disputeSections(detail: MemoDetail, disputes: readonly DisputeRecord[]): DisputeSection[] {
+  return disputes.map((record) => ({
+    record,
+    rows:
+      record.scope === 'memo'
+        ? [{ id: record.id, title: COMPLETE_MEMO_TITLE, amountN: record.amountN, collection: record.collection }]
+        : detail.findingGroups
+            .filter((g) => record.groupIds.includes(g.id))
+            .sort((a, b) => b.varN - a.varN)
+            .map((g) => ({ id: g.id, title: findingProblem(g), amountN: g.varN, collection: g.collection })),
+  }))
 }
 
-export interface NextStepCard {
-  eyebrow: string
-  heading: string
-  lines: NextStepLine[]
-  description: string
-  actions: NextStepAction[]
-  resolvedTreatment: boolean
+// ---------- workspace summary ------------------------------------------------
+
+export interface WorkspaceSummary {
+  /** The headline amount: what matters now, not always the total. */
+  hero: { label: string; amountN: number; context: string }
+  sentence: string
+  /** The one action the summary offers; findings and dispute cards carry the rest. */
+  action: 'send' | null
 }
 
-export function nextStepCard(input: {
-  findingGroups: readonly FindingGroup[]
-  findingsUnavailable: boolean
-  memoDisputeStatus: 'awaiting' | 'completed' | null
-  excludedIds: readonly string[]
+/** The memo workspace's headline and one-sentence guidance, driven by the
+ *  shared memo status. Before anything is sent the headline is the total
+ *  overcharge; after that it is what's still open, waiting, or collected. */
+export function workspaceSummary(input: {
+  status: MemoStatus | null
   provider: string
-  now: Date
-}): NextStepCard | null {
-  const { findingGroups: groups, findingsUnavailable, memoDisputeStatus, excludedIds, provider, now } = input
-  const line = (icon: NextStepLine['icon'], text: string): NextStepLine => ({ icon, text })
-  const action = (
-    kind: NextStepAction['kind'],
-    variant: NextStepAction['variant'],
-    label: string,
-  ): NextStepAction => ({ kind, variant, label })
-  const card = (c: Omit<NextStepCard, 'resolvedTreatment'> & { resolvedTreatment?: boolean }): NextStepCard => ({
-    resolvedTreatment: false,
-    ...c,
-  })
-
-  if (findingsUnavailable) {
-    if (!memoDisputeStatus)
-      return card({
-        eyebrow: 'Next step',
-        heading: `Prepare your dispute for ${provider}`,
-        lines: [],
-        description:
-          'A variance-group breakdown is not available for this credit memo, so the complete credit memo will be sent as a single dispute.',
-        actions: [action('prep', 'primary', 'Prepare dispute for Biller')],
-      })
-    if (memoDisputeStatus === 'awaiting')
-      return card({
-        eyebrow: 'Next step',
-        heading: `Track your dispute with ${provider}`,
-        lines: [line('clock', 'Awaiting a response from your biller')],
-        description: '',
-        actions: [action('outcome', 'primary', 'Update dispute outcomes')],
-      })
-    return card({
-      eyebrow: 'Resolved',
-      heading: `Your dispute with ${provider} is complete`,
-      lines: [line('check', 'Dispute finalized')],
-      description: '',
-      actions: [action('view', 'primary', 'View dispute details')],
-      resolvedTreatment: true,
-    })
-  }
-
-  if (!groups.length) return null
-  const eligible = groups.filter(
-    (g) => g.pursuit !== 'pursued' && g.pursuit !== 'excluded' && !groupExpired(g, now),
-  )
-  const pursued = groups.filter((g) => g.pursuit === 'pursued')
-  if (!eligible.length && !pursued.length) return null
-  const fmtCount = (n: number) => `${n} finding${n === 1 ? '' : 's'}`
-  const eligibleAmt = eligible.reduce((s, g) => s + (g.varN || 0), 0)
-  let awaitingAmt = 0
-  let awaitingCount = 0
-  for (const g of pursued) {
-    const s = g.collection?.status
-    if (!s || s === 'awaiting') {
-      awaitingAmt += g.varN || 0
-      awaitingCount++
-    } else if (s === 'partial') {
-      const rem = Math.max(0, (g.varN || 0) - (g.collection?.amountN ?? 0))
-      if (rem > 0.005) {
-        awaitingAmt += rem
-        awaitingCount++
+  totalN: number
+  /** e.g. "Found across 852 packages on 16 invoices". */
+  foundText: string
+  wholeMemo: boolean
+  hasDisputes: boolean
+}): WorkspaceSummary | null {
+  const { status: st, provider, totalN, foundText, wholeMemo, hasDisputes } = input
+  if (!st) return null
+  const findings = (n: number) => plural(n, 'finding')
+  const isAre = (n: number) => (n === 1 ? 'is' : 'are')
+  const ofTotal = `of ${fmtMoney(totalN)} overcharged`
+  const total = { label: 'Total overcharged', amountN: totalN, context: foundText }
+  if (st.key === 'ready' || st.key === 'action_needed') {
+    if (wholeMemo)
+      return {
+        hero: total,
+        sentence: 'A breakdown by finding isn’t available, so you’ll dispute the complete credit memo.',
+        action: 'send',
       }
+    if (!hasDisputes)
+      return {
+        hero: total,
+        sentence: `Tick the findings you want to claim back from ${provider}, then choose Review & send.`,
+        action: null,
+      }
+    return {
+      hero: { label: 'Still to dispute', amountN: st.open.amountN, context: ofTotal },
+      sentence: [
+        `${findings(st.open.count)} can still be disputed.`,
+        st.waiting.count > 0 ? `${findings(st.waiting.count)} ${isAre(st.waiting.count)} waiting on ${provider}’s answer.` : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
+      action: null,
     }
   }
-  const prepLabel = eligible.length && pursued.length ? 'Prepare another dispute' : 'Prepare dispute for Biller'
+  if (st.key === 'waiting')
+    return {
+      hero: { label: `Waiting on ${provider}`, amountN: st.waiting.amountN, context: ofTotal },
+      sentence: wholeMemo
+        ? `Record ${provider}’s answer in the dispute below when they reply.`
+        : `Record each answer in the dispute below when ${provider} replies.`,
+      action: null,
+    }
+  return hasDisputes
+    ? { hero: { label: 'Collected', amountN: st.collectedN, context: ofTotal }, sentence: 'Every finding has a final outcome.', action: null }
+    : { hero: total, sentence: 'Nothing left to dispute: the deadline has passed for every finding.', action: null }
+}
 
-  if (pursued.length && eligible.length) {
-    const actions = [action('prep', 'primary', prepLabel)]
-    if (awaitingAmt > 0.005) actions.push(action('outcome', 'secondary', 'Update dispute outcomes'))
-    return card({
-      eyebrow: 'Next steps',
-      heading: `Continue your work with ${provider}`,
-      lines: [
-        line('prep', `${fmtMoney(eligibleAmt)} across ${fmtCount(eligible.length)} remains eligible for another dispute`),
-        ...(awaitingAmt > 0.005
-          ? [line('clock', `${fmtMoney(awaitingAmt)} across ${fmtCount(awaitingCount)} is awaiting an outcome`)]
-          : []),
-      ],
-      description: `A new dispute for the remaining eligible findings will not affect any dispute already sent to ${provider}.`,
-      actions,
-    })
+/** Biggest findings first. With more than 3, show those covering 95% of the
+ *  amount (at least 2) and collapse the rest; filtering shows everything. */
+export function splitFindings<T extends { varN: number }>(
+  groups: readonly T[],
+  opts: { showAll: boolean },
+): { visible: T[]; hidden: T[] } {
+  const sorted = [...groups].sort((a, b) => b.varN - a.varN)
+  if (opts.showAll || sorted.length <= 3) return { visible: sorted, hidden: [] }
+  const total = sorted.reduce((s, g) => s + g.varN, 0)
+  let covered = 0
+  let n = 0
+  while (n < sorted.length && (n < 2 || covered < total * 0.95)) {
+    covered += sorted[n]?.varN ?? 0
+    n++
   }
-  if (pursued.length && !eligible.length) {
-    const fullyResolved = awaitingAmt <= 0.005
-    const collected = pursued.reduce(
-      (s, g) =>
-        s +
-        (g.collection && (g.collection.status === 'full' || g.collection.status === 'partial')
-          ? (g.collection.amountN ?? 0)
-          : 0),
-      0,
-    )
-    if (fullyResolved)
-      return card({
-        eyebrow: 'Resolved',
-        heading: `Your dispute with ${provider} is complete`,
-        lines: [line('check', `${fmtCount(pursued.length)} finalized · ${fmtMoney(collected)} collected`)],
-        description: 'All findings have a final outcome.',
-        actions: [action('view', 'primary', 'View previous dispute')],
-        resolvedTreatment: true,
-      })
-    return card({
-      eyebrow: 'Next step',
-      heading: `Track your dispute with ${provider}`,
-      lines: [line('clock', `${fmtMoney(awaitingAmt)} across ${fmtCount(awaitingCount)} awaiting an outcome`)],
-      description: 'Record collection outcomes as your biller responds.',
-      actions: [action('outcome', 'primary', 'Update dispute outcomes')],
-    })
-  }
-  const excludedCount = eligible.filter((g) => excludedIds.includes(g.id)).length
-  if (excludedCount > 0 && excludedCount < eligible.length) {
-    const selected = eligible.filter((g) => !excludedIds.includes(g.id))
-    const selAmt = selected.reduce((s, g) => s + (g.varN || 0), 0)
-    return card({
-      eyebrow: 'Next step',
-      heading: `Continue preparing your dispute for ${provider}`,
-      lines: [line('prep', `${fmtMoney(selAmt)} selected across ${fmtCount(selected.length)}`)],
-      description: 'Your dispute draft has not been sent yet.',
-      actions: [action('prep', 'primary', 'Continue preparing dispute')],
-    })
-  }
-  return card({
-    eyebrow: 'Next step',
-    heading: `Prepare your dispute for ${provider}`,
-    lines: [line('prep', `${fmtMoney(eligibleAmt)} eligible across ${fmtCount(eligible.length)}`)],
-    description: 'Select the findings to include, then review and send your dispute.',
-    actions: [action('prep', 'primary', 'Prepare dispute for Biller')],
-  })
+  return { visible: sorted.slice(0, n), hidden: sorted.slice(n) }
 }
 
 // ---------- findings view ----------------------------------------------------
@@ -370,15 +294,3 @@ export function packageHighlighted(o: PackageRecord, hl: string): boolean {
 }
 
 export { excelDate, DASH }
-
-/** Build the memo rollup rows (variance groups summary table). */
-export function memoRollupRows(detail: MemoDetail) {
-  return detail.findingGroups.map((g) => ({
-    id: g.id,
-    anchor: `finding-${g.id}`,
-    title: g.title,
-    amount: fmtMoney(g.varN),
-    packages: g.packages.toLocaleString('en-US'),
-    invoices: g.invoices.toLocaleString('en-US'),
-  }))
-}

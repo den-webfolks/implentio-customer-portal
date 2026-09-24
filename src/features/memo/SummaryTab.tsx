@@ -1,9 +1,17 @@
-/** Memo detail — Summary & Findings tab (template ~4608–5184). */
-import { useState, type CSSProperties } from 'react'
-import { CheckCircleIcon, CheckIcon, ClockIcon, EyeIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
-import type { MemoDetail } from '@/domain/types'
+/** Memo detail — Summary & findings, as one workspace (Phase 2 of the dispute
+ *  flow; first ported from template ~4608–5184): a one-sentence summary with
+ *  the deadline, the disputes already sent, then findings biggest first with a
+ *  selection bar. See DESIGN-SYSTEM.md "Parcel dispute flow — Phase 2". */
+import { useEffect, useState, type CSSProperties } from 'react'
+import { useSearchParams } from 'react-router'
+import { CheckCircleIcon, ClockIcon, ChevronDownIcon, ChevronUpIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
+import type { Collection, FindingGroup, MemoDetail } from '@/domain/types'
 import { useClock } from '@/lib/clock'
 import { fmtMoney } from '@/domain/money'
+import { countdownText, fmtDateLong, fmtDateShort } from '@/domain/dates'
+import { RECOVERY_BUCKETS, STATUS_LABELS, findingPhase, groupStatusLine, memoStatus, recoveryBuckets, type GroupStatusKey } from '@/domain/outcomes'
+import { findingProblem } from '@/domain/finding-copy'
+import { plural } from '@/domain/plural'
 import { InfoTip } from '@/ui/Tooltip/Tooltip'
 import { Modal } from '@/ui/Modal/Modal'
 import { Button } from '@/ui/Button/Button'
@@ -11,31 +19,43 @@ import { Link } from '@/ui/Link/Link'
 import { Banner } from '@/ui/Banner/Banner'
 import { StatusChip } from '@/ui/Chip/StatusChip'
 import { EmptyState, Spinner } from '@/ui/Display/Display'
-import { Select } from '@/ui/Form/Select'
-import { Table, TableScroll } from '@/ui/Table/Table'
 import { FilterButton, FilterGroup, useFilters, type FilterField, type FilterValues } from '@/ui/Filters/Filters'
-import { useDisputeContext, useSetDisputeDraft, useIncludeInAnotherRequest } from './api'
-import { CHARGE_DEFS, FINDING_FILTER_KEYS, filterGroups, memoRollupRows, nextStepCard, recoveryStatus, serviceList, titleCase } from './derive'
+import { BUCKET_TONE, GROUP_STATUS_TONE, MEMO_STATUS_TONE, TONE_CHART_COLOR } from '@/features/status-tones'
+import { Table, TableScroll } from '@/ui/Table/Table'
+import {
+  useDisputeContext,
+  useDisputes,
+  useMarkDisputeChecked,
+  useRecordGroupOutcome,
+  useRecordMemoDisputeOutcome,
+  useSetDisputeDraft,
+  useSetGroupNotPursued,
+} from './api'
+import {
+  FINDING_FILTER_KEYS,
+  disputeSections,
+  filterGroups,
+  memoDisputeItems,
+  serviceList,
+  splitFindings,
+  titleCase,
+  workspaceSummary,
+} from './derive'
 import { FindingCard } from './FindingCard'
-import { DisputeWizard } from './DisputeWizard'
+import { DisputeCard } from './DisputeCard'
+import { SelectionBar } from './SelectionBar'
+import { ReviewSendModal } from './ReviewSendModal'
+import { PackagesModal } from './PackagesModal'
 import { ReportPreviewModal } from './ReportPreviewModal'
-import { OutcomeModal } from './OutcomeModal'
-import { plural } from '@/domain/plural'
 
 const VARIANCE_TIP =
-  'These amounts include only packages with significant variance—not all invoices and spend reviewed during this audit period.'
-const RECOVERY_TIP =
-  'Collected, declined, awaiting, and eligible amounts add up to the total variance identified.'
+  'Only packages that were charged more than your contract allows — not all invoices and spend reviewed in this audit period.'
 
-const DISPUTE_STATUS_OPTIONS = [
-  { value: 'eligible', label: 'Eligible to pursue' },
-  { value: 'awaiting_outcome', label: 'Awaiting outcome' },
-  { value: 'fully_collected', label: 'Fully collected' },
-  { value: 'partly_collected', label: 'Partly collected' },
-  { value: 'declined', label: 'Biller declined' },
-]
+const DISPUTE_STATUS_OPTIONS = (Object.keys(STATUS_LABELS) as GroupStatusKey[]).map((k) => ({ value: k, label: STATUS_LABELS[k] }))
 
-const NO_HIGHLIGHT = 'all'
+/** Dialogs that deep links (tracker CTAs, activity entries) can open. */
+const MODAL_PARAMS = ['send'] as const
+type ModalParam = (typeof MODAL_PARAMS)[number]
 
 const EYEBROW_ACCENT: CSSProperties = {
   font: 'var(--ds-weight-semi) 12px/1.3 var(--ds-font)',
@@ -54,35 +74,73 @@ export function SummaryTab({
   onDownloadExcel: () => void
 }) {
   const clock = useClock()
-  const ctxQ = useDisputeContext()
+  const memo = detail.memo
+  const ctxQ = useDisputeContext(memo.id)
+  const disputesQ = useDisputes(memo.id)
   const setDraft = useSetDisputeDraft()
-  const includeAgain = useIncludeInAnotherRequest()
+  const setNotPursued = useSetGroupNotPursued()
+  const recordGroupOutcome = useRecordGroupOutcome()
+  const recordMemoOutcome = useRecordMemoDisputeOutcome()
+  const markChecked = useMarkDisputeChecked()
   const [filterValues, setFilterValues] = useState<FilterValues>({})
-  const [hl, setHl] = useState<string>(NO_HIGHLIGHT)
+  const [showSmaller, setShowSmaller] = useState(false)
   const [methodOpen, setMethodOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
-  const [wizardOpen, setWizardOpen] = useState(
-    () => new URLSearchParams(window.location.search).get('prep') === '1',
-  )
-  const [outcomesOpen, setOutcomesOpen] = useState(
-    () => new URLSearchParams(window.location.search).get('outcomes') === '1',
-  )
+  const [packagesFor, setPackagesFor] = useState<FindingGroup | null>(null)
 
-  const memo = detail.memo
+  // Review & send lives in the URL so tracker links can open it; closing
+  // removes the parameter, so switching tabs doesn't reopen it. Links to a
+  // memo's outcomes or dispute record scroll to the dispute cards instead.
+  const [params, setParams] = useSearchParams()
+  const [detailsFromLink] = useState(() => params.has('dispute'))
+  const disputeLink = params.has('outcomes') || params.has('dispute')
+  useEffect(() => {
+    if (!disputeLink || !disputesQ.data) return
+    document.getElementById('disputes')?.scrollIntoView({ block: 'start' })
+    setParams(
+      (p) => {
+        p.delete('outcomes')
+        p.delete('dispute')
+        return p
+      },
+      { replace: true },
+    )
+  }, [disputeLink, disputesQ.data, setParams])
+
+  const modal = MODAL_PARAMS.find((k) => params.has(k)) ?? null
+  const openModal = (key: ModalParam) =>
+    setParams(
+      (p) => {
+        for (const k of MODAL_PARAMS) p.delete(k)
+        p.set(key, '1')
+        return p
+      },
+      { replace: true },
+    )
+  const closeModal = () => {
+    setParams(
+      (p) => {
+        for (const k of MODAL_PARAMS) p.delete(k)
+        return p
+      },
+      { replace: true },
+    )
+  }
+
   const now = clock.now()
-  const allGroups = memo.detailAvailable || detail.findingGroups.length ? detail.findingGroups : []
+  const groups = detail.findingGroups
   const filterFields: FilterField[] = [
     {
       key: FINDING_FILTER_KEYS.carrier,
       label: 'Carrier',
-      options: [...new Set(allGroups.flatMap((g) => g.carriers))].sort().map((v) => ({ value: v, label: v })),
+      options: [...new Set(groups.flatMap((g) => g.carriers))].sort().map((v) => ({ value: v, label: v })),
     },
     {
       key: FINDING_FILTER_KEYS.service,
       label: 'Service level',
-      options: [...new Set(allGroups.flatMap(serviceList))].sort().map((v) => ({ value: v, label: titleCase(v) })),
+      options: [...new Set(groups.flatMap(serviceList))].sort().map((v) => ({ value: v, label: titleCase(v) })),
     },
-    { key: FINDING_FILTER_KEYS.disputeStatus, label: 'Dispute status', options: DISPUTE_STATUS_OPTIONS },
+    { key: FINDING_FILTER_KEYS.disputeStatus, label: 'Status', options: DISPUTE_STATUS_OPTIONS },
   ]
   const filters = useFilters(filterFields, filterValues, setFilterValues)
 
@@ -98,44 +156,91 @@ export function SummaryTab({
     )
   }
 
-  if (!ctxQ.data) return null
-  const excludedIds = ctxQ.data.excludedIds
-  const groups = allGroups
-  const hasFindings = groups.length > 0 && !detail.findingsUnavailable
+  if (!ctxQ.data || !disputesQ.data) return null
+  const { excludedIds, draftDate } = ctxQ.data
+  const disputes = disputesQ.data
+  const wholeMemo = detail.findingsUnavailable
+  const hasFindings = groups.length > 0 && !wholeMemo
 
-  const recovery = memo.detailAvailable ? recoveryStatus(groups, now) : null
-  const nextStep = memo.detailAvailable
-    ? nextStepCard({
-        findingGroups: groups,
-        findingsUnavailable: detail.findingsUnavailable,
-        memoDisputeStatus: ctxQ.data.memoDisputeStatus,
-        excludedIds,
-        provider: memo.provider,
-        now,
-      })
-    : null
-  const rollup = memoRollupRows(detail)
-
-  const groupsFiltered = filterGroups(groups, filterValues, excludedIds, memo.provider, now)
-  const hlLabel = hl === NO_HIGHLIGHT ? null : CHARGE_DEFS.find((c) => c[0] === hl)?.[2]
+  const items = memoDisputeItems(detail, disputes)
+  // A whole-memo dispute has no finding selection, so no draft.
+  const status = memoStatus(items, { draft: wholeMemo ? null : { excludedIds, draftDate }, now })
+  const summary = workspaceSummary({
+    status,
+    provider: memo.provider,
+    totalN: memo.netN ?? 0,
+    foundText: `Found across ${memo.orders != null ? plural(memo.orders, 'package') : '— packages'} on ${memo.invoices != null ? plural(memo.invoices, 'invoice') : '— invoices'}`,
+    wholeMemo,
+    hasDisputes: disputes.length > 0,
+  })
+  const deadline =
+    status?.nextDeadline && status.daysLeft != null
+      ? `Dispute by ${fmtDateLong(status.nextDeadline)} · ${countdownText(status.daysLeft)}`
+      : null
+  const sections = disputeSections(detail, disputes)
   const auditedInvoices = (memo.invoices ?? 0) + (memo.invoicesNoVariance ?? 0)
 
-  const scrollToFinding = (anchor: string) => {
-    const el = document.getElementById(anchor)
-    if (!el) return
-    const reduceMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
-    // Move focus with the view so keyboard and screen-reader users land on the finding.
-    el.focus({ preventScroll: true })
-    el.classList.remove('ia-flash')
-    requestAnimationFrame(() => el.classList.add('ia-flash'))
-    setTimeout(() => el.classList.remove('ia-flash'), 1500)
-  }
+  const openGroups = groups.filter((g) => findingPhase(g, now) === 'open')
+  const isSelected = (g: FindingGroup) => !excludedIds.includes(g.id)
+  const selectedGroups = openGroups.filter(isSelected).sort((a, b) => b.varN - a.varN)
+  const filtersActive = Object.values(filterValues).some((v) => (v?.length ?? 0) > 0)
+  const groupsFiltered = filterGroups(groups, filterValues, excludedIds, memo.provider, now)
+  const { visible, hidden } = splitFindings(groupsFiltered, { showAll: filtersActive })
+  const hiddenSelected = hidden.filter((g) => findingPhase(g, now) === 'open' && isSelected(g)).length
 
-  const toggleInclusion = (groupId: string, include: boolean) => {
-    const next = include ? excludedIds.filter((id) => id !== groupId) : [...excludedIds, groupId]
-    setDraft.mutate({ excludedIds: next, draftDate: ctxQ.data.draftDate })
+  const saveOutcome = (rowId: string, collection: Collection) => {
+    if (wholeMemo) recordMemoOutcome.mutate({ disputeId: rowId, collection })
+    else recordGroupOutcome.mutate({ groupId: rowId, collection })
   }
+  const jumpToFinding = (id: string) => {
+    if (hidden.some((g) => g.id === id)) setShowSmaller(true)
+    // Next frame, so a card just revealed from "smaller findings" is in the DOM.
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`finding-${id}`)
+      if (!el) return
+      const reduceMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+      // Move focus with the view so keyboard and screen-reader users land on the finding.
+      el.focus({ preventScroll: true })
+      el.classList.remove('ia-flash')
+      requestAnimationFrame(() => el.classList.add('ia-flash'))
+      setTimeout(() => el.classList.remove('ia-flash'), 1500)
+    })
+  }
+  // The summary lists the big findings; the rest fold into one row.
+  const tableSplit = splitFindings(groups, { showAll: false })
+  const smallerInTable = tableSplit.hidden
+  const summaryRows = wholeMemo
+    ? items.map((i) => ({ id: i.id, title: i.title, amountN: i.amountN, status: groupStatusLine(i, now), jump: false }))
+    : [...tableSplit.visible, ...(showSmaller ? smallerInTable : [])].map((g) => ({
+        id: g.id,
+        title: findingProblem(g),
+        amountN: g.varN,
+        status: groupStatusLine({ ...g, amountN: g.varN, threePl: memo.provider }, now),
+        jump: true,
+      }))
+  const buckets = recoveryBuckets(items, now)
+  // Where the money is, once it's split more than one way.
+  const moneyBuckets = disputes.length > 0 ? RECOVERY_BUCKETS.filter((b) => buckets[b.key] > 0.005) : []
+
+  const toggleSelected = (groupId: string, on: boolean) => {
+    const next = on ? excludedIds.filter((id) => id !== groupId) : [...excludedIds, groupId]
+    setDraft.mutate({ excludedIds: next, draftDate: on ? (draftDate ?? fmtDateShort(now)) : draftDate })
+  }
+  const clearSelection = () => setDraft.mutate({ excludedIds: groups.map((g) => g.id), draftDate: null })
+
+  const findingCard = (g: FindingGroup) => (
+    <FindingCard
+      key={g.id}
+      group={g}
+      provider={memo.provider}
+      selected={isSelected(g)}
+      now={now}
+      onToggleSelected={toggleSelected}
+      onSetNotPursued={(id, notPursued) => setNotPursued.mutate({ groupId: id, notPursued })}
+      onOpenPackages={setPackagesFor}
+    />
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -153,276 +258,218 @@ export function SummaryTab({
         </Banner>
       )}
 
-      <div className="db-eyebrow">Credit memo summary</div>
-
-      {!memo.allNoVariance ? (
-        <div className="ia-memo-summary" style={{ display: 'grid', gridTemplateColumns: '34fr 66fr', border: SURFACE_BORDER, borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-orange-100)', boxShadow: 'var(--ds-shadow-disabled)', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10, padding: '28px 30px', minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span style={EYEBROW_ACCENT}>Total variance identified</span>
-              <InfoTip text={VARIANCE_TIP} color="var(--ds-fg-accent-text)" />
-            </div>
-            <div style={{ font: 'var(--ds-weight-semi) clamp(34px, 3.6vw, 48px)/1.05 var(--ds-font)', fontVariantNumeric: 'tabular-nums', letterSpacing: 'var(--ds-tracking-heading)', color: 'var(--ds-fg-accent-text)', whiteSpace: 'nowrap' }}>
-              {memo.netN == null ? '—' : fmtMoney(memo.netN)}
-            </div>
-            <div className="ds-body-base ds-muted">
-              Found across {memo.orders != null ? plural(memo.orders, 'package') : '— packages'} on {memo.invoices != null ? plural(memo.invoices, 'invoice') : '— invoices'}
-            </div>
-            {memo.invoicesNoVariance != null && memo.invoicesNoVariance > 0 && (
-              <div className="ds-body-small" style={{ color: 'var(--ds-fg-muted)' }}>
-                {plural(auditedInvoices, 'invoice')} audited · {memo.invoicesNoVariance} had no significant variance
+      {memo.allNoVariance ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, border: SURFACE_BORDER, borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-bg-success-muted)', padding: '24px 28px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ds-fg-success)' }}>
+            <CheckCircleIcon width={20} height={20} aria-hidden="true" style={{ flex: 'none' }} />
+            <span style={{ ...EYEBROW_ACCENT, color: 'var(--ds-fg-success)' }}>All clear</span>
+          </div>
+          <p className="ds-heading-small" style={{ margin: 0 }}>
+            No overcharges found. All {plural(auditedInvoices, 'invoice')} in this audit matched your contract closely enough to need no action.
+          </p>
+        </div>
+      ) : (
+        <section
+          aria-label="Summary"
+          className="ia-memo-summary"
+          style={{ display: 'grid', gridTemplateColumns: '34fr 66fr', border: SURFACE_BORDER, borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-orange-100)', boxShadow: 'var(--ds-shadow-disabled)', overflow: 'hidden' }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '20px 26px', minWidth: 0 }}>
+            {status && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px 10px', flexWrap: 'wrap', marginBottom: 4 }}>
+                <StatusChip tone={MEMO_STATUS_TONE[status.key]}>{status.label}</StatusChip>
+                {deadline && (
+                  <span className="ds-body-small ds-w-medium" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <ClockIcon width={16} height={16} aria-hidden="true" style={{ flex: 'none' }} />
+                    {deadline}
+                  </span>
+                )}
               </div>
             )}
-            {recovery && (
-              <div style={{ borderTop: SURFACE_BORDER, marginTop: 6, paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {summary && (
+              <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={EYEBROW_ACCENT}>{recovery.eyebrow}</span>
-                  <InfoTip text={RECOVERY_TIP} color="var(--ds-fg-accent-text)" />
+                  <span style={EYEBROW_ACCENT}>{summary.hero.label}</span>
+                  {summary.hero.label === 'Total overcharged' && <InfoTip text={VARIANCE_TIP} color="var(--ds-fg-accent-text)" />}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-                  <div style={{ position: 'relative', width: 120, height: 120, flex: 'none' }}>
-                    <svg viewBox="0 0 120 120" width="120" height="120" style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
-                      <circle cx="60" cy="60" r="50" fill="none" stroke="var(--ds-bg-default)" strokeWidth="16" />
-                      {recovery.slices.map((s) => (
-                        <circle key={s.label} cx="60" cy="60" r="50" fill="none" stroke={s.color} strokeWidth="16" strokeDasharray={s.dashArray} strokeDashoffset={s.dashOffset} />
-                      ))}
-                    </svg>
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', pointerEvents: 'none' }}>
-                      <div className="ds-heading-tiny" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                        {recovery.total}
-                      </div>
-                      <div className="ds-caption-tiny ds-muted">Total identified</div>
-                    </div>
-                  </div>
-                  <ul style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: '1 1 160px', minWidth: 150, margin: 0, padding: 0, listStyle: 'none' }}>
-                    {recovery.slices.map((s) => (
-                      <li key={s.label} className="ds-body-base" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ width: 10, height: 10, borderRadius: 'var(--ds-radius-full)', background: s.color, flex: 'none' }} />
-                        <span style={{ flex: '1 1 auto', minWidth: 0 }}>{s.label}</span>
-                        <span className="ds-w-semi" style={{ fontVariantNumeric: 'tabular-nums', flex: 'none' }}>
-                          {s.amount}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                <div style={{ font: 'var(--ds-weight-semi) clamp(30px, 3vw, 40px)/1.05 var(--ds-font)', fontVariantNumeric: 'tabular-nums', letterSpacing: 'var(--ds-tracking-heading)', color: 'var(--ds-fg-accent-text)', whiteSpace: 'nowrap' }}>
+                  {fmtMoney(summary.hero.amountN)}
                 </div>
-              </div>
+                <div className="ds-body-small ds-muted">{summary.hero.context}</div>
+              </>
+            )}
+            {moneyBuckets.length > 1 && (
+              <ul aria-label="Where the money is" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', margin: 0, padding: 0, listStyle: 'none' }}>
+                {moneyBuckets.map((b) => (
+                  <li key={b.key} className="ds-body-small" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 'var(--ds-radius-full)', background: TONE_CHART_COLOR[BUCKET_TONE[b.key]], flex: 'none' }} />
+                    {b.label} <span className="ds-w-semi" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtMoney(buckets[b.key])}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {summary && (
+              <p className="ds-body-base ds-w-medium" style={{ margin: '4px 0 0' }}>
+                {summary.sentence}
+              </p>
+            )}
+            {summary?.action === 'send' && (
+              <Button variant="primary" iconLeft={<PaperAirplaneIcon aria-hidden="true" />} onClick={() => openModal('send')} style={{ alignSelf: 'flex-start', marginTop: 4 }}>
+                Review &amp; send
+              </Button>
             )}
           </div>
-          <div className="ia-memo-rollup" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '22px 26px 20px', background: 'var(--ds-bg-default)', borderInlineStart: SURFACE_BORDER, minWidth: 0 }}>
-            <div>
-              <div className="ds-heading-tiny">Variance groups in this credit memo</div>
-              <p className="imp-small" style={{ margin: '4px 0 0' }}>
-                See how the total variance is distributed across the groups explained below.
-              </p>
-            </div>
+          <div className="ia-memo-rollup" style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '18px 22px', background: 'var(--ds-bg-default)', borderInlineStart: SURFACE_BORDER, minWidth: 0 }}>
+            <div className="ds-heading-tiny">{wholeMemo ? 'What you’ll dispute' : 'Biggest findings'}</div>
             <TableScroll>
-              <Table style={{ minWidth: 520 }}>
+              <Table style={{ minWidth: 440 }}>
                 <thead>
                   <tr>
-                    <th>Variance group</th>
-                    <th className="num">Net variance</th>
-                    <th className="num">Packages</th>
-                    <th className="num">Invoices</th>
+                    <th>Finding</th>
+                    <th className="num">Overcharged</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rollup.map((r) => (
+                  {summaryRows.map((r) => (
                     <tr key={r.id}>
                       <td>
-                        <Link variant="accent" bold onClick={() => scrollToFinding(r.anchor)}>
-                          {r.title}
-                        </Link>
+                        {r.jump ? (
+                          <Link variant="accent" bold onClick={() => jumpToFinding(r.id)}>
+                            {r.title}
+                          </Link>
+                        ) : (
+                          <span className="ds-w-semi">{r.title}</span>
+                        )}
                       </td>
                       <td className="num" style={{ color: 'var(--ds-fg-accent-text)', fontWeight: 600 }}>
-                        {r.amount}
+                        {fmtMoney(r.amountN)}
                       </td>
-                      <td className="num">{r.packages}</td>
-                      <td className="num">{r.invoices}</td>
+                      <td>
+                        <StatusChip tone={GROUP_STATUS_TONE[r.status.key]}>{r.status.label}</StatusChip>
+                      </td>
                     </tr>
                   ))}
-                  <tr className="total-row">
-                    <td>Total</td>
-                    <td className="num" style={{ color: 'var(--ds-fg-accent-text)' }}>
-                      {memo.netN == null ? '—' : fmtMoney(memo.netN)}
-                    </td>
-                    <td className="num">{memo.orders?.toLocaleString('en-US') ?? '—'}</td>
-                    <td className="num">{memo.invoices ?? '—'}</td>
-                  </tr>
+                  {smallerInTable.length > 0 && (
+                    <tr>
+                      <td colSpan={3}>
+                        <Link variant="accent" size="small" bold aria-expanded={showSmaller} onClick={() => setShowSmaller((v) => !v)}>
+                          {showSmaller ? 'Hide' : 'Show'} {plural(smallerInTable.length, 'smaller finding')} ({fmtMoney(smallerInTable.reduce((a, g) => a + g.varN, 0))} in total)
+                        </Link>
+                      </td>
+                    </tr>
+                  )}
+                  {summaryRows.length > 1 && (
+                    <tr className="total-row">
+                      <td>Total</td>
+                      <td className="num" style={{ color: 'var(--ds-fg-accent-text)' }}>
+                        {fmtMoney(memo.netN ?? 0)}
+                      </td>
+                      <td></td>
+                    </tr>
+                  )}
                 </tbody>
               </Table>
             </TableScroll>
-            <p className="ds-body-small" style={{ margin: 0, color: 'var(--ds-fg-muted)' }}>
-              Invoice counts are distinct per group; one invoice can appear in several groups, so the rows do not sum.
-            </p>
           </div>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '34fr 66fr', border: SURFACE_BORDER, borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-bg-success-muted)', boxShadow: 'var(--ds-shadow-disabled)', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10, padding: '28px 30px', minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ds-fg-success)' }}>
-              <CheckCircleIcon width={20} height={20} aria-hidden="true" style={{ flex: 'none' }} />
-              <span style={{ ...EYEBROW_ACCENT, color: 'var(--ds-fg-success)' }}>No significant variance identified</span>
-            </div>
-            <div className="ds-heading-xlarge">{plural(auditedInvoices, 'invoice')} audited</div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6, padding: '22px 26px', background: 'var(--ds-bg-default)', borderInlineStart: SURFACE_BORDER }}>
-            <div className="ds-heading-tiny">All clear</div>
-            <p className="imp-small" style={{ margin: 0 }}>
-              All {plural(auditedInvoices, 'invoice')} in this audit were reviewed and were within the significant-variance threshold.
-            </p>
-          </div>
-        </div>
+        </section>
       )}
 
-      {nextStep && (
-        <div style={{ border: SURFACE_BORDER, borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-bg-brand-disabled)', padding: '22px 26px', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-          <span style={{ width: 56, height: 56, borderRadius: 'var(--ds-radius-full)', background: 'var(--ds-bg-default)', color: 'var(--ds-icon-brand-emphasis)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-            {nextStep.resolvedTreatment ? <CheckIcon width={24} height={24} aria-hidden="true" /> : <PaperAirplaneIcon width={24} height={24} aria-hidden="true" />}
-          </span>
-          <div style={{ flex: '1 1 320px', minWidth: 0 }}>
-            <div className="imp-eyebrow" style={{ marginBottom: 4 }}>
-              {nextStep.eyebrow}
-            </div>
-            <div className="ds-heading-medium">{nextStep.heading}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
-              {nextStep.lines.map((ln) => (
-                <div key={ln.text} className="ds-body-base ds-w-medium" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--ds-fg-brand-emphasis)' }}>
-                  {ln.icon === 'prep' && <PaperAirplaneIcon width={16} height={16} aria-hidden="true" style={{ flex: 'none' }} />}
-                  {ln.icon === 'clock' && <ClockIcon width={16} height={16} aria-hidden="true" style={{ flex: 'none' }} />}
-                  {ln.icon === 'check' && <CheckIcon width={16} height={16} aria-hidden="true" style={{ flex: 'none' }} />}
-                  <span>{ln.text}</span>
-                </div>
-              ))}
-            </div>
-            {nextStep.description && (
-              <p className="imp-small" style={{ margin: '6px 0 0', maxWidth: '64ch' }}>
-                {nextStep.description}
-              </p>
-            )}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'stretch', flex: 'none', minWidth: 220 }}>
-            {nextStep.actions.map((act) => {
-              const onClick = () => {
-                if (act.kind === 'prep') setWizardOpen(true)
-                else setOutcomesOpen(true)
-              }
-              if (act.variant === 'primary')
-                return (
-                  <Button
-                    key={act.label}
-                    variant="primary"
-                    iconLeft={act.kind === 'prep' ? <PaperAirplaneIcon aria-hidden="true" /> : <EyeIcon aria-hidden="true" />}
-                    onClick={onClick}
-                  >
-                    {act.label}
-                  </Button>
-                )
-              if (act.variant === 'secondary')
-                return (
-                  <Button key={act.label} variant="emphasis" onClick={onClick}>
-                    {act.label}
-                  </Button>
-                )
-              return (
-                <Link key={act.label} variant="accent" underline className="ds-w-medium" onClick={onClick} style={{ alignSelf: 'center' }}>
-                  {act.label}
-                </Link>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', borderTop: SURFACE_BORDER, paddingTop: 20 }}>
-        <div style={{ maxWidth: '72ch' }}>
+      {sections.length > 0 && (
+        <div id="disputes" style={{ display: 'flex', flexDirection: 'column', gap: 12, scrollMarginTop: 88 }}>
           <h3 className="db-h3" style={{ margin: 0 }}>
-            Findings
+            {plural(sections.length, 'dispute')} sent
           </h3>
-          <p className="imp-small" style={{ margin: '6px 0 0' }}>
-            Implentio rebuilds what each package should have cost using its shipment details and your contracted rates, then compares that amount with what you were billed. When the same supported difference appears across multiple packages, we group those packages into a finding below.
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
-            <Button size="small" onClick={() => setMethodOpen(true)}>
-              Learn how findings are calculated
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {detail.findingsUnavailable && (
-        <div className="db-card" style={{ padding: '32px' }}>
-          <EmptyState
-            media={<img src="/brand/empty-state.png" alt="" style={{ width: 200, height: 'auto', opacity: 0.55 }} />}
-            title="Detailed breakdown unavailable"
-            subtitle="Before finding details appear in the platform, each variance group is reviewed by Implentio to ensure it meets our quality standards. A detailed breakdown is not available for this credit memo, but you can still download the complete report."
-          />
-        </div>
-      )}
-      {!detail.findingsUnavailable && groups.length === 0 && (
-        <div className="db-card" style={{ padding: '32px', background: 'var(--ds-bg-success-muted)' }}>
-          <EmptyState
-            media={
-              <span style={{ width: 56, height: 56, borderRadius: 'var(--ds-radius-full)', background: 'var(--ds-bg-default)', color: 'var(--ds-icon-success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <CheckCircleIcon width={28} height={28} aria-hidden="true" />
-              </span>
-            }
-            title="No significant variance identified"
-            subtitle={`All ${plural(auditedInvoices, 'invoice')} in this audit were reviewed and were within the significant-variance threshold.`}
-          />
-        </div>
-      )}
-
-      {hasFindings && (
-        <div className="db-card" style={{ gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <FilterButton filters={filters} />
-            <Select
-              aria-label="Highlight charge"
-              size="small"
-              value={hl}
-              onValueChange={setHl}
-              options={[{ value: NO_HIGHLIGHT, label: 'All charges' }, ...CHARGE_DEFS.map((c) => ({ value: c[0], label: `Highlight ${c[2].toLowerCase()}` }))]}
+          {[...sections].reverse().map((sec) => (
+            <DisputeCard
+              key={sec.record.id}
+              section={sec}
+              detailsOpen={detailsFromLink}
+              activityHref={`/memos/${memo.id}/activity${params.toString() ? `?${params.toString()}` : ''}`}
+              onRecord={saveOutcome}
+              onNoReply={() => markChecked.mutate(sec.record.id)}
+              onJump={jumpToFinding}
+              onDownloadEvidence={onDownloadExcel}
             />
-            <span className="imp-small" style={{ margin: 0, marginInlineStart: 'auto' }} aria-live="polite">
-              Showing {groupsFiltered.length} of {groups.length} findings
-            </span>
+          ))}
+        </div>
+      )}
+
+      {!memo.allNoVariance && (
+        <div id="findings" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', borderTop: SURFACE_BORDER, paddingTop: 20 }}>
+            <div>
+              <h3 className="db-h3" style={{ margin: 0 }}>
+                Findings
+              </h3>
+              <p className="imp-small" style={{ margin: '6px 0 0' }}>
+                {hasFindings && openGroups.length > 0 ? 'Biggest first. Tick the ones you want to dispute.' : 'Biggest first.'}{' '}
+                <Link variant="accent" size="small" bold onClick={() => setMethodOpen(true)}>
+                  How findings are calculated
+                </Link>
+              </p>
+            </div>
+            {hasFindings && <FilterButton filters={filters} />}
           </div>
-          <FilterGroup filters={filters} />
+          {hasFindings && <FilterGroup filters={filters} />}
+
+          {wholeMemo && (
+            <div className="db-card" style={{ padding: '32px' }}>
+              <EmptyState
+                media={<img src="/brand/empty-state.png" alt="" style={{ width: 200, height: 'auto', opacity: 0.55 }} />}
+                title="Detailed breakdown unavailable"
+                subtitle="Implentio reviews every finding before it appears here. A breakdown isn’t available for this credit memo, so the complete credit memo is disputed as one. You can still download the full report."
+              />
+            </div>
+          )}
+          {!wholeMemo && groups.length === 0 && (
+            <div className="db-card" style={{ padding: '32px', background: 'var(--ds-bg-success-muted)' }}>
+              <EmptyState
+                media={
+                  <span style={{ width: 56, height: 56, borderRadius: 'var(--ds-radius-full)', background: 'var(--ds-bg-default)', color: 'var(--ds-icon-success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <CheckCircleIcon width={28} height={28} aria-hidden="true" />
+                  </span>
+                }
+                title="No overcharges found"
+                subtitle={`All ${plural(auditedInvoices, 'invoice')} in this audit matched your contract closely enough to need no action.`}
+              />
+            </div>
+          )}
+          {hasFindings && groupsFiltered.length === 0 && (
+            <div className="db-card" style={{ padding: 0 }}>
+              <EmptyState
+                title="No findings match these filters"
+                subtitle="Filtering changes this view only, not the credit memo or its total."
+                action={
+                  <Button size="small" onClick={filters.clear}>
+                    Clear filters
+                  </Button>
+                }
+              />
+            </div>
+          )}
+
+          {visible.map(findingCard)}
+          {hidden.length > 0 && (
+            <>
+              <button
+                type="button"
+                className="db-card"
+                aria-expanded={showSmaller}
+                onClick={() => setShowSmaller((v) => !v)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, cursor: 'pointer', textAlign: 'start', font: 'inherit', color: 'var(--ds-fg-default)' }}
+              >
+                {showSmaller ? <ChevronUpIcon width={18} height={18} aria-hidden="true" /> : <ChevronDownIcon width={18} height={18} aria-hidden="true" />}
+                <span className="ds-body-base ds-w-semi">
+                  {showSmaller ? 'Hide' : 'Show'} {plural(hidden.length, 'smaller finding')} ({fmtMoney(hidden.reduce((s, g) => s + g.varN, 0))} in total)
+                </span>
+                {hiddenSelected > 0 && <span className="imp-small" style={{ margin: 0 }}>{hiddenSelected} selected</span>}
+              </button>
+              {showSmaller && hidden.map(findingCard)}
+            </>
+          )}
         </div>
       )}
-
-      {hl !== NO_HIGHLIGHT && hasFindings && (
-        <Banner type="warning" title="Highlighted charges help explain the finding. Package totals include all charge differences and remain unchanged." />
-      )}
-
-      {hasFindings && groupsFiltered.length === 0 && (
-        <div className="db-card" style={{ padding: 0 }}>
-          <EmptyState
-            title="No findings match these filters"
-            subtitle="Filtering refines this view only. It does not change which findings belong to the credit memo or recalculate its Total variance."
-            action={
-              <Button size="small" onClick={filters.clear}>
-                Clear filters
-              </Button>
-            }
-          />
-        </div>
-      )}
-
-      {groupsFiltered.map((g) => (
-        <FindingCard
-          key={g.id}
-          group={g}
-          provider={memo.provider}
-          excludedIds={excludedIds}
-          highlightedCharge={hl}
-          highlightLabel={hlLabel ?? null}
-          now={now}
-          onToggleInclusion={toggleInclusion}
-          onIncludeInAnotherRequest={(id) => includeAgain.mutate(id)}
-        />
-      ))}
 
       <div className="db-card">
         <div className="db-card-head">
@@ -435,7 +482,7 @@ export function SummaryTab({
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap', padding: '12px 16px', border: SURFACE_BORDER, borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-bg-brand-disabled)' }}>
           <div className="ds-body-base">
-            Total variance in this report{' '}
+            Total overcharge in this report{' '}
             <strong style={{ color: 'var(--ds-fg-accent-text)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{memo.netN == null ? '—' : fmtMoney(memo.netN)}</strong>
           </div>
           <div style={{ display: 'flex', gap: 'var(--ds-space-3)', flexWrap: 'wrap' }}>
@@ -449,20 +496,32 @@ export function SummaryTab({
         </div>
       </div>
 
+      {status?.hasDraft && !wholeMemo && modal !== 'send' && (
+        <SelectionBar
+          count={status.selected.count}
+          amountN={status.selected.amountN}
+          deadline={deadline}
+          onReview={() => openModal('send')}
+          onClear={clearSelection}
+        />
+      )}
+
       <Modal open={methodOpen} onClose={() => setMethodOpen(false)} title="How findings are calculated" width={640}>
         <p className="imp-small" style={{ margin: 0 }}>
-          Implentio rebuilds the expected cost of every package from its shipment facts — carrier, service level, zone, billed weight, and surcharges — using your contracted rate cards, then compares that expected amount with what your Biller invoiced.
+          Implentio works out what every package should have cost from its shipment details — carrier, service level, zone, billed weight, and surcharges — using your contracted rates, then compares that with what your Biller charged.
         </p>
         <p className="imp-small" style={{ margin: 0 }}>
-          Packages with the same supported difference are grouped into a finding. Favourable charge differences are netted against unfavourable differences on the same package, and only net-unfavourable packages are published.
+          Packages with the same kind of difference are grouped into one finding. Charges billed below contract are netted against the others on the same package, and only packages that were overcharged overall are included.
         </p>
         <p className="imp-small" style={{ margin: 0 }}>
-          Every finding links to its contributing packages, the rate cards used to rebuild expected charges, and the invoice records that show what was billed.
+          Every finding links to its packages, the rates used, and the invoice records that show what was billed.
         </p>
       </Modal>
 
-      {wizardOpen && <DisputeWizard detail={detail} excludedIds={excludedIds} onClose={() => setWizardOpen(false)} />}
-      {outcomesOpen && <OutcomeModal detail={detail} onClose={() => setOutcomesOpen(false)} />}
+      {modal === 'send' && (
+        <ReviewSendModal detail={detail} groups={wholeMemo ? [] : selectedGroups} openCount={openGroups.length} onChange={closeModal} onClose={closeModal} />
+      )}
+      {packagesFor && <PackagesModal group={packagesFor} onExport={onDownloadExcel} onClose={() => setPackagesFor(null)} />}
       {reportOpen && <ReportPreviewModal detail={detail} onClose={() => setReportOpen(false)} onDownload={onDownloadExcel} />}
     </div>
   )
