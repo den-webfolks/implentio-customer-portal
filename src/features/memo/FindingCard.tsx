@@ -208,7 +208,7 @@ export function FindingCard({
 
           {!expanded && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ds-space-3)', flexWrap: 'wrap', marginTop: 11 }}>
-              <Button variant="emphasis" size="small" aria-expanded={expanded} iconRight={<ChevronDownIcon aria-hidden="true" />} onClick={() => setExpanded(true)}>
+              <Button variant="primary" size="small" aria-expanded={expanded} iconRight={<ChevronDownIcon aria-hidden="true" />} onClick={() => setExpanded(true)}>
                 View affected packages
               </Button>
               {inclusionCheckbox}

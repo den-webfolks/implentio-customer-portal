@@ -250,7 +250,7 @@ function MemoCard({
                       {m.cta.supporting}
                     </p>
                   </div>
-                  <ButtonLink to={ctaTo(m.cta.primaryKind)} variant="emphasis" size="small" fullWidth iconLeft={CTA_ICON[m.cta.primaryKind]} style={{ whiteSpace: 'nowrap' }}>
+                  <ButtonLink to={ctaTo(m.cta.primaryKind)} variant="primary" size="small" fullWidth iconLeft={CTA_ICON[m.cta.primaryKind]} style={{ whiteSpace: 'nowrap' }}>
                     {m.cta.primaryLabel}
                   </ButtonLink>
                   {m.cta.contextual && (

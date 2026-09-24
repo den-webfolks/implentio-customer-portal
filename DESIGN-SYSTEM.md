@@ -200,8 +200,6 @@ and changes copy — each item below is a deliberate deviation or behaviour chan
   and table row actions (`ButtonLink`). Cmd-click / new tab / copy link now work.
 - Sidebar icons are Heroicons (`currentColor`); nav state styling moved from inline styles to
   CSS so hover / active / disabled render. The old `public/brand/nav-*.svg` assets are removed.
-- One filled primary per view: repeated per-card actions ("View affected packages", tracker
-  card CTAs, "Review summary") are Emphasis / Secondary.
 - Finding-card status is a `StatusChip`, not a bordered block that read as a button.
 - Danger toasts stay until dismissed; toasts pause on hover/focus; announcements go through
   persistent live regions.
@@ -236,6 +234,9 @@ and changes copy — each item below is a deliberate deviation or behaviour chan
 
 ## Follow-ups
 
+- Reverted at user request: "View affected packages", the tracker card CTA, and "Review summary"
+  are back to `variant="primary"` (were `emphasis`, per the review's one-filled-primary-per-view
+  finding). Multiple filled primaries can appear together again on the memo and tracker pages.
 - Colour meaning: brand purple on some static text (eyebrows, next-step lines) and orange
   carrying money / "new" stripe / in-progress; Banner mixes 20/solid and 24/outline icons.
 - Dark-navy primary button (Figma primary, emphasis off) has no documented use — not built.

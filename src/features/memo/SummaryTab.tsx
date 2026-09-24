@@ -442,7 +442,7 @@ export function SummaryTab({
             <Button size="small" onClick={onDownloadExcel}>
               Download credit memo
             </Button>
-            <Button size="small" variant="emphasis" onClick={() => setReportOpen(true)}>
+            <Button size="small" variant="primary" onClick={() => setReportOpen(true)}>
               Review summary
             </Button>
           </div>
