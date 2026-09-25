@@ -11,13 +11,15 @@ export interface StatusChipProps {
   icon?: ReactNode
   /** Figma filled?=false: coloured text without the tinted fill. */
   textOnly?: boolean
+  /** medium: 14px text for a status that leads its row. */
+  size?: 'small' | 'medium'
   title?: string
 }
 
 /** Figma ❖ Chips / status-chip. */
-export function StatusChip({ tone, children, icon, textOnly = false, title }: StatusChipProps) {
+export function StatusChip({ tone, children, icon, textOnly = false, size = 'small', title }: StatusChipProps) {
   return (
-    <span className={[styles.status, styles[tone], textOnly ? styles.textOnly : ''].filter(Boolean).join(' ')} title={title}>
+    <span className={[styles.status, styles[tone], textOnly ? styles.textOnly : '', size === 'medium' ? styles.medium : ''].filter(Boolean).join(' ')} title={title}>
       {icon}
       <span className={styles.label}>{children}</span>
     </span>

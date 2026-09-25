@@ -4,6 +4,13 @@
 
 /* ---------- Stepper ---------- */
 
+/* The frame is a container so the stepper adapts to where it sits (a dialog
+   is portaled outside the page container). */
+.stepperFrame {
+  container-type: inline-size;
+  min-width: 0;
+}
+
 .stepper {
   display: flex;
   align-items: center;
@@ -86,6 +93,48 @@
   border-color: var(--ds-bg-success-emphasis);
   background: var(--ds-bg-success-emphasis);
   color: var(--ds-icon-reverse);
+}
+
+.stepLabel {
+  min-width: 0;
+}
+
+.stepCount {
+  display: none;
+}
+
+/* Narrow: only the active step shows, as "Step 2 of 3 · Check the email". */
+@container (max-width: 640px) {
+  .stepper {
+    padding: 8px 12px;
+  }
+
+  .stepItem::after {
+    display: none;
+  }
+
+  .stepItem:not(.stepItemActive) {
+    display: none;
+  }
+
+  .stepItemActive {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .stepItemActive .step {
+    flex: 1 1 auto;
+  }
+
+  .stepItemActive .stepLabel {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .stepCount {
+    display: inline;
+  }
 }
 
 /* ---------- Avatar ---------- */

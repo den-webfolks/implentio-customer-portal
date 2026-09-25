@@ -22,6 +22,8 @@ export function FindingCard({
   group: g,
   provider,
   selected,
+  prepared = false,
+  selectable = true,
   now,
   onToggleSelected,
   onSetNotPursued,
@@ -31,6 +33,10 @@ export function FindingCard({
   provider: string
   /** Ticked for the unsent dispute. */
   selected: boolean
+  /** Reserved by an email prepared but not confirmed as sent. */
+  prepared?: boolean
+  /** False while the memo has a prepared email: answer that first, then tick more. */
+  selectable?: boolean
   now: Date
   onToggleSelected: (groupId: string, selected: boolean) => void
   /** "Won't pursue" (true) or undo that decision (false). */
@@ -38,8 +44,8 @@ export function FindingCard({
   onOpenPackages: (group: FindingGroup) => void
 }) {
   const [whyOpen, setWhyOpen] = useState(false)
-  const open = findingPhase(g, now) === 'open'
-  const sl = groupStatusLine({ ...g, amountN: g.varN, threePl: provider, inDisputeSel: open && selected }, now)
+  const open = findingPhase(g, now) === 'open' && !prepared
+  const sl = groupStatusLine({ ...g, prepared, amountN: g.varN, threePl: provider, inDisputeSel: open && selected }, now)
   const problem = findingProblem(g)
   const example = findingExample(g)
   const expert = exampleText(g)
@@ -48,7 +54,7 @@ export function FindingCard({
     <div className="db-card" id={`finding-${g.id}`} tabIndex={-1} style={{ gap: 14, scrollMarginTop: 88 }}>
       <div className="ia-fcard">
         <div style={{ display: 'flex', gap: 12, minWidth: 0 }}>
-          {open && (
+          {open && selectable && (
             <span style={{ paddingTop: 2 }}>
               <Checkbox aria-label={`Include in dispute: ${problem}`} checked={selected} onCheckedChange={(on) => onToggleSelected(g.id, on)} />
             </span>

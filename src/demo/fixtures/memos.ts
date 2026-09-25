@@ -1,8 +1,13 @@
 /**
  * The tracker's credit-memo list, hand-ported from the prototype's memoList()
  * (template ~7372–7406). The golden memo (CM-2026-0630) is not here — it is
- * assembled from cm-data.json in seed.ts. Order matters: the list renders in
- * this sequence with the golden memo in the second slot.
+ * assembled from cm-data.json in seed.ts. The tracker groups and sorts memos
+ * by status, so list order only matters within a tie.
+ *
+ * Every complete memo with overcharges carries `outcomeGroups`, and its `netN`
+ * equals their sum — the tracker strip, the memo headline and Credit outcomes
+ * read the same money. The placeholder deadlines are demo data picked so each
+ * tracker group has a memo at DEMO_NOW (Sep 17, 2026).
  */
 import type { CreditMemoSummary } from '@/domain/types'
 
@@ -69,6 +74,41 @@ export const memosAfterGolden: CreditMemoSummary[] = [
         note: 'This version applied the prior carrier service-level classification and was superseded by the corrected calculation.',
       },
     ],
+    outcomeGroups: [
+      {
+        id: 'ol-10',
+        title: 'Base freight variance',
+        category: 'Base Freight Discrepancy',
+        carrier: 'UPS',
+        amountN: 3900.0,
+        pursuit: null,
+        disputeDeadline: '2026-09-19',
+        threePl: 'Flowspace',
+        collection: null,
+      },
+      {
+        id: 'ol-11',
+        title: 'Fuel surcharge variance',
+        category: 'Fuel Surcharge Discrepancy',
+        carrier: 'DHL',
+        amountN: 1402.78,
+        pursuit: null,
+        disputeDeadline: '2026-09-19',
+        threePl: 'Flowspace',
+        collection: null,
+      },
+      {
+        id: 'ol-12',
+        title: 'Residential surcharge variance',
+        category: 'Residential Surcharge Discrepancy',
+        carrier: 'UPS',
+        amountN: 500.0,
+        pursuit: null,
+        disputeDeadline: '2026-09-19',
+        threePl: 'Flowspace',
+        collection: null,
+      },
+    ],
   },
   {
     id: 'CM-2026-0514',
@@ -88,6 +128,41 @@ export const memosAfterGolden: CreditMemoSummary[] = [
     dlEvent: { userFirst: 'Tori', userLast: 'Matthews', at: '2026-05-18T16:12:00-07:00' },
     carriers: ['UPS', 'OSM'],
     detailAvailable: false,
+    outcomeGroups: [
+      {
+        id: 'ol-13',
+        title: 'Base freight variance',
+        category: 'Base Freight Discrepancy',
+        carrier: 'UPS',
+        amountN: 2610.0,
+        pursuit: null,
+        disputeDeadline: '2026-10-02',
+        threePl: 'ShipBob',
+        collection: null,
+      },
+      {
+        id: 'ol-14',
+        title: 'DAS classification variance',
+        category: 'DAS Classification Discrepancy',
+        carrier: 'OSM',
+        amountN: 875.14,
+        pursuit: null,
+        disputeDeadline: '2026-10-02',
+        threePl: 'ShipBob',
+        collection: null,
+      },
+      {
+        id: 'ol-15',
+        title: 'Fuel surcharge variance',
+        category: 'Fuel Surcharge Discrepancy',
+        carrier: 'UPS',
+        amountN: 400.0,
+        pursuit: null,
+        disputeDeadline: '2026-10-02',
+        threePl: 'ShipBob',
+        collection: null,
+      },
+    ],
   },
   {
     id: 'CM-2026-0801',
@@ -128,6 +203,38 @@ export const memosAfterGolden: CreditMemoSummary[] = [
     dlEvent: { userFirst: 'Tori', userLast: 'Matthews', at: '2026-05-04T09:41:00-07:00' },
     carriers: ['DHL', 'OSM'],
     detailAvailable: false,
+    outcomeGroups: [
+      {
+        id: 'ol-16',
+        title: 'Base freight variance',
+        category: 'Base Freight Discrepancy',
+        carrier: 'DHL',
+        amountN: 3410.11,
+        pursuit: 'pursued',
+        disputeDeadline: '2026-09-30',
+        pursuedAt: 'Sep 12, 2026',
+        pursuedTs: '2026-09-12T10:30:00',
+        pursuedBy: 'Tori Matthews',
+        pursuedVia: 'connected',
+        threePl: 'ShipBob',
+        collection: { status: 'awaiting', amountN: null, date: null, reason: '', history: [] },
+      },
+      {
+        id: 'ol-17',
+        title: 'Residential surcharge variance',
+        category: 'Residential Surcharge Discrepancy',
+        carrier: 'OSM',
+        amountN: 1500.0,
+        pursuit: 'pursued',
+        disputeDeadline: '2026-09-30',
+        pursuedAt: 'Sep 12, 2026',
+        pursuedTs: '2026-09-12T10:30:00',
+        pursuedBy: 'Tori Matthews',
+        pursuedVia: 'connected',
+        threePl: 'ShipBob',
+        collection: { status: 'awaiting', amountN: null, date: null, reason: '', history: [] },
+      },
+    ],
   },
   {
     id: 'CM-2026-0517',
@@ -137,10 +244,10 @@ export const memosAfterGolden: CreditMemoSummary[] = [
     status: 'complete',
     invoices: 9,
     orders: 31,
-    invoicedN: 18240.5,
-    overN: 15450.0,
+    invoicedN: 41240.5,
+    overN: 22250.0,
     underN: 0,
-    netN: 15450.0,
+    netN: 22250.0,
     report: 'downloaded',
     version: 'Version 1',
     completedText: 'Completed Apr 30, 2026 by Implentio',
@@ -258,9 +365,9 @@ export const memosAfterGolden: CreditMemoSummary[] = [
     invoices: 6,
     orders: 19,
     invoicedN: 9820.4,
-    overN: 690.0,
+    overN: 3277.7,
     underN: 0,
-    netN: 690.0,
+    netN: 3277.7,
     report: 'downloaded',
     version: 'Version 1',
     completedText: 'Completed Mar 31, 2026 by Implentio',

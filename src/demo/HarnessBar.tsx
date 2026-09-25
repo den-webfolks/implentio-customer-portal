@@ -27,6 +27,8 @@ const SCENARIO_LABELS: Record<ScenarioId, string> = {
   'dispute-recorded': 'Dispute flow — outcomes partially recorded',
   'dispute-finalized': 'Dispute flow — dispute completed',
   'dispute-deadline': 'Dispute flow — deadline close, one finding expired',
+  'dispute-prepared': 'Dispute flow — email prepared, not confirmed as sent',
+  'dispute-prepared-late': 'Dispute flow — email prepared, deadline passed',
 }
 
 export default function HarnessBar({ activeScenarioId }: { activeScenarioId: string }) {

@@ -394,6 +394,14 @@ export function ComponentGallery() {
           </StatusChip>
           <StatusChip tone="muted">Superseded</StatusChip>
         </Example>
+        <Example label="Medium · a status that leads a row (tracker)">
+          <StatusChip tone="info" size="medium" icon={<ClockIcon />}>
+            Active dispute
+          </StatusChip>
+          <StatusChip tone="attention" size="medium">
+            Dispute ready, not sent
+          </StatusChip>
+        </Example>
         <Example label="Text only">
           <StatusChip tone="info" textOnly>
             Awaiting outcome
@@ -453,7 +461,7 @@ export function ComponentGallery() {
         </Example>
       </Section>
 
-      <Section id="stepper" source="src/ui/Display/Display.tsx — Figma ❖ Stepper" note="Step isn't clickable — it is a simple indicator.">
+      <Section id="stepper" source="src/ui/Display/Display.tsx — Figma ❖ Stepper" note="Step isn't clickable — it is a simple indicator. Below 640px of container width only the active step shows, as “Step 2 of 3 · Check the email”.">
         <Stepper steps={['Review findings', 'Prepare email', 'Send']} current={step} />
         <Example label="Advance">
           <Button size="small" onClick={() => setStep((s) => (s + 1) % 4)}>
@@ -524,7 +532,7 @@ export function ComponentGallery() {
         </Example>
       </Section>
 
-      <Section id="modal" source="src/ui/Modal/Modal.tsx — Figma ❖ Popup (Radix Dialog)" note="Medium: max 668×644, padding 24. Large: max 1320×712, padding 32. Content scrolls past max height (the body becomes a tab stop while it overflows, for keyboard scrolling). At most 2 stacked.">
+      <Section id="modal" source="src/ui/Modal/Modal.tsx — Figma ❖ Popup (Radix Dialog)" note="Medium: max 668×644, padding 24. Large: max 1320×712, padding 32. Content scrolls past max height (the body becomes a tab stop while it overflows, for keyboard scrolling). `fill`: full viewport height less the 24px margins, footer pinned (Review & send). At most 2 stacked; each dialog is its own layer, so one opened from another dims it.">
         <Example label="Open">
           <Button size="small" onClick={() => setModal('narrow')}>
             Narrow (420)

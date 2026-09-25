@@ -23,6 +23,18 @@
   height: 12px;
 }
 
+.medium {
+  gap: 6px;
+  padding: 2px 10px;
+  font-size: 14px;
+  line-height: 24px;
+}
+
+.medium svg {
+  width: 14px;
+  height: 14px;
+}
+
 .label {
   overflow: hidden;
   text-overflow: ellipsis;

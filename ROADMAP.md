@@ -4,7 +4,8 @@
 
 Core reconciliation at parity on the production stack: app shell + nav,
 Parcel Credit Tracker (memos + outcomes), memo detail (findings drill,
-dispute wizard, outcome recording, invoices, activity), invoices index,
+dispute flow with a stepped Review & send and the "prepared, not confirmed"
+record for manual sends, outcome recording, invoices, activity), invoices index,
 account settings, 17-scenario demo harness, tests (unit / flows / a11y /
 VRT). Fixture data only; no auth (demo tool).
 
@@ -27,7 +28,9 @@ DESIGN-SYSTEM.md.
 section spacing and responsive composition move to the Figma design
 language. Already landed early (interface review, 2026-09-24): the compact
 shell with a navigation drawer, container-query breakpoints, table scroll
-cues, and axe colour-contrast checks (re-enabled and passing).
+cues, and axe colour-contrast checks (re-enabled and passing); the memo
+Summary & findings workspace (2026-09-24) and the tracker's Credit memos tab
+(2026-09-25), both built in code ahead of Figma frames.
 
 ## Phase 3 — Supabase + auth
 

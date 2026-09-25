@@ -14,10 +14,9 @@ import type {
   ReportMonth,
   UnderGroup,
 } from '@/domain/types'
-import { evidenceFileName } from '@/domain/memo'
 import { fmtDateTime } from '@/domain/dates'
-import { fmtMoney, r2 } from '@/domain/money'
-import { emailLine } from '@/domain/finding-copy'
+import { r2 } from '@/domain/money'
+import { SUMMARY_FILE_NAME, attachmentNames, buildEmailBlocks, claimFileName, claimFromFinding, defaultSubject, emailText } from '@/domain/dispute-email'
 import { parseCmData, parseCmPkg } from './fixtures/schema'
 import cmDataRaw from './fixtures/cm-data.json'
 import cmPkgRaw from './fixtures/cm-pkg.json'
@@ -101,36 +100,38 @@ export function withSeedDisputes(state: SeedState): SeedState {
     .map(([sentAt, groups], i): DisputeRecord => {
       const first = groups[0]
       const via = first?.pursuedVia ?? 'connected'
+      const sender = first?.pursuedBy ?? state.account.user.name
+      const amountN = r2(groups.reduce((s, g) => s + g.varN, 0))
+      const email = {
+        provider: memo.provider,
+        greetingName: contact?.contact ?? `${memo.provider} billing team`,
+        memoId: memo.id,
+        period: memo.period,
+        claims: groups.map((g) => claimFromFinding(g, claimFileName(g, 'csv'))),
+        amountN,
+        summaryFile: SUMMARY_FILE_NAME,
+        completeFile: null,
+        sender,
+      }
       return {
         id: `dsp-seed-${i + 1}`,
         memoId: memo.id,
         memoVersion: memo.version,
         biller: memo.provider,
+        state: 'sent',
         scope: 'groups',
         groupIds: groups.map((g) => g.id),
-        amountN: r2(groups.reduce((s, g) => s + g.varN, 0)),
+        amountN,
         sentAt,
-        sentBy: first?.pursuedBy ?? state.account.user.name,
+        sentBy: sender,
         via,
         senderEmail: via === 'connected' ? state.account.user.email : null,
         to: contact?.email ?? '',
         cc: contact?.cc ?? '',
-        subject: `Parcel invoice review — ${memo.period} — ${memo.id}`,
-        body: [
-          `Hi ${contact?.contact ?? `${memo.provider} billing`},`,
-          '',
-          `We reviewed our parcel invoices for ${memo.period} (${memo.id}) and found charges that don't match our contract:`,
-          '',
-          ...groups.map((g) => `• ${emailLine(g)}`),
-          '',
-          `In total that's ${fmtMoney(r2(groups.reduce((s, g) => s + g.varN, 0)))}. The attached file lists every package with the billed and contracted amounts.`,
-          '',
-          'Could you review these and let us know which credits you can issue?',
-          '',
-          'Thank you,',
-          first?.pursuedBy ?? state.account.user.name,
-        ].join('\n'),
-        evidenceFile: evidenceFileName(memo, groups.length === state.findingGroups.length),
+        subject: defaultSubject(email),
+        body: emailText(buildEmailBlocks(email)),
+        attachments: attachmentNames(email),
+        handoffs: [],
         collection: null,
       }
     })

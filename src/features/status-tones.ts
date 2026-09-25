@@ -24,10 +24,10 @@ export const GROUP_STATUS_TONE: Record<GroupStatusKey, StatusTone> = {
   declined: 'danger',
   not_pursued: 'muted',
   expired: 'muted',
+  prepared: 'attention',
 }
 
 export const MEMO_STATUS_TONE: Record<MemoStatusKey, StatusTone> = {
-  action_needed: 'attention',
   ready: 'neutral',
   waiting: 'info',
   done: 'success',

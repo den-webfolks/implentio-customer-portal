@@ -9,7 +9,6 @@ import {
   groupExpired,
   groupStatusLine,
   memoStatus,
-  needsUpdate,
   outcomesSummary,
   recoveryBuckets,
 } from './outcomes'
@@ -157,15 +156,16 @@ describe('memo status', () => {
     })
   })
 
-  it('is Action needed when an open finding is due within 3 days, today included', () => {
-    expect(memoStatus([open('a', '2026-09-17')], { now: NOW })?.key).toBe('action_needed')
-    expect(memoStatus([open('a', '2026-09-19')], { now: NOW })?.key).toBe('action_needed')
-    expect(memoStatus([open('a', '2026-09-20')], { now: NOW })?.key).toBe('ready')
+  it('stays Ready to dispute however close the deadline is — urgency is the countdown, not a status', () => {
+    expect(memoStatus([open('a', '2026-09-17')], { now: NOW })).toMatchObject({ key: 'ready', daysLeft: 0 })
+    expect(memoStatus([open('a', '2026-09-19')], { now: NOW })).toMatchObject({ key: 'ready', daysLeft: 2 })
   })
 
-  it('is Waiting on Biller when nothing is open and outcomes are pending', () => {
-    const items = [group({ id: 'a', ...sent, collection: awaitingC }), group({ id: 'b', ...sent, collection: fullC(100) })]
+  it('is Waiting on Biller when nothing is open and outcomes are pending, however long ago it was sent', () => {
+    const recent = { pursuit: 'pursued' as const, pursuedTs: '2026-09-15T08:55:00', collection: awaitingC }
+    const items = [group({ id: 'a', ...recent }), group({ id: 'b', ...sent, collection: fullC(100) })]
     expect(memoStatus(items, { now: NOW })).toMatchObject({ key: 'waiting', waiting: { count: 1 }, closed: { count: 1 } })
+    expect(memoStatus([group({ id: 'a', ...sent, collection: awaitingC })], { now: NOW })?.key).toBe('waiting')
   })
 
   it('is Done once every finding is closed — partly collected counts as final', () => {
@@ -176,6 +176,24 @@ describe('memo status', () => {
       group({ id: 'd', pursuit: 'excluded' }),
     ]
     expect(memoStatus(items, { now: NOW })).toMatchObject({ key: 'done', collectedN: 40, notRecoveredN: 160 })
+  })
+})
+
+describe('prepared email', () => {
+  const prepared = { prepared: true, preparedAt: '2026-09-17T09:12:00' }
+
+  it('reserves the finding: not Expired, no Won’t pursue, still open money', () => {
+    const g = group({ ...prepared, disputeDeadline: '2026-09-15' })
+    expect(groupExpired(g, NOW)).toBe(false)
+    expect(findingPhase(g, NOW)).toBe('open')
+    expect(groupStatusLine(g, NOW)).toMatchObject({ key: 'prepared', label: 'In a prepared email', showAction: false })
+    expect(recoveryBuckets([g], NOW).open).toBe(100)
+  })
+
+  it('is never in the draft', () => {
+    const items = [group({ id: 'p', ...prepared }), group({ id: 'o', amountN: 50 })]
+    const st = memoStatus(items, { draft: { excludedIds: [], draftDate: 'Sep 16, 2026' }, now: NOW })
+    expect(st).toMatchObject({ key: 'ready', prepared: { count: 1, amountN: 100 }, selected: { count: 1, amountN: 50 } })
   })
 })
 
@@ -197,21 +215,6 @@ describe('tracker helpers', () => {
         group({ amountN: 700 }),
       ]),
     ).toBe(11700)
-  })
-
-  it('flags week-old outcomes and close deadlines', () => {
-    const rows = [
-      group({ id: 'old', ...sent, collection: awaitingC }),
-      group({ id: 'recent', pursuit: 'pursued', pursuedTs: '2026-09-15T08:55:00', collection: awaitingC }),
-      group({ id: 'legacy', pursuit: 'pursued', pursuedAt: 'Aug 22, 2026', collection: awaitingC }),
-      group({ id: 'soon', disputeDeadline: '2026-09-19' }),
-      group({ id: 'later', disputeDeadline: '2026-09-27' }),
-    ]
-    expect(needsUpdate(rows, NOW).map((n) => [n.row.id, n.reason, n.days])).toEqual([
-      ['old', 'waiting', 9],
-      ['legacy', 'waiting', 26],
-      ['soon', 'deadline', 2],
-    ])
   })
 })
 

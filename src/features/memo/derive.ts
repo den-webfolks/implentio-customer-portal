@@ -29,14 +29,28 @@ export type ChargeField = (typeof CHARGE_DEFS)[number][0]
 
 /** One thing the customer can dispute on this memo: a finding, or the
  *  complete credit memo when no finding breakdown was published. */
-export type DisputeItem = DisputeState & { id: string; title: string; amountN: number; threePl: string }
+export type DisputeItem = DisputeState & {
+  id: string
+  title: string
+  amountN: number
+  threePl: string
+}
 
 export const COMPLETE_MEMO_TITLE = 'Complete credit memo'
 
+/** Disputes that were sent (the cards); prepared and discarded ones are not. */
+export const sentDisputes = (disputes: readonly DisputeRecord[]) => disputes.filter((d) => d.state === 'sent')
+
+/** The memo's one email prepared but not confirmed as sent, if any. */
+export const preparedDispute = (disputes: readonly DisputeRecord[]) => disputes.find((d) => d.state === 'prepared') ?? null
+
 export function memoDisputeItems(detail: MemoDetail, disputes: readonly DisputeRecord[]): DisputeItem[] {
   const provider = detail.memo.provider
+  const sent = sentDisputes(disputes)
+  const prepared = preparedDispute(disputes)
+  const reserved = (id: string) => (prepared?.groupIds.includes(id) ? { prepared: true, preparedAt: prepared.preparedAt ?? null } : {})
   if (detail.findingsUnavailable) {
-    const d = disputes.find((x) => x.scope === 'memo')
+    const d = sent.find((x) => x.scope === 'memo')
     return [
       {
         id: d?.id ?? 'complete',
@@ -47,6 +61,7 @@ export function memoDisputeItems(detail: MemoDetail, disputes: readonly DisputeR
         pursuedTs: d?.sentAt ?? null,
         disputeDeadline: null,
         collection: d?.collection ?? null,
+        ...(prepared?.scope === 'memo' && !d ? { prepared: true, preparedAt: prepared.preparedAt ?? null } : {}),
       },
     ]
   }
@@ -62,6 +77,7 @@ export function memoDisputeItems(detail: MemoDetail, disputes: readonly DisputeR
     pursuedBy: g.pursuedBy,
     pursuedVia: g.pursuedVia,
     collection: g.collection,
+    ...reserved(g.id),
   }))
 }
 
@@ -72,7 +88,7 @@ export interface DisputeSection {
 }
 
 export function disputeSections(detail: MemoDetail, disputes: readonly DisputeRecord[]): DisputeSection[] {
-  return disputes.map((record) => ({
+  return sentDisputes(disputes).map((record) => ({
     record,
     rows:
       record.scope === 'memo'
@@ -112,7 +128,15 @@ export function workspaceSummary(input: {
   const isAre = (n: number) => (n === 1 ? 'is' : 'are')
   const ofTotal = `of ${fmtMoney(totalN)} overcharged`
   const total = { label: 'Total overcharged', amountN: totalN, context: foundText }
-  if (st.key === 'ready' || st.key === 'action_needed') {
+  if (st.prepared.count > 0) {
+    const n = st.prepared.count
+    return {
+      hero: { label: 'In a prepared email', amountN: st.prepared.amountN, context: ofTotal },
+      sentence: `${wholeMemo ? 'The complete credit memo is' : `${findings(n)} ${isAre(n)}`} in an email that isn’t confirmed as sent. Answer “Did you send it?” above${st.open.count > n ? ' before disputing more' : ''}.`,
+      action: null,
+    }
+  }
+  if (st.open.count > 0) {
     if (wholeMemo)
       return {
         hero: total,
@@ -125,18 +149,17 @@ export function workspaceSummary(input: {
         sentence: `Tick the findings you want to claim back from ${provider}, then choose Review & send.`,
         action: null,
       }
+    const waitingClause =
+      st.waiting.count > 0
+        ? `${findings(st.waiting.count)} ${isAre(st.waiting.count)} waiting on ${provider}’s answer.`
+        : ''
     return {
       hero: { label: 'Still to dispute', amountN: st.open.amountN, context: ofTotal },
-      sentence: [
-        `${findings(st.open.count)} can still be disputed.`,
-        st.waiting.count > 0 ? `${findings(st.waiting.count)} ${isAre(st.waiting.count)} waiting on ${provider}’s answer.` : '',
-      ]
-        .filter(Boolean)
-        .join(' '),
+      sentence: [`${findings(st.open.count)} can still be disputed.`, waitingClause].filter(Boolean).join(' '),
       action: null,
     }
   }
-  if (st.key === 'waiting')
+  if (st.waiting.count > 0)
     return {
       hero: { label: `Waiting on ${provider}`, amountN: st.waiting.amountN, context: ofTotal },
       sentence: wholeMemo
@@ -145,7 +168,7 @@ export function workspaceSummary(input: {
       action: null,
     }
   return hasDisputes
-    ? { hero: { label: 'Collected', amountN: st.collectedN, context: ofTotal }, sentence: 'Every finding has a final outcome.', action: null }
+    ? { hero: { label: 'Recovered', amountN: st.collectedN, context: ofTotal }, sentence: 'Every finding has a final outcome.', action: null }
     : { hero: total, sentence: 'Nothing left to dispute: the deadline has passed for every finding.', action: null }
 }
 
@@ -219,6 +242,8 @@ export function filterGroups(
   excludedIds: readonly string[],
   provider: string,
   now: Date,
+  /** Findings reserved by a prepared email (their status is "In a prepared email"). */
+  preparedIds: ReadonlySet<string> = new Set(),
 ): FindingGroup[] {
   const anyMatch = (key: string, candidates: readonly string[]) =>
     (filters[key]?.length ?? 0) === 0 || candidates.some((c) => matchesFilter(filters, key, c))
@@ -228,7 +253,7 @@ export function filterGroups(
     if ((filters[FINDING_FILTER_KEYS.disputeStatus]?.length ?? 0) > 0) {
       const inDisputeSel = !excludedIds.includes(g.id)
       const sl = groupStatusLine(
-        { ...g, amountN: g.varN, threePl: provider, inDisputeSel },
+        { ...g, prepared: preparedIds.has(g.id), amountN: g.varN, threePl: provider, inDisputeSel },
         now,
       )
       if (!matchesFilter(filters, FINDING_FILTER_KEYS.disputeStatus, sl.key)) return false

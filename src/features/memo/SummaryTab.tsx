@@ -2,9 +2,9 @@
  *  flow; first ported from template ~4608–5184): a one-sentence summary with
  *  the deadline, the disputes already sent, then findings biggest first with a
  *  selection bar. See DESIGN-SYSTEM.md "Parcel dispute flow — Phase 2". */
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router'
-import { CheckCircleIcon, ClockIcon, ChevronDownIcon, ChevronUpIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
+import { CheckCircleIcon, ClockIcon, ChevronDownIcon, ChevronUpIcon, EnvelopeOpenIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
 import type { Collection, FindingGroup, MemoDetail } from '@/domain/types'
 import { useClock } from '@/lib/clock'
 import { fmtMoney } from '@/domain/money'
@@ -23,9 +23,11 @@ import { FilterButton, FilterGroup, useFilters, type FilterField, type FilterVal
 import { BUCKET_TONE, GROUP_STATUS_TONE, MEMO_STATUS_TONE, TONE_CHART_COLOR } from '@/features/status-tones'
 import { Table, TableScroll } from '@/ui/Table/Table'
 import {
+  useAccountForDispute,
+  useConfirmDisputeSent,
+  useDiscardPreparedDispute,
   useDisputeContext,
   useDisputes,
-  useMarkDisputeChecked,
   useRecordGroupOutcome,
   useRecordMemoDisputeOutcome,
   useSetDisputeDraft,
@@ -36,6 +38,7 @@ import {
   disputeSections,
   filterGroups,
   memoDisputeItems,
+  preparedDispute,
   serviceList,
   splitFindings,
   titleCase,
@@ -44,7 +47,8 @@ import {
 import { FindingCard } from './FindingCard'
 import { DisputeCard } from './DisputeCard'
 import { SelectionBar } from './SelectionBar'
-import { ReviewSendModal } from './ReviewSendModal'
+import { ReviewSendModal } from './review-send/ReviewSendModal'
+import { PreparedCard } from './PreparedCard'
 import { PackagesModal } from './PackagesModal'
 import { ReportPreviewModal } from './ReportPreviewModal'
 
@@ -53,8 +57,12 @@ const VARIANCE_TIP =
 
 const DISPUTE_STATUS_OPTIONS = (Object.keys(STATUS_LABELS) as GroupStatusKey[]).map((k) => ({ value: k, label: STATUS_LABELS[k] }))
 
-/** Dialogs that deep links (tracker CTAs, activity entries) can open. */
-const MODAL_PARAMS = ['send'] as const
+/** Places tracker links land on (see the effect in SummaryTab). */
+const DEEP_LINKS = ['findings', 'prepared', 'outcomes', 'dispute'] as const
+
+/** Dialogs that deep links (tracker CTAs, activity entries) can open:
+ *  ?send=1 opens Review & send, ?confirm=1 opens it on "Did you send it?". */
+const MODAL_PARAMS = ['send', 'confirm'] as const
 type ModalParam = (typeof MODAL_PARAMS)[number]
 
 const EYEBROW_ACCENT: CSSProperties = {
@@ -81,7 +89,9 @@ export function SummaryTab({
   const setNotPursued = useSetGroupNotPursued()
   const recordGroupOutcome = useRecordGroupOutcome()
   const recordMemoOutcome = useRecordMemoDisputeOutcome()
-  const markChecked = useMarkDisputeChecked()
+  const discardPrepared = useDiscardPreparedDispute()
+  const confirmSent = useConfirmDisputeSent()
+  const accountQ = useAccountForDispute()
   const [filterValues, setFilterValues] = useState<FilterValues>({})
   const [showSmaller, setShowSmaller] = useState(false)
   const [methodOpen, setMethodOpen] = useState(false)
@@ -89,23 +99,39 @@ export function SummaryTab({
   const [packagesFor, setPackagesFor] = useState<FindingGroup | null>(null)
 
   // Review & send lives in the URL so tracker links can open it; closing
-  // removes the parameter, so switching tabs doesn't reopen it. Links to a
-  // memo's outcomes or dispute record scroll to the dispute cards instead.
+  // removes the parameter, so switching tabs doesn't reopen it. Tracker links
+  // to the findings (?findings=1), an outcome (?outcomes=1) or the dispute
+  // record (?dispute=1) land there instead: scroll, move focus, drop the param.
   const [params, setParams] = useSearchParams()
   const [detailsFromLink] = useState(() => params.has('dispute'))
-  const disputeLink = params.has('outcomes') || params.has('dispute')
+  const deepLink = DEEP_LINKS.find((k) => params.has(k)) ?? null
   useEffect(() => {
-    if (!disputeLink || !disputesQ.data) return
-    document.getElementById('disputes')?.scrollIntoView({ block: 'start' })
+    if (!deepLink || !disputesQ.data) return
+    const byId = (id: string | null | undefined) => (id ? document.getElementById(id) : null)
+    let target: HTMLElement | null = null
+    if (deepLink === 'findings') target = byId('findings-title')
+    else if (deepLink === 'prepared') target = byId('prepared-title') ?? byId('findings-title')
+    else {
+      // "Record outcome" goes to the dispute that has waited longest, else the
+      // list of disputes.
+      const items = memoDisputeItems(detail, disputesQ.data)
+      const waitingIds = new Set(items.filter((i) => findingPhase(i, clock.now()) === 'waiting').map((i) => i.id))
+      const oldestWaiting = disputesQ.data.find((d) => d.state === 'sent' && (waitingIds.has(d.id) || d.groupIds.some((id) => waitingIds.has(id))))
+      const dispute = deepLink === 'outcomes' ? oldestWaiting : undefined
+      target = byId(dispute && `dispute-${dispute.id}-title`) ?? byId('disputes-title') ?? byId('findings-title')
+    }
+    if (target) {
+      target.scrollIntoView({ block: 'start' })
+      target.focus({ preventScroll: true })
+    }
     setParams(
       (p) => {
-        p.delete('outcomes')
-        p.delete('dispute')
+        for (const k of DEEP_LINKS) p.delete(k)
         return p
       },
       { replace: true },
     )
-  }, [disputeLink, disputesQ.data, setParams])
+  }, [deepLink, disputesQ.data, detail, clock, setParams])
 
   const modal = MODAL_PARAMS.find((k) => params.has(k)) ?? null
   const openModal = (key: ModalParam) =>
@@ -156,11 +182,15 @@ export function SummaryTab({
     )
   }
 
-  if (!ctxQ.data || !disputesQ.data) return null
+  if (!ctxQ.data || !disputesQ.data || !accountQ.data) return null
   const { excludedIds, draftDate } = ctxQ.data
   const disputes = disputesQ.data
+  const account = accountQ.data
   const wholeMemo = detail.findingsUnavailable
   const hasFindings = groups.length > 0 && !wholeMemo
+  const prepared = preparedDispute(disputes)
+  const preparedIds = new Set(prepared?.groupIds ?? [])
+  const mailboxConnected = Object.values(account.emailAccounts).some((a) => a.status === 'connected')
 
   const items = memoDisputeItems(detail, disputes)
   // A whole-memo dispute has no finding selection, so no draft.
@@ -177,14 +207,23 @@ export function SummaryTab({
     status?.nextDeadline && status.daysLeft != null
       ? `Dispute by ${fmtDateLong(status.nextDeadline)} · ${countdownText(status.daysLeft)}`
       : null
+  // Beside the chip: the next deadline, as the prototype shows it.
+  const statusNotes: { key: string; icon: ReactNode; text: string }[] = []
+  if (deadline) statusNotes.push({ key: 'deadline', icon: <ClockIcon width={16} height={16} aria-hidden="true" style={{ flex: 'none' }} />, text: deadline })
+  if (prepared)
+    statusNotes.unshift({
+      key: 'prepared',
+      icon: <EnvelopeOpenIcon width={16} height={16} aria-hidden="true" style={{ flex: 'none' }} />,
+      text: `Email prepared ${prepared.preparedAt ? fmtDateShort(new Date(prepared.preparedAt)) : ''}, not confirmed as sent`.replace('  ', ' '),
+    })
   const sections = disputeSections(detail, disputes)
   const auditedInvoices = (memo.invoices ?? 0) + (memo.invoicesNoVariance ?? 0)
 
-  const openGroups = groups.filter((g) => findingPhase(g, now) === 'open')
+  const openGroups = groups.filter((g) => findingPhase(g, now) === 'open' && !preparedIds.has(g.id))
   const isSelected = (g: FindingGroup) => !excludedIds.includes(g.id)
   const selectedGroups = openGroups.filter(isSelected).sort((a, b) => b.varN - a.varN)
   const filtersActive = Object.values(filterValues).some((v) => (v?.length ?? 0) > 0)
-  const groupsFiltered = filterGroups(groups, filterValues, excludedIds, memo.provider, now)
+  const groupsFiltered = filterGroups(groups, filterValues, excludedIds, memo.provider, now, preparedIds)
   const { visible, hidden } = splitFindings(groupsFiltered, { showAll: filtersActive })
   const hiddenSelected = hidden.filter((g) => findingPhase(g, now) === 'open' && isSelected(g)).length
 
@@ -216,7 +255,7 @@ export function SummaryTab({
         id: g.id,
         title: findingProblem(g),
         amountN: g.varN,
-        status: groupStatusLine({ ...g, amountN: g.varN, threePl: memo.provider }, now),
+        status: groupStatusLine({ ...g, prepared: preparedIds.has(g.id), amountN: g.varN, threePl: memo.provider }, now),
         jump: true,
       }))
   const buckets = recoveryBuckets(items, now)
@@ -235,6 +274,8 @@ export function SummaryTab({
       group={g}
       provider={memo.provider}
       selected={isSelected(g)}
+      prepared={preparedIds.has(g.id)}
+      selectable={!prepared}
       now={now}
       onToggleSelected={toggleSelected}
       onSetNotPursued={(id, notPursued) => setNotPursued.mutate({ groupId: id, notPursued })}
@@ -258,6 +299,20 @@ export function SummaryTab({
         </Banner>
       )}
 
+      {prepared && (
+        <PreparedCard
+          record={prepared}
+          currentUser={account.user.name}
+          memoVersion={memo.version}
+          deadline={groups.filter((g) => preparedIds.has(g.id)).map((g) => g.disputeDeadline).filter((d): d is string => !!d).sort()[0] ?? null}
+          now={now}
+          mailboxConnected={mailboxConnected}
+          onConfirm={(sentOn) => confirmSent.mutate({ disputeId: prepared.id, sentOn })}
+          onOpen={() => openModal('send')}
+          onDiscard={() => discardPrepared.mutate(prepared.id)}
+        />
+      )}
+
       {memo.allNoVariance ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, border: SURFACE_BORDER, borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-bg-success-muted)', padding: '24px 28px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ds-fg-success)' }}>
@@ -278,12 +333,12 @@ export function SummaryTab({
             {status && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px 10px', flexWrap: 'wrap', marginBottom: 4 }}>
                 <StatusChip tone={MEMO_STATUS_TONE[status.key]}>{status.label}</StatusChip>
-                {deadline && (
-                  <span className="ds-body-small ds-w-medium" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                    <ClockIcon width={16} height={16} aria-hidden="true" style={{ flex: 'none' }} />
-                    {deadline}
+                {statusNotes.map((n) => (
+                  <span key={n.key} className="ds-body-small ds-w-medium" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    {n.icon}
+                    {n.text}
                   </span>
-                )}
+                ))}
               </div>
             )}
             {summary && (
@@ -377,7 +432,7 @@ export function SummaryTab({
 
       {sections.length > 0 && (
         <div id="disputes" style={{ display: 'flex', flexDirection: 'column', gap: 12, scrollMarginTop: 88 }}>
-          <h3 className="db-h3" style={{ margin: 0 }}>
+          <h3 id="disputes-title" tabIndex={-1} className="db-h3" style={{ margin: 0, scrollMarginTop: 88 }}>
             {plural(sections.length, 'dispute')} sent
           </h3>
           {[...sections].reverse().map((sec) => (
@@ -387,7 +442,6 @@ export function SummaryTab({
               detailsOpen={detailsFromLink}
               activityHref={`/memos/${memo.id}/activity${params.toString() ? `?${params.toString()}` : ''}`}
               onRecord={saveOutcome}
-              onNoReply={() => markChecked.mutate(sec.record.id)}
               onJump={jumpToFinding}
               onDownloadEvidence={onDownloadExcel}
             />
@@ -399,11 +453,11 @@ export function SummaryTab({
         <div id="findings" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', borderTop: SURFACE_BORDER, paddingTop: 20 }}>
             <div>
-              <h3 className="db-h3" style={{ margin: 0 }}>
+              <h3 id="findings-title" tabIndex={-1} className="db-h3" style={{ margin: 0, scrollMarginTop: 88 }}>
                 Findings
               </h3>
               <p className="imp-small" style={{ margin: '6px 0 0' }}>
-                {hasFindings && openGroups.length > 0 ? 'Biggest first. Tick the ones you want to dispute.' : 'Biggest first.'}{' '}
+                {hasFindings && openGroups.length > 0 ? (prepared ? 'Biggest first. Answer “Did you send it?” above before choosing more to dispute.' : 'Biggest first. Tick the ones you want to dispute.') : 'Biggest first.'}{' '}
                 <Link variant="accent" size="small" bold onClick={() => setMethodOpen(true)}>
                   How findings are calculated
                 </Link>
@@ -496,7 +550,7 @@ export function SummaryTab({
         </div>
       </div>
 
-      {status?.hasDraft && !wholeMemo && modal !== 'send' && (
+      {status?.hasDraft && !wholeMemo && !prepared && modal !== 'send' && (
         <SelectionBar
           count={status.selected.count}
           amountN={status.selected.amountN}
@@ -518,8 +572,16 @@ export function SummaryTab({
         </p>
       </Modal>
 
-      {modal === 'send' && (
-        <ReviewSendModal detail={detail} groups={wholeMemo ? [] : selectedGroups} openCount={openGroups.length} onChange={closeModal} onClose={closeModal} />
+      {modal && (
+        <ReviewSendModal
+          detail={detail}
+          groups={wholeMemo ? [] : selectedGroups}
+          openGroups={openGroups}
+          prepared={prepared}
+          focusPrompt={modal === 'confirm'}
+          onChange={closeModal}
+          onClose={closeModal}
+        />
       )}
       {packagesFor && <PackagesModal group={packagesFor} onExport={onDownloadExcel} onClose={() => setPackagesFor(null)} />}
       {reportOpen && <ReportPreviewModal detail={detail} onClose={() => setReportOpen(false)} onDownload={onDownloadExcel} />}

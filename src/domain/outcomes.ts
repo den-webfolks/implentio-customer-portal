@@ -6,9 +6,9 @@
 
 import type { Collection, CollectionStatus, DisputeState, OutcomeGroup } from './types'
 import { fmtMoney, r2 } from './money'
-import { daysSince, daysUntilDeadline, deadlineCountdown, fmtDateLong } from './dates'
+import { daysUntilDeadline, deadlineCountdown, fmtDateLong } from './dates'
 
-type Groupish = DisputeState & { amountN?: number | null; threePl?: string; lastCheckedAt?: string | null }
+type Groupish = DisputeState & { amountN?: number | null; threePl?: string }
 
 /** A group can still be disputed: already pursued, no deadline, or before it. */
 export function groupEligible(g: Groupish, now: Date): boolean {
@@ -17,9 +17,16 @@ export function groupEligible(g: Groupish, now: Date): boolean {
   return daysUntilDeadline(g.disputeDeadline, now) >= 0
 }
 
-/** The dispute window closed before the group was pursued. */
+/** The dispute window closed before the group was pursued. A finding in a
+ *  prepared email is never Expired until the customer says whether it was
+ *  sent (decision, 2026-09-25). */
 export function groupExpired(g: Groupish, now: Date): boolean {
-  return g.pursuit !== 'pursued' && !groupEligible(g, now)
+  return g.pursuit !== 'pursued' && !g.prepared && !groupEligible(g, now)
+}
+
+/** Reserved by an email prepared but not confirmed as sent. */
+export function groupPrepared(g: Groupish): boolean {
+  return !!g.prepared && g.pursuit !== 'pursued'
 }
 
 // Status wording is plain language, pending PM confirmation (DESIGN-SYSTEM.md,
@@ -68,6 +75,7 @@ export type GroupStatusKey =
   | 'declined'
   | 'not_pursued'
   | 'expired'
+  | 'prepared'
 
 export interface GroupStatusLine {
   key: GroupStatusKey
@@ -87,6 +95,7 @@ export const STATUS_LABELS: Record<GroupStatusKey, string> = {
   declined: COLLECTION_LABELS.not_issued,
   not_pursued: 'Won’t pursue',
   expired: 'Expired',
+  prepared: 'In a prepared email',
 }
 
 const joinParts = (parts: (string | null | false | undefined)[]) =>
@@ -145,6 +154,15 @@ export function groupStatusLine(
     }
   }
 
+  // Reserved until the customer says whether the prepared email was sent.
+  if (groupPrepared(g)) {
+    return {
+      key: 'prepared',
+      label: STATUS_LABELS.prepared,
+      secondary: joinParts(['Not confirmed as sent', deadlineText(g, now)]),
+      showAction: false,
+    }
+  }
   // A customer decision is never relabelled Expired (product note n359);
   // it can be undone only while the window is open (n360).
   if (g.pursuit === 'excluded') {
@@ -205,9 +223,9 @@ export type RecoveryBucketKey = 'open' | 'awaiting' | 'collected' | 'notRecovere
 export type RecoveryBuckets = Record<RecoveryBucketKey, number>
 
 export const RECOVERY_BUCKETS: { key: RecoveryBucketKey; label: string }[] = [
-  { key: 'open', label: 'Ready to dispute' },
+  { key: 'open', label: 'Left to dispute' },
   { key: 'awaiting', label: 'Waiting on Biller' },
-  { key: 'collected', label: 'Collected' },
+  { key: 'collected', label: 'Recovered' },
   { key: 'notRecovered', label: 'Not recovered' },
   { key: 'notDisputed', label: 'Not disputed' },
 ]
@@ -247,18 +265,13 @@ export function bucketMatch(g: Groupish, key: RecoveryBucketKey, now: Date): boo
 
 // ---------- Memo status -------------------------------------------------------
 
-export type MemoStatusKey = 'action_needed' | 'ready' | 'waiting' | 'done'
+export type MemoStatusKey = 'ready' | 'waiting' | 'done'
 
 export const MEMO_STATUS_LABELS: Record<MemoStatusKey, string> = {
-  action_needed: 'Action needed',
   ready: 'Ready to dispute',
   waiting: 'Waiting on Biller',
   done: 'Done',
 }
-
-/** An open finding due within this many days, today included (today,
- *  tomorrow, the day after), makes the memo "Action needed". */
-export const ACTION_NEEDED_WITHIN_DAYS = 3
 
 interface CountAmount {
   count: number
@@ -274,6 +287,8 @@ export interface MemoStatus {
   closed: CountAmount
   /** Open findings selected in the unsent dispute draft. */
   selected: CountAmount
+  /** Open findings reserved by a prepared email, not confirmed as sent. */
+  prepared: CountAmount
   hasDraft: boolean
   draftDate: string | null
   collectedN: number
@@ -289,9 +304,10 @@ export interface DraftSelection {
   draftDate: string | null
 }
 
-/** The one memo-level dispute status, shared by the tracker card, the
- *  next-step card, and Credit outcomes. Null when there is nothing to dispute.
- *  Without a draft, nothing is selected. */
+/** The one memo-level dispute status, shared by the tracker, the memo page,
+ *  and Credit outcomes. Null when there is nothing to dispute. Without a
+ *  draft, nothing is selected. Urgency is the prototype's deadline countdown
+ *  on each finding (`deadlineUrgency`), not a status of its own. */
 export function memoStatus(
   items: readonly (Groupish & { id: string })[],
   ctx: { draft?: DraftSelection | null; now: Date },
@@ -305,19 +321,14 @@ export function memoStatus(
   const open = items.filter((g) => findingPhase(g, now) === 'open')
   const waiting = items.filter((g) => findingPhase(g, now) === 'waiting')
   const closed = items.filter((g) => findingPhase(g, now) === 'closed')
-  const selected = draft ? open.filter((g) => !draft.excludedIds.includes(g.id)) : []
+  const prepared = open.filter(groupPrepared)
+  const selected = draft ? open.filter((g) => !groupPrepared(g) && !draft.excludedIds.includes(g.id)) : []
   const deadlines = open.map((g) => g.disputeDeadline).filter((d): d is string => !!d).sort()
   const nextDeadline = deadlines[0] ?? null
   const daysLeft = nextDeadline ? daysUntilDeadline(nextDeadline, now) : null
   const buckets = recoveryBuckets(items, now)
 
-  const key: MemoStatusKey = open.length
-    ? daysLeft != null && daysLeft < ACTION_NEEDED_WITHIN_DAYS
-      ? 'action_needed'
-      : 'ready'
-    : waiting.length
-      ? 'waiting'
-      : 'done'
+  const key: MemoStatusKey = open.length ? 'ready' : waiting.length ? 'waiting' : 'done'
   return {
     key,
     label: MEMO_STATUS_LABELS[key],
@@ -326,6 +337,7 @@ export function memoStatus(
     waiting: tally(waiting),
     closed: tally(closed),
     selected: tally(selected),
+    prepared: tally(prepared),
     hasDraft: selected.length > 0,
     draftDate: selected.length > 0 ? (draft?.draftDate ?? null) : null,
     collectedN: buckets.collected,
@@ -360,42 +372,11 @@ export function creditsRealized(rows: readonly Groupish[]): number {
   return r2(rows.reduce((s, g) => s + collectedOf(g), 0))
 }
 
-/** Days after sending before an awaiting outcome needs a nudge. */
-export const OUTCOME_NUDGE_DAYS = 7
-
-export interface NeedsUpdateItem<T> {
-  row: T
-  reason: 'waiting' | 'deadline'
-  /** Days waited since sending, or days left to the deadline. */
-  days: number
-}
-
-/** When the customer last heard nothing back: the send, or a later "no reply yet". */
-function sentDate(g: Groupish): Date | null {
-  const dates = [g.pursuedTs ?? g.pursuedAt, g.lastCheckedAt]
-    .filter((raw): raw is string => !!raw)
-    .map((raw) => new Date(raw))
-    .filter((d) => !isNaN(d.getTime()))
-    .sort((a, b) => b.getTime() - a.getTime())
-  return dates[0] ?? null
-}
-
-/** Findings that need the customer: awaiting an outcome for a week or more,
- *  or open with the deadline close. */
-export function needsUpdate<T extends Groupish>(rows: readonly T[], now: Date): NeedsUpdateItem<T>[] {
-  const out: NeedsUpdateItem<T>[] = []
-  for (const row of rows) {
-    const phase = findingPhase(row, now)
-    if (phase === 'waiting') {
-      const sent = sentDate(row)
-      const days = sent ? daysSince(sent, now) : null
-      if (days != null && days >= OUTCOME_NUDGE_DAYS) out.push({ row, reason: 'waiting', days })
-    } else if (phase === 'open' && row.disputeDeadline) {
-      const days = daysUntilDeadline(row.disputeDeadline, now)
-      if (days < ACTION_NEEDED_WITHIN_DAYS) out.push({ row, reason: 'deadline', days })
-    }
-  }
-  return out
+/** When a waiting finding was sent. */
+export function sentDate(g: Groupish): Date | null {
+  const raw = g.pursuedTs ?? g.pursuedAt
+  const d = raw ? new Date(raw) : null
+  return d && !isNaN(d.getTime()) ? d : null
 }
 
 export interface OutcomeCount {

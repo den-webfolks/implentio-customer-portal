@@ -37,9 +37,9 @@ describe('base seed', () => {
 })
 
 describe('scenarios', () => {
-  it('defines the 17 prototype scenarios plus dispute-deadline', () => {
-    expect(scenarios).toHaveLength(18)
-    expect(new Set(scenarios.map((s) => s.id)).size).toBe(18)
+  it('defines the 17 prototype scenarios plus the dispute-deadline and prepared-email ones', () => {
+    expect(scenarios).toHaveLength(20)
+    expect(new Set(scenarios.map((s) => s.id)).size).toBe(20)
   })
 
   it('falls back to report-ready for unknown ids', () => {

@@ -16,6 +16,7 @@ import type {
   DisputeRecord,
   DownloadEvent,
   EmailProvider,
+  HandoffMethod,
   MemoDetail,
   OutcomeGroup,
   TeamMember,
@@ -33,8 +34,6 @@ export type OutcomeRow = OutcomeGroup & {
   memoId: string
   memoVersion: string
   wholeMemo?: boolean
-  /** Last "no reply yet" check on the dispute this row was sent in. */
-  lastCheckedAt?: string | null
 }
 
 /** One row on the account-wide invoices index. */
@@ -66,7 +65,7 @@ export interface DisputeContext {
   draftDate: string | null
 }
 
-/** A dispute the customer sent (connected mailbox) or confirmed sending. */
+/** A dispute sent from a connected mailbox. */
 export interface SendDisputeInput {
   memoId: string
   /** 'memo' sends the complete credit memo (no finding breakdown published). */
@@ -77,8 +76,24 @@ export interface SendDisputeInput {
   cc: string
   subject: string
   body?: string
-  evidenceFile: string
+  attachments: string[]
   senderEmail: string | null
+}
+
+/** A handoff: the email (or part of it) left the app for a manual send. The
+ *  first one creates the prepared record; later ones add a version to it. */
+export interface PrepareDisputeInput {
+  memoId: string
+  scope: 'groups' | 'memo'
+  groupIds: string[]
+  method: HandoffMethod
+  to: string
+  cc: string
+  subject: string
+  body: string
+  attachments: string[]
+  /** The recipients were valid at this handoff. */
+  recipientsChecked: boolean
 }
 
 export interface AppDataSource {
@@ -101,12 +116,21 @@ export interface AppDataSource {
   /** Record a sent dispute: stores the record, marks its findings pursued
    *  (awaiting outcome), and clears the draft (nothing selected). */
   recordDisputeSent(input: SendDisputeInput): Promise<DisputeRecord>
+  /** The email left the app: creates the memo's prepared dispute (reserving
+   *  its findings and clearing the draft) or adds a handoff to it. */
+  prepareDispute(input: PrepareDisputeInput): Promise<DisputeRecord>
+  /** "Yes, I sent it": the prepared dispute becomes sent on `sentOn` (ISO
+   *  date, no earlier than the day it was prepared). A connected send of a
+   *  prepared email passes `via: 'connected'`, the mailbox, and what was
+   *  actually sent, which replaces the last-prepared snapshot. */
+  confirmDisputeSent(input: { disputeId: string; sentOn: string; via?: 'connected' | 'manual'; senderEmail?: string | null; to?: string; cc?: string; subject?: string; body?: string; attachments?: string[] }): Promise<DisputeRecord>
+  /** "I didn't send it": the prepared dispute is kept as discarded and its
+   *  findings become selectable again. */
+  discardPreparedDispute(disputeId: string): Promise<void>
   /** Record or edit a collection outcome on a finding group. */
   recordGroupOutcome(input: { groupId: string; collection: Collection }): Promise<void>
   /** Record or edit the outcome of a whole-memo dispute. */
   recordMemoDisputeOutcome(input: { disputeId: string; collection: Collection }): Promise<void>
-  /** The customer checked and the Biller hasn't replied yet. */
-  markDisputeChecked(disputeId: string): Promise<void>
   /** "Won't pursue" a finding, or undo that decision. */
   setGroupNotPursued(input: { groupId: string; notPursued: boolean }): Promise<void>
   /** Update the dispute draft (unselected groups + draft-start date). */

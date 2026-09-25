@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 
+test.use({ permissions: ['clipboard-read', 'clipboard-write'] })
+
 /** Axe scans on every route and key overlay states, desktop and compact width. */
 const scan = (page: import('@playwright/test').Page) =>
   new AxeBuilder({ page })
@@ -25,9 +27,28 @@ for (const route of ROUTES) {
   })
 }
 
-test('axe: review & send open', async ({ page }) => {
+test('axe: review & send, every step', async ({ page }) => {
   await page.goto('/memos/CM-2026-0630?scenario=dispute-prep-started&demo=1&send=1')
-  await expect(page.getByRole('dialog', { name: 'Review & send' })).toBeVisible()
+  const dialog = page.getByRole('dialog', { name: /^Dispute with QuickBox/ })
+  await expect(dialog).toBeVisible()
+  expect(await scan(page)).toEqual([])
+  await dialog.getByRole('button', { name: 'Next: check the email' }).click()
+  await dialog.getByRole('button', { name: 'More details' }).click()
+  await dialog.getByRole('button', { name: 'Edit evidence' }).click()
+  expect(await scan(page)).toEqual([])
+  await dialog.getByRole('button', { name: 'Done' }).click()
+  await dialog.getByRole('button', { name: 'Next: review' }).click()
+  expect(await scan(page)).toEqual([])
+  await dialog.getByRole('button', { name: 'Continue manually' }).click()
+  await dialog.getByText('Copy each part instead').click()
+  await dialog.getByRole('button', { name: 'Copy the subject' }).click()
+  await expect(dialog.getByRole('button', { name: 'I sent it', exact: true })).toBeVisible()
+  expect(await scan(page)).toEqual([])
+})
+
+test('axe: memo with an email prepared but not confirmed', async ({ page }) => {
+  await page.goto('/memos/CM-2026-0630?scenario=dispute-prepared')
+  await page.waitForLoadState('networkidle')
   expect(await scan(page)).toEqual([])
 })
 

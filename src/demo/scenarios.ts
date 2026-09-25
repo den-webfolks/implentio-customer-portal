@@ -6,7 +6,9 @@
  * The four LCC/PWV/FCM scenarios are defined but unavailable until Phase 1.5
  * ships those screens.
  */
-import type { Collection, FindingGroup } from '@/domain/types'
+import type { Collection, DisputeRecord, FindingGroup } from '@/domain/types'
+import { SUMMARY_FILE_NAME, attachmentNames, buildEmailBlocks, claimFileName, claimFromFinding, defaultSubject, emailText } from '@/domain/dispute-email'
+import { r2 } from '@/domain/money'
 import { DEMO_NOW } from '@/lib/clock'
 import { demoDownloadEvent, type SeedState } from './seed'
 
@@ -29,6 +31,8 @@ export type ScenarioId =
   | 'dispute-awaiting'
   | 'dispute-plus-new'
   | 'dispute-deadline'
+  | 'dispute-prepared'
+  | 'dispute-prepared-late'
 
 export interface Scenario {
   id: ScenarioId
@@ -61,6 +65,47 @@ const awaiting = (): Collection => ({
   reason: '',
   history: [],
 })
+
+/** An email for `groupIds` that left the app (Gmail compose) at `preparedAt`
+ *  and was never confirmed as sent (Review & send plan, slice A). */
+function preparedEmail(s: SeedState, groupIds: string[], preparedAt: string): DisputeRecord {
+  const memo = s.memos.find((m) => m.id === s.goldenMemoId)
+  const contact = s.account.billerContacts.find((c) => c.biller === memo?.provider && c.dispute)
+  const groups = s.findingGroups.filter((g) => groupIds.includes(g.id))
+  const amountN = r2(groups.reduce((t, g) => t + g.varN, 0))
+  const email = {
+    provider: memo?.provider ?? 'QuickBox',
+    greetingName: contact?.contact ?? 'QuickBox billing team',
+    memoId: memo?.id ?? FEATURED,
+    period: memo?.period ?? '',
+    claims: groups.map((g) => claimFromFinding(g, claimFileName(g, 'csv'))),
+    amountN,
+    summaryFile: SUMMARY_FILE_NAME,
+    completeFile: null,
+    sender: s.account.user.name,
+  }
+  const snapshot = { to: contact?.email ?? '', cc: contact?.cc ?? '', subject: defaultSubject(email), body: emailText(buildEmailBlocks(email)), attachments: attachmentNames(email) }
+  return {
+    id: 'dsp-prepared',
+    memoId: email.memoId,
+    memoVersion: memo?.version ?? 'Version 1',
+    biller: email.provider,
+    state: 'prepared',
+    scope: 'groups',
+    groupIds,
+    amountN,
+    sentAt: null,
+    sentBy: s.account.user.name,
+    via: 'manual',
+    senderEmail: null,
+    ...snapshot,
+    collection: null,
+    preparedAt,
+    preparedBy: s.account.user.name,
+    recipientsChecked: true,
+    handoffs: [{ at: preparedAt, by: s.account.user.name, method: 'gmail', ...snapshot }],
+  }
+}
 
 const pursuedSep8 = {
   pursuit: 'pursued' as const,
@@ -320,8 +365,8 @@ export const scenarios: Scenario[] = [
     },
   },
   {
-    // Phase 1 addition (not in the prototype): exercises "Action needed" and
-    // the "Expired" label. One finding is due in 2 days, one expired unsent.
+    // Phase 1 addition (not in the prototype): exercises the deadline
+    // countdown and the "Expired" label. One finding is due in 2 days, one expired unsent.
     id: 'dispute-deadline',
     label: 'Dispute — deadline close / expired',
     available: true,
@@ -340,6 +385,35 @@ export const scenarios: Scenario[] = [
     },
   },
 ]
+
+scenarios.push(
+  {
+    // Review & send plan: an email left the app this morning and nobody has
+    // said whether it was sent. Its findings are reserved.
+    id: 'dispute-prepared',
+    label: 'Dispute — email prepared, not confirmed',
+    available: true,
+    initialLocation: `/memos/${FEATURED}`,
+    seed: (s) => {
+      const cleared = s.findingGroups.map(clearDispute)
+      const next = { ...s, findingGroups: cleared, disputeExcludedIds: cleared.map((g) => g.id), disputeDraftDate: null }
+      return { ...next, disputes: [preparedEmail(next, ['eg-base', 'eg-fuel'], '2026-09-17T09:12:00')] }
+    },
+  },
+  {
+    // The same, prepared five days ago; the deadline for its findings has
+    // since passed, so the prompt asks whether it went on or before it.
+    id: 'dispute-prepared-late',
+    label: 'Dispute — prepared, deadline passed',
+    available: true,
+    initialLocation: `/memos/${FEATURED}`,
+    seed: (s) => {
+      const cleared = s.findingGroups.map((g) => (['eg-base', 'eg-fuel'].includes(g.id) ? { ...clearDispute(g), disputeDeadline: '2026-09-15' } : clearDispute(g)))
+      const next = { ...s, findingGroups: cleared, disputeExcludedIds: cleared.map((g) => g.id), disputeDraftDate: null }
+      return { ...next, disputes: [preparedEmail(next, ['eg-base', 'eg-fuel'], '2026-09-12T16:40:00')] }
+    },
+  },
+)
 
 export function getScenario(id: string | null | undefined): Scenario {
   const found = scenarios.find((s) => s.id === id)

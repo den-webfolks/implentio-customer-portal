@@ -1,17 +1,25 @@
 /* Figma ❖ Popup (4533:25) — medium: max-w 668, max-h 644, padding 24;
    large: max-w 1320, max-h 712, padding 32. Content scrolls past max-h. */
 
-.overlay {
+/* Each open dialog is one layer; later layers stack above earlier ones, so a
+   dialog opened from another dims it. */
+.layer {
   position: fixed;
   inset: 0;
   z-index: var(--ds-z-overlay);
+  pointer-events: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
   background: var(--ds-overlay);
+  pointer-events: auto;
 }
 
 .positioner {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: calc(var(--ds-z-overlay) + 1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -40,6 +48,15 @@
   max-width: min(1320px, 100%);
   max-height: min(712px, calc(100vh - 48px));
   padding: 32px;
+}
+
+.fill {
+  height: calc(100dvh - 48px);
+  max-height: calc(100dvh - 48px);
+}
+
+.fill .bodyFrame {
+  flex: 1 1 auto;
 }
 
 .content:focus {

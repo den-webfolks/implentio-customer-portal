@@ -37,6 +37,7 @@ data source; direct `new Date()`/`Date.now()` is lint-barred in feature code.
   (placeholder while the BI area is deferred).
 - **Query params** — contextual selections and dev state: `?finding=`
   (scroll target), `?send=1` (opens Review & send; removed on close),
+  `?confirm=1` (opens it on "Did you send it?" for a prepared email),
   `?outcomes=1`/`?dispute=1` (scroll to the memo's dispute cards),
   `?scenario=`, `?demo=`.
 - **Local state** — transient UI: filter panels, popovers, disclosure and
@@ -46,7 +47,9 @@ data source; direct `new Date()`/`Date.now()` is lint-barred in feature code.
 
 `src/demo/scenarios.ts` ports the prototype's 17 `applyScenario` cases as
 pure seed transforms (+ initial location), plus `dispute-deadline` (Phase 1
-dispute flow: a deadline two days out and one expired finding). Dispute
+dispute flow: a deadline two days out and one expired finding) and
+`dispute-prepared` / `dispute-prepared-late` (an email that left the app and
+was never confirmed as sent; the late one past its deadline). Dispute
 records for seeded pursuits are derived after the transform
 (`withSeedDisputes`), one per send time. The harness bar is gated by
 `?demo=1` / `VITE_DEMO_TOOLS=1` and lazy-loaded so the ~1MB fixture chunk
@@ -83,9 +86,26 @@ production build.
 - Dispute flow, Phase 1 (2026-09-24): one memo status shared by every screen,
   dispute records, "Won't pursue", Expired, per-memo activity — see
   DESIGN-SYSTEM.md "Parcel dispute flow — Phase 1".
-- Demo limitation (unchanged): every memo page shows the golden memo's
-  findings, draft, and disputes. Tracker cards and Credit outcomes use each
-  memo's own rows (golden findings; `outcomeGroups` on CM-2026-0517 /
-  CM-2026-0328; none on placeholders), so those two cards' status won't match
-  the golden data on the page they link to. The Supabase source keys all of
-  it by memo.
+- Review & send (2026-09-25): a `DisputeRecord` has a `state` — `prepared`
+  (the email left the app: copied, opened in a mail app or web compose, or a
+  file downloaded; findings reserved, one per memo), `sent`, or `discarded`
+  (kept for the history) — plus `handoffs[]` (a version per handoff) and
+  `attachments[]`. Seam methods `prepareDispute` (create or add a handoff),
+  `confirmDisputeSent(id, sentOn)` (backdatable to the day it was prepared,
+  flags `sentAfterDeadline`) and `discardPreparedDispute`. The email text,
+  files and compose links come from `src/domain/dispute-email.ts`; the demo
+  builds .csv per finding and a minimal real PDF summary in the browser
+  (`lib/pdf.ts`). See DESIGN-SYSTEM.md "Review & send — steps and the
+  'prepared' email".
+- Tracker, Phase 2b (2026-09-25): memos grouped by the shared status, a
+  summary strip on the same money buckets as Credit outcomes — see
+  DESIGN-SYSTEM.md "Parcel Credit Tracker — Phase 2b". Rule: a memo's
+  headline (`netN`) equals the sum of its finding rows; the fixture test
+  enforces it.
+- Demo limitation (kept by decision, 2026-09-25): every memo page shows the
+  golden memo's findings, draft, and disputes. The tracker and Credit
+  outcomes use each memo's own rows (golden findings; `outcomeGroups` on
+  every other memo with overcharges), so non-golden tracker rows have real
+  statuses and actions, but the page they link to shows the golden data —
+  demo walkthroughs should use CM-2026-0630 and the scenarios. The Supabase
+  source keys all of it by memo.

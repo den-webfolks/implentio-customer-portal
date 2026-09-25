@@ -1,0 +1,634 @@
+/* Review & send: four steps in one dialog. The dialog is portaled outside the
+   page container, so the body is its own container for the narrow layout. */
+
+.body {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.stepTitle {
+  margin: 0;
+  font: var(--ds-weight-semi) 18px/1.35 var(--ds-font);
+  letter-spacing: var(--ds-tracking-heading);
+  color: var(--ds-fg-default);
+}
+
+.stepTitle:focus {
+  outline: none;
+}
+
+.lead {
+  margin: 0;
+  max-width: 72ch;
+}
+
+/* ---- step 1: what you're disputing ---- */
+
+.selection {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-bg-default);
+}
+
+.selRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 16px;
+  align-items: baseline;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ds-stroke-disabled);
+}
+
+.selMeta {
+  grid-column: 1;
+}
+
+.selAmount {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-fg-accent-text);
+}
+
+.selTotal {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+}
+
+.deadline {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  max-width: 72ch;
+}
+
+.deadline svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--ds-fg-warning);
+}
+
+/* ---- step 2: the email ---- */
+
+.stepEmail {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+/* To / CC / Subject, then the options — a compose window's header. */
+.compose {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-4);
+}
+
+.composeFields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-3);
+}
+
+.composeOptions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-2);
+}
+
+.evidence:focus-visible {
+  outline: 2px solid var(--ds-stroke-focus);
+  outline-offset: 2px;
+}
+
+.email {
+  position: relative;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-bg-default);
+  padding: 18px 22px 20px;
+}
+
+.emailTools {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.emailBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font: var(--ds-weight-regular) 15px/1.55 var(--ds-font);
+  color: var(--ds-fg-default);
+  max-width: 72ch;
+}
+
+.para {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.claim {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.claimHeading {
+  font-weight: var(--ds-weight-semi);
+}
+
+/* Editable text that reads like the email: no box until hovered or focused. */
+.inlineText {
+  display: block;
+  width: calc(100% + 16px);
+  margin: -5px -8px;
+  padding: 4px 7px;
+  border: 1px dashed transparent;
+  border-radius: var(--ds-radius-small);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  resize: none;
+  overflow: hidden;
+}
+
+.inlineText:hover {
+  border-color: var(--ds-stroke-disabled);
+}
+
+.inlineText:focus {
+  outline: none;
+  border-style: solid;
+  border-color: var(--ds-stroke-focus);
+  background: var(--ds-bg-default);
+}
+
+.inlineTextBoxed {
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--ds-stroke-disabled);
+  background: var(--ds-bg-default);
+}
+
+/* Interface text inside the email: not part of what a selection copies. */
+.chrome {
+  user-select: none;
+}
+
+.resetNote {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-small);
+  background: var(--ds-status-info-bg);
+}
+
+/* The evidence: tinted and locked by default. */
+.evidence {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0 -12px;
+  padding: 12px 12px 10px;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-medium);
+  background: var(--ds-bg-disabled);
+}
+
+.evidenceHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px 10px;
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ds-stroke-disabled);
+}
+
+.evidenceHead > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: var(--ds-icon-muted);
+}
+
+.evidenceTitle {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.evidenceActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.detailsBox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ds-stroke-disabled);
+}
+
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fileLink {
+  font: inherit;
+  font-weight: var(--ds-weight-medium);
+  color: var(--ds-fg-accent-text);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  border-radius: var(--ds-radius-small);
+}
+
+.fileLink:hover {
+  text-decoration-thickness: 2px;
+}
+
+.fileLink:focus-visible {
+  outline: 2px solid var(--ds-stroke-focus);
+  outline-offset: 1px;
+}
+
+.editActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ds-space-3);
+  margin-top: 14px;
+}
+
+.attached {
+  display: flex;
+  align-items: center;
+  gap: 8px 10px;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attachedLabel {
+  color: var(--ds-fg-muted);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px 5px 9px;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-bg-default);
+  font: var(--ds-weight-medium) 13px/1.4 var(--ds-font);
+  color: var(--ds-fg-default);
+  cursor: pointer;
+}
+
+.chip svg {
+  width: 15px;
+  height: 15px;
+  color: var(--ds-icon-muted);
+}
+
+.chip:hover {
+  border-color: var(--ds-stroke-brand-muted);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--ds-stroke-focus);
+  outline-offset: 2px;
+}
+
+/* ---- step 2: recipients header ---- */
+
+.recipients {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--ds-space-3) 16px;
+}
+
+.subjectRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.subjectRow > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* ---- step 3: review ---- */
+
+.summary {
+  display: grid;
+  grid-template-columns: fit-content(140px) minmax(0, 1fr);
+  margin: 0;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-bg-default);
+  padding: 4px 18px;
+}
+
+.summary dt,
+.summary dd {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--ds-stroke-disabled);
+}
+
+.summary dt:nth-last-of-type(1),
+.summary dd:last-of-type {
+  border-bottom: 0;
+}
+
+.summary dt {
+  color: var(--ds-fg-muted);
+  padding-inline-end: 16px;
+}
+
+.summary dd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.routes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recommended {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  border: 1.5px solid var(--ds-stroke-brand-muted);
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-bg-brand-disabled);
+}
+
+.recommendedTag {
+  align-self: flex-start;
+}
+
+.benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.benefits li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.benefits svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--ds-icon-success);
+}
+
+.connectButtons {
+  display: flex;
+  gap: var(--ds-space-3);
+  flex-wrap: wrap;
+}
+
+.manualBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-bg-default);
+}
+
+/* ---- the manual checklist ---- */
+
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0 18px;
+  list-style: none;
+  counter-reset: item;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-bg-default);
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 6px 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--ds-stroke-disabled);
+}
+
+.item:last-child {
+  border-bottom: 0;
+}
+
+.itemNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-full);
+  font: var(--ds-weight-semi) 13px/1 var(--ds-font);
+  color: var(--ds-fg-muted);
+}
+
+.itemDone .itemNum {
+  border-color: var(--ds-bg-success-emphasis);
+  background: var(--ds-bg-success-emphasis);
+  color: var(--ds-icon-reverse);
+}
+
+.itemDone .itemNum svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+}
+
+.itemTitle {
+  align-self: center;
+}
+
+.itemBody {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.buttonRow {
+  display: flex;
+  gap: var(--ds-space-3);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.copyParts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 14px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-medium);
+  background: var(--ds-bg-disabled);
+}
+
+.copyText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.copyValue {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- "When did you send it?" ---- */
+
+.promptDate {
+  width: 170px;
+}
+
+.nothingSent {
+  margin: 0;
+  color: var(--ds-fg-muted);
+  text-align: end;
+}
+
+.sentFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ds-space-3);
+  flex-wrap: wrap;
+}
+
+@container (max-width: 560px) {
+  .evidenceActions {
+    flex-basis: 100%;
+    padding-inline-start: 28px;
+  }
+
+  .summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .summary dt {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .email {
+    padding: 14px 16px 16px;
+  }
+
+  .selAmount {
+    grid-row: auto;
+    grid-column: 1;
+  }
+}
+
+/* "Copy each part instead" disclosure */
+
+.copyDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.copySummary {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  list-style: none;
+  font: var(--ds-weight-semi) 13px/1.4 var(--ds-font);
+  color: var(--ds-fg-accent-text);
+  border-radius: var(--ds-radius-small);
+  width: fit-content;
+}
+
+.copySummary::-webkit-details-marker {
+  display: none;
+}
+
+.copySummary:focus-visible {
+  outline: 2px solid var(--ds-stroke-focus);
+  outline-offset: 2px;
+}
+
+.copySummaryClosed,
+.copySummaryOpen {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.copySummaryOpen,
+.copyDetails[open] .copySummaryClosed {
+  display: none;
+}
+
+.copyDetails[open] .copySummaryOpen {
+  display: inline-flex;
+}

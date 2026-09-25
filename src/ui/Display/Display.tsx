@@ -13,28 +13,39 @@ export interface StepperProps {
   ariaLabel?: string
 }
 
-/** Figma ❖ Stepper — "Step isn't clickable, it is simple indicator". */
+/** Figma ❖ Stepper — "Step isn't clickable, it is simple indicator". In a
+ *  narrow container only the active step keeps its label, read as
+ *  "Step 2 of 3 · Check the email" (container query, not viewport). */
 export function Stepper({ steps, current, bare = false, ariaLabel = 'Progress' }: StepperProps) {
   return (
-    <ol className={[styles.stepper, bare ? styles.stepperBare : ''].filter(Boolean).join(' ')} aria-label={ariaLabel}>
-      {steps.map((label, i) => {
-        const state = i < current ? 'passed' : i === current ? 'active' : 'default'
-        return (
-          <li key={label} className={styles.stepItem}>
-            <span
-              className={[styles.step, state === 'active' ? styles.stepActive : '', state === 'passed' ? styles.stepPassed : ''].filter(Boolean).join(' ')}
-              aria-current={state === 'active' ? 'step' : undefined}
-            >
-              <span className={styles.stage} aria-hidden="true">
-                {state === 'passed' ? <CheckIcon /> : i + 1}
+    <div className={styles.stepperFrame}>
+      <ol className={[styles.stepper, bare ? styles.stepperBare : ''].filter(Boolean).join(' ')} aria-label={ariaLabel}>
+        {steps.map((label, i) => {
+          const state = i < current ? 'passed' : i === current ? 'active' : 'default'
+          return (
+            <li key={label} className={[styles.stepItem, state === 'active' ? styles.stepItemActive : ''].filter(Boolean).join(' ')}>
+              <span
+                className={[styles.step, state === 'active' ? styles.stepActive : '', state === 'passed' ? styles.stepPassed : ''].filter(Boolean).join(' ')}
+                aria-current={state === 'active' ? 'step' : undefined}
+              >
+                <span className={styles.stage} aria-hidden="true">
+                  {state === 'passed' ? <CheckIcon /> : i + 1}
+                </span>
+                <span className={styles.stepLabel}>
+                  {state === 'active' && (
+                    <span className={styles.stepCount}>
+                      Step {i + 1} of {steps.length} ·{' '}
+                    </span>
+                  )}
+                  {label}
+                </span>
+                {state === 'passed' && <span className="visually-hidden"> (completed)</span>}
               </span>
-              {label}
-              {state === 'passed' && <span className="visually-hidden"> (completed)</span>}
-            </span>
-          </li>
-        )
-      })}
-    </ol>
+            </li>
+          )
+        })}
+      </ol>
+    </div>
   )
 }
 

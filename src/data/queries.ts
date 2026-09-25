@@ -4,7 +4,7 @@
  */
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type { Collection } from '@/domain/types'
-import type { SendDisputeInput } from './source'
+import type { PrepareDisputeInput, SendDisputeInput } from './source'
 import { useDataSource } from './DataSourceProvider'
 
 export const queryKeys = {
@@ -102,6 +102,33 @@ export function useRecordDisputeSent() {
   })
 }
 
+export function usePrepareDispute() {
+  const ds = useDataSource()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: PrepareDisputeInput) => ds.prepareDispute(input),
+    onSuccess: () => invalidateDisputeData(qc),
+  })
+}
+
+export function useConfirmDisputeSent() {
+  const ds = useDataSource()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { disputeId: string; sentOn: string; via?: 'connected' | 'manual'; senderEmail?: string | null; to?: string; cc?: string; subject?: string; body?: string; attachments?: string[] }) => ds.confirmDisputeSent(input),
+    onSuccess: () => invalidateDisputeData(qc),
+  })
+}
+
+export function useDiscardPreparedDispute() {
+  const ds = useDataSource()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (disputeId: string) => ds.discardPreparedDispute(disputeId),
+    onSuccess: () => invalidateDisputeData(qc),
+  })
+}
+
 export function useRecordGroupOutcome() {
   const ds = useDataSource()
   const qc = useQueryClient()
@@ -118,15 +145,6 @@ export function useRecordMemoDisputeOutcome() {
   return useMutation({
     mutationFn: (input: { disputeId: string; collection: Collection }) =>
       ds.recordMemoDisputeOutcome(input),
-    onSuccess: () => invalidateDisputeData(qc),
-  })
-}
-
-export function useMarkDisputeChecked() {
-  const ds = useDataSource()
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (disputeId: string) => ds.markDisputeChecked(disputeId),
     onSuccess: () => invalidateDisputeData(qc),
   })
 }

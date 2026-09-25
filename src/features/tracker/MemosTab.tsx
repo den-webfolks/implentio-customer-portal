@@ -1,58 +1,53 @@
-/** Parcel Credit Tracker — Credit Memos tab (template ~1217–1404). */
+/** Parcel Credit Tracker — Credit memos tab (DESIGN-SYSTEM.md "Parcel Credit
+ *  Tracker"). "Where your money is" adds up the rows below it: the total, one
+ *  bar in bucket order, and four cards (left to dispute, waiting, recovered,
+ *  off the table). Then one list, most left to dispute first; each row shows
+ *  the money that needs you, where the rest is, the one date that matters, and
+ *  "Check details". First ported from the prototype's tracker (template ~1217–1404). */
 import { useState, type ReactNode } from 'react'
 import {
   ArrowDownTrayIcon,
   ArrowRightIcon,
   CheckCircleIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
   ClockIcon,
-  DocumentTextIcon,
-  EyeIcon,
+  EnvelopeIcon,
   ListBulletIcon,
+  NoSymbolIcon,
   PaperAirplaneIcon,
 } from '@heroicons/react/24/outline'
-import { InfoTip } from '@/ui/Tooltip/Tooltip'
-import { ButtonLink } from '@/ui/Button/Button'
+import { InfoTip, Tooltip } from '@/ui/Tooltip/Tooltip'
+import { Button, ButtonLink, IconButton } from '@/ui/Button/Button'
 import { Link } from '@/ui/Link/Link'
 import { StatusChip, Tag } from '@/ui/Chip/StatusChip'
 import { EmptyState } from '@/ui/Display/Display'
+import { Select } from '@/ui/Form/Select'
 import { FilterButton, FilterGroup, matchesFilter, useFilters, type FilterField, type FilterValues } from '@/ui/Filters/Filters'
 import { useToast } from '@/ui/Toast/ToastProvider'
 import { saveFile } from '@/lib/download'
 import { useClock } from '@/lib/clock'
-import { deriveReportState } from '@/domain/memo'
-import { creditsRealized, memoStatus } from '@/domain/outcomes'
+import { isDemoMode } from '@/demo/demo-mode'
 import type { CreditMemoSummary } from '@/domain/types'
-import { MEMO_STATUS_TONE } from '@/features/status-tones'
-import { useDisputeContext, useDownloadState, useMemos, useOutcomeRows, useRecordMemoDownload } from './api'
-import { PLACEHOLDER_CTA, execSummary, memoCardView, trackerCta, type CtaKind, type MemoCardView } from './derive'
+import { countdownText } from '@/domain/dates'
 import { fmtMoney } from '@/domain/money'
-import { Button } from '@/ui/Button/Button'
+import { plural } from '@/domain/plural'
+import { RECOVERY_BUCKETS, type RecoveryBucketKey, type RecoveryBuckets } from '@/domain/outcomes'
+import { BUCKET_TONE, TONE_CHART_COLOR, toneColors } from '@/features/status-tones'
+import { useDisputeContext, useDownloadState, useMemos, useOutcomeRows, useRecordMemoDownload } from './api'
+import { BUCKET_FACT, TRACKER_SORTS, memoRowView, shortDate, sortRows, trackerSummary, type MemoRowView, type RowStatus, type RowTarget, type TrackerSort } from './derive'
+import styles from './MemosTab.module.css'
 
-const VARIANCE_TIP =
-  'These amounts include only packages with significant variance—not all invoices and spend reviewed during this audit period.'
-const CADENCE_TIP =
-  'Audit cadence is based on your reporting cadence with each biller and may vary by carrier. To request a change, contact your Implentio customer representative.'
-const CREDITS_TIP =
+const TOTAL_TIP =
+  'Only packages that were charged more than your contract allows — not all invoices and spend reviewed in these audits.'
+const RECOVERED_TIP =
   'The credits your team has recorded as received from your billers. Implentio does not read biller credit records yet, so this total comes from the outcomes you record.'
 
-const FILTER_FIELDS: FilterField[] = [
+const filterFields = (memos: readonly CreditMemoSummary[]): FilterField[] => [
   {
     key: 'tProvider',
     label: 'Biller',
-    options: [
-      { value: 'Flowspace', label: 'Flowspace' },
-      { value: 'ShipBob', label: 'ShipBob' },
-      { value: 'QuickBox', label: 'QuickBox' },
-    ],
-  },
-  {
-    key: 'tReport',
-    label: 'Report status',
-    options: [
-      { value: 'ready', label: 'Ready' },
-      { value: 'updated', label: 'Updated' },
-      { value: 'generating', label: 'Audit in progress' },
-    ],
+    options: [...new Set(memos.map((m) => m.provider))].sort().map((v) => ({ value: v, label: v })),
   },
   {
     key: 'tRange',
@@ -66,220 +61,188 @@ const FILTER_FIELDS: FilterField[] = [
   },
 ]
 
-const EMPTY_FILTERS: FilterValues = { tProvider: [], tReport: [], tRange: [] }
+const EMPTY_FILTERS: FilterValues = { tProvider: [], tRange: [] }
 
 /** Demo "reporting period" cut: how many of the newest memos each range keeps. */
 const RANGE_CUT: Record<string, number> = { '30': 2, '60': 3, '90': 4, '365': 5 }
 
-function filterMemoList(memos: readonly CreditMemoSummary[], downloadedIds: readonly string[], values: FilterValues): CreditMemoSummary[] {
-  const out = memos.filter(
-    (m) =>
-      matchesFilter(values, 'tReport', deriveReportState(m, downloadedIds).report) && matchesFilter(values, 'tProvider', m.provider),
-  )
+function filterMemoList(memos: readonly CreditMemoSummary[], values: FilterValues): CreditMemoSummary[] {
+  const out = memos.filter((m) => matchesFilter(values, 'tProvider', m.provider))
   const ranges = values.tRange ?? []
   if (ranges.length === 0) return out
   return out.slice(0, Math.max(...ranges.map((r) => RANGE_CUT[r] ?? out.length)))
 }
 
-const ACCENT = {
-  warning: 'var(--ds-bg-warning-emphasis)',
-  orange: 'var(--ds-bg-accent-emphasis)',
-  none: 'transparent',
-  gray: 'var(--ds-neutral-300)',
-} as const
+const bucketColor = (key: RecoveryBucketKey) => TONE_CHART_COLOR[BUCKET_TONE[key]]
+const amountColor = (key: RecoveryBucketKey) => toneColors(BUCKET_TONE[key]).fg
 
-const CTA_ICON: Record<CtaKind, ReactNode> = {
-  view: <EyeIcon aria-hidden="true" />,
-  outcome: <ClockIcon aria-hidden="true" />,
-  send: <PaperAirplaneIcon aria-hidden="true" />,
-  prep: <ListBulletIcon aria-hidden="true" />,
+function Swatch({ bucket }: { bucket: RecoveryBucketKey }) {
+  return <span className={styles.swatch} style={{ background: bucketColor(bucket) }} aria-hidden="true" />
 }
 
-// Inline text styles on the Figma scale (body-base 14/1.46, body-small
-// 12/1.64, heading-huge 36, caption-small 12/1.3, caption-tiny 10/1.16).
-const MUTED_TEXT = { font: 'var(--ds-weight-medium) 14px/1.46 var(--ds-font)', color: 'var(--ds-fg-muted)' } as const
-const SUBTLE_TEXT = { font: 'var(--ds-weight-medium) 12px/1.64 var(--ds-font)', color: 'var(--ds-fg-muted)' } as const
-const BIG_NUMBER = {
-  font: 'var(--ds-weight-semi) 36px var(--ds-font)',
-  fontVariantNumeric: 'tabular-nums',
-  letterSpacing: 'var(--ds-tracking-heading)',
-  lineHeight: 1.05,
-} as const
-const HERO_LABEL = {
-  font: 'var(--ds-weight-medium) 12px/1.3 var(--ds-font)',
-  letterSpacing: 'var(--ds-tracking-caption)',
-  color: 'var(--ds-fg-brand-muted)',
-} as const
-const HERO_DIVIDER = 'inset 1px 0 0 var(--ds-neutral-800)'
-
-function MemoCard({
-  m,
-  openTo,
-  ctaTo,
-  onDownload,
-}: {
-  m: MemoCardView
-  openTo: string
-  ctaTo: (kind: CtaKind) => string
-  onDownload: () => void
-}) {
+/** The five buckets as one bar, in RECOVERY_BUCKETS order everywhere. Decoration: the text carries the numbers. */
+function MoneyBar({ buckets, large = false }: { buckets: RecoveryBuckets; large?: boolean }) {
+  const parts = RECOVERY_BUCKETS.filter((b) => buckets[b.key] > 0.005)
   return (
-    <div className="db-card" id={`memo-card-${m.id}`} style={{ padding: 0, overflow: 'hidden', position: 'relative', scrollMarginTop: 88 }}>
-      <span style={{ position: 'absolute', insetInlineStart: 0, insetBlock: 0, width: 6, background: ACCENT[m.accent] }} />
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 1, background: 'var(--ds-stroke-disabled)', alignItems: 'stretch' }}>
-        <div style={{ flex: '1 1 250px', padding: '22px 24px 22px 30px', background: 'var(--ds-bg-default)', display: 'flex', flexDirection: 'column', gap: 13 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <h3 className="ds-heading-large" style={{ margin: 0, color: 'var(--ds-fg-default)', whiteSpace: 'nowrap' }}>
-              {m.id}
-            </h3>
-            {m.isNew && <StatusChip tone="neutral">New</StatusChip>}
-            {m.isUpdated && <StatusChip tone="info">Updated</StatusChip>}
-          </div>
-          {m.downloaded && (
-            <span style={{ alignSelf: 'flex-start' }}>
-              <StatusChip tone="muted" icon={<ArrowDownTrayIcon aria-hidden="true" />}>
-                DOWNLOADED
-              </StatusChip>
-            </span>
-          )}
-          <div style={{ font: 'var(--ds-weight-medium) 14px/1.46 var(--ds-font)', color: 'var(--ds-fg-muted)' }}>
-            {m.provider} &nbsp;·&nbsp;{' '}
-            <strong style={{ color: 'var(--ds-fg-default)', fontWeight: 600 }}>{m.period}</strong>
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {m.carriers.map((c) => (
-              <Tag key={c}>{c}</Tag>
-            ))}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, ...MUTED_TEXT }}>
-            <span>
-              <strong style={{ color: 'var(--ds-fg-default)', fontWeight: 600 }}>Reporting cadence:</strong> {m.cadence}
-            </span>
-            <InfoTip text={CADENCE_TIP} />
-          </div>
-          {m.versionLabel && (
-            <div style={{ font: 'var(--ds-weight-semi) 12px/1.64 var(--ds-font)', color: 'var(--ds-fg-muted)' }}>{m.versionLabel}</div>
-          )}
-          {m.preparedText && <div style={{ ...MUTED_TEXT, color: 'var(--ds-fg-muted)' }}>{m.preparedText}</div>}
-          {m.demoLabel && (
-            <span className="ds-caption-tiny" style={{ alignSelf: 'flex-start', color: 'var(--ds-fg-muted)', textTransform: 'uppercase' }}>
-              {m.demoLabel}
-            </span>
-          )}
-        </div>
-
-        <div style={{ flex: '1 1 250px', padding: '22px 24px', background: 'var(--ds-bg-default)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          {m.generating && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div className="ds-heading-medium" style={{ color: 'var(--ds-fg-default)' }}>
-                Audit in progress
-              </div>
-              <p style={{ margin: 0, font: 'var(--ds-weight-medium) 14px var(--ds-font)', color: 'var(--ds-fg-muted)', maxWidth: '38ch', lineHeight: 1.5 }}>
-                Implentio is reviewing the invoices and validating potential findings.
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span
-                  style={{
-                    width: 40,
-                    height: 40,
-                    border: '1px solid var(--ds-stroke-disabled)',
-                    borderRadius: 'var(--ds-radius-full)',
-                    background: 'var(--ds-orange-100)',
-                    color: 'var(--ds-fg-accent)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flex: 'none',
-                  }}
-                >
-                  <DocumentTextIcon width={18} height={18} aria-hidden="true" />
-                </span>
-                <span style={{ font: 'var(--ds-weight-medium) 14px var(--ds-font)', color: 'var(--ds-fg-muted)' }}>Reviewing invoice data</span>
-              </div>
-            </div>
-          )}
-          {m.showFinancials && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ font: 'var(--ds-weight-medium) 14px var(--ds-font)', color: 'var(--ds-fg-muted)' }}>Total variance identified</span>
-                <InfoTip text={VARIANCE_TIP} side="bottom" />
-              </div>
-              <div style={{ ...BIG_NUMBER, color: 'var(--ds-fg-accent)' }}>{m.over}</div>
-              <div style={MUTED_TEXT}>Across {m.overSub}</div>
-              {m.showCoverage && <div style={{ ...SUBTLE_TEXT, marginTop: 2 }}>{m.coverageText}</div>}
-              <div style={{ ...SUBTLE_TEXT, fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{m.billedSub}</div>
-            </div>
-          )}
-          {m.allNoVariance && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <CheckCircleIcon width={20} height={20} aria-hidden="true" style={{ flex: 'none', color: 'var(--ds-icon-success)' }} />
-                <span style={{ ...BIG_NUMBER, color: 'var(--ds-fg-default)' }}>{m.over}</span>
-              </div>
-              <div style={{ font: 'var(--ds-weight-semi) 14px var(--ds-font)', color: 'var(--ds-fg-success)' }}>No significant variance identified</div>
-              <div style={MUTED_TEXT}>{m.allClearLine1}</div>
-            </div>
-          )}
-        </div>
-
-        <div
-          className="ia-tracker-action-col"
-          style={{ flex: '1 1 250px', minWidth: 0, padding: '22px 24px', background: 'var(--ds-bg-default)', display: 'flex', flexDirection: 'column', gap: 14, justifyContent: 'center' }}
-        >
-          {m.generating && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
-              <StatusChip tone="attention">Audit in progress</StatusChip>
-              <p className="imp-small" style={{ margin: 0 }}>
-                Findings are being validated
-              </p>
-            </div>
-          )}
-          {m.actionsEnabled && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {m.hasVariance && m.cta && (
-                <>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
-                    <StatusChip tone={MEMO_STATUS_TONE[m.cta.statusKey]}>{m.cta.statusLabel}</StatusChip>
-                    <p className="imp-small" style={{ margin: 0 }}>
-                      {m.cta.supporting}
-                    </p>
-                    {m.cta.deadline && (
-                      <p className="imp-small" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--ds-fg-default)' }}>
-                        <ClockIcon width={16} height={16} aria-hidden="true" style={{ flex: 'none' }} />
-                        {m.cta.deadline}
-                      </p>
-                    )}
-                  </div>
-                  {m.cta.primaryKind && (
-                    <ButtonLink to={ctaTo(m.cta.primaryKind)} variant="primary" size="small" fullWidth iconLeft={CTA_ICON[m.cta.primaryKind]} style={{ whiteSpace: 'nowrap' }}>
-                      {m.cta.primaryLabel}
-                    </ButtonLink>
-                  )}
-                  {m.cta.contextual && (
-                    <div className="imp-small" style={{ margin: '-4px 0 0', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <span>{m.cta.contextual.text}</span>
-                      <span>·</span>
-                      <Link to={ctaTo('outcome')} variant="accent" size="small" bold iconRight={<ArrowRightIcon aria-hidden="true" />}>
-                        {m.cta.contextual.link}
-                      </Link>
-                    </div>
-                  )}
-                </>
-              )}
-              <div className="ia-tracker-secondary">
-                <ButtonLink to={openTo} size="small" iconLeft={<ListBulletIcon aria-hidden="true" />} style={{ whiteSpace: 'nowrap' }}>
-                  Review findings
-                </ButtonLink>
-                <Link variant="accent" size="small" bold iconLeft={<ArrowDownTrayIcon aria-hidden="true" />} style={{ whiteSpace: 'nowrap' }} onClick={onDownload}>
-                  Download credit memo
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+    <div className={`${styles.bar} ${large ? styles.barLarge : ''}`} aria-hidden="true">
+      {parts.map((b) => (
+        <span key={b.key} style={{ flexGrow: buckets[b.key], background: bucketColor(b.key) }} />
+      ))}
     </div>
   )
+}
+
+/** A small ring of the memo's buckets, in bar order. Decoration: the facts beside it carry the numbers. */
+function MoneyDonut({ buckets }: { buckets: RecoveryBuckets }) {
+  const R = 15
+  const C = 2 * Math.PI * R
+  const total = RECOVERY_BUCKETS.reduce((s, b) => s + buckets[b.key], 0)
+  const parts = RECOVERY_BUCKETS.filter((b) => buckets[b.key] > 0.005)
+  const gap = parts.length > 1 ? 2 : 0
+  const lens = parts.map((b) => (total > 0 ? (buckets[b.key] / total) * C : 0))
+  const starts = lens.map((_, i) => lens.slice(0, i).reduce((s, l) => s + l, 0))
+  return (
+    <svg className={styles.donut} viewBox="0 0 40 40" aria-hidden="true">
+      <circle cx="20" cy="20" r={R} className={styles.donutTrack} />
+      {parts.map((b, i) => {
+        const dash = Math.max((lens[i] ?? 0) - gap, 1.5)
+        return (
+          <circle
+            key={b.key}
+            cx="20"
+            cy="20"
+            r={R}
+            stroke={bucketColor(b.key)}
+            strokeDasharray={`${dash} ${C - dash}`}
+            strokeDashoffset={-(starts[i] ?? 0)}
+            transform="rotate(-90 20 20)"
+            className={styles.donutPart}
+          />
+        )
+      })}
+    </svg>
+  )
+}
+
+/** Where "Check details" lands on the memo page. */
+const detailsHref = (id: string, target: RowTarget) => `/memos/${id}${target ? `?${target}=1` : ''}`
+
+const STATUS_ICON: Record<RowStatus['icon'], ReactNode> = {
+  prepared: <EnvelopeIcon aria-hidden="true" />,
+  draft: <ListBulletIcon aria-hidden="true" />,
+  active: <PaperAirplaneIcon aria-hidden="true" />,
+  open: <ClockIcon aria-hidden="true" />,
+  closed: <CheckCircleIcon aria-hidden="true" />,
+  expired: <NoSymbolIcon aria-hidden="true" />,
+}
+
+function MemoRow({ r, demo, onDownload }: { r: MemoRowView; demo: boolean; onDownload: () => void }) {
+  return (
+    <article className={styles.row} id={`memo-row-${r.id}`} aria-labelledby={`memo-row-${r.id}-title`}>
+      <div className={styles.memo}>
+        <h3 id={`memo-row-${r.id}-title`} className={`ds-heading-small ${styles.memoId}`}>
+          <Link to={`/memos/${r.id}`} bold>
+            {r.id}
+          </Link>
+        </h3>
+        <p className={`ds-body-small ${styles.who}`}>
+          {r.provider} · <span className={styles.nowrap}>{r.period}</span>
+        </p>
+        {r.chip && <Tag>{r.chip}</Tag>}
+        {demo && r.demoLabel && <span className={`ds-caption-tiny ${styles.demoLabel}`}>{r.demoLabel}</span>}
+      </div>
+
+      <div className={styles.money}>
+        {r.allClear ? (
+          <>
+            <p className={`ds-heading-small ${styles.clear}`}>No overcharges found</p>
+            <p className={`ds-body-small ${styles.sub}`}>{r.sub}</p>
+          </>
+        ) : (
+          r.hero && (
+            <>
+              <p className={`ds-body-small ds-w-medium ${styles.heroLabel}`}>
+                <Swatch bucket={r.hero.kind} />
+                {r.hero.label}
+              </p>
+              <p className={`ds-heading-large ${styles.hero} ${r.hero.valueN > 0.005 ? '' : styles.heroZero}`} style={r.hero.valueN > 0.005 ? { color: amountColor(r.hero.kind) } : undefined}>
+                {fmtMoney(r.hero.valueN)}
+              </p>
+              {r.sub && <p className={`ds-body-small ${styles.sub}`}>{r.sub}</p>}
+            </>
+          )
+        )}
+      </div>
+
+      {!r.allClear && r.buckets && (
+        <div className={styles.progress}>
+          <MoneyDonut buckets={r.buckets} />
+          {r.facts.length > 0 ? (
+            <ul className={`ds-body-small ${styles.facts}`} aria-label="The rest of this memo">
+              {r.facts.map((f) => (
+                <li key={f.key}>
+                  <Swatch bucket={f.key} />
+                  <span className={styles.factAmount} style={f.key === 'collected' ? { color: amountColor('collected') } : undefined}>
+                    {fmtMoney(f.valueN)}
+                  </span>{' '}
+                  {BUCKET_FACT[f.key]}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            r.factsText && <p className={`ds-body-small ${styles.factsText}`}>{r.factsText}</p>
+          )}
+        </div>
+      )}
+
+      {r.status && (
+        <div className={styles.status}>
+          <StatusChip tone={r.status.tone} size="medium" icon={STATUS_ICON[r.status.icon]}>
+            {r.status.label}
+          </StatusChip>
+          {r.status.detail.map((line) => (
+            <p key={line} className={`ds-body-small ${styles.statusDetail}`}>
+              {/* Wrap between the parts of a line, never inside one. */}
+              {line.split(' · ').map((part, i) => (
+                <span key={i} className={styles.nowrap}>
+                  {i > 0 && ' · '}
+                  {part}
+                </span>
+              ))}
+            </p>
+          ))}
+        </div>
+      )}
+
+      <div className={styles.actions}>
+        <ButtonLink
+          to={detailsHref(r.id, r.target)}
+          variant="primary"
+          size="small"
+          iconRight={<ArrowRightIcon aria-hidden="true" />}
+          aria-label={`Check details for ${r.id}`}
+        >
+          Check details
+        </ButtonLink>
+        <Tooltip content="Download credit memo">
+          <IconButton size="small" icon={<ArrowDownTrayIcon aria-hidden="true" />} aria-label={`Download credit memo ${r.id}`} onClick={onDownload} />
+        </Tooltip>
+      </div>
+    </article>
+  )
+}
+
+/** Puts the first matching row on screen and focus on its memo link. */
+function goToRow(id: string | undefined) {
+  if (!id) return
+  const row = document.getElementById(`memo-row-${id}`)
+  if (!row) return
+  const reduceMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  row.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+  row.querySelector<HTMLElement>('h3 a')?.focus({ preventScroll: true })
+  row.classList.remove('ia-flash')
+  requestAnimationFrame(() => row.classList.add('ia-flash'))
+  setTimeout(() => row.classList.remove('ia-flash'), 1500)
 }
 
 export function MemosTab() {
@@ -287,42 +250,45 @@ export function MemosTab() {
   const memosQ = useMemos()
   const dlQ = useDownloadState()
   const recordDownload = useRecordMemoDownload()
+  const memos = memosQ.data ?? []
   const [filterValues, setFilterValues] = useState<FilterValues>(EMPTY_FILTERS)
-  const filters = useFilters(FILTER_FIELDS, filterValues, setFilterValues)
+  const filters = useFilters(filterFields(memos), filterValues, setFilterValues)
+  const [finishedOpen, setFinishedOpen] = useState(false)
+  // For this visit only: the default is most left to dispute first.
+  const [sort, setSort] = useState<TrackerSort>('value')
 
   const rowsQ = useOutcomeRows()
   const clock = useClock()
-  const memos = memosQ.data ?? []
   const golden = memos.find((m) => m.detailAvailable)
   const ctxQ = useDisputeContext(golden?.id)
 
   if (!memosQ.data || !dlQ.data || !rowsQ.data || (golden && !ctxQ.data)) return null
-  const { downloadedMemoIds, memoDlEvents } = dlQ.data
+  const { downloadedMemoIds } = dlQ.data
   const rows = rowsQ.data
   const now = clock.now()
+  const demo = isDemoMode()
 
-  // One memo status everywhere: each card reads its memo's own dispute rows
-  // (plus the draft for the golden memo); placeholders have none.
-  const ctaFor = (m: CreditMemoSummary) => {
+  const views = filterMemoList(memos, filterValues).map((m) => {
     const items = rows.filter((r) => r.memoId === m.id)
-    if (!items.length) return m.detailAvailable ? null : PLACEHOLDER_CTA
-    // A whole-memo dispute has no finding selection, so no draft.
-    const draft = m.detailAvailable && !items.some((r) => r.wholeMemo) ? ctxQ.data : null
-    const st = memoStatus(items, { draft, now })
-    return st ? trackerCta(st, { wholeMemo: items.some((r) => r.wholeMemo) }) : null
-  }
+    // Only the golden memo has a finding selection; a whole-memo dispute has none.
+    const draft = m.detailAvailable && !items.some((r) => r.wholeMemo) ? (ctxQ.data ?? null) : null
+    return memoRowView(m, { rows: items, draft, downloadedIds: downloadedMemoIds, now, index: memos.indexOf(m) })
+  })
+  const { list, finished } = sortRows(views, sort)
+  const inAudit = views.filter((v) => v.place === 'processing')
+  const allClearCount = views.filter((v) => v.allClear).length
+  const shownCount = list.length + finished.length
+  const summary = trackerSummary(views, now)
+  const b = summary.buckets
+  // Finished opens by itself when it is all that's left to show.
+  const finishedShown = finishedOpen || list.length === 0
 
-  const filtered = filterMemoList(memos, downloadedMemoIds, filterValues)
-  const cards = filtered.map((m) => memoCardView(m, downloadedMemoIds, memoDlEvents, ctaFor(m)))
-  const exec = execSummary(memos, downloadedMemoIds)
-  const credits = creditsRealized(rows)
-
-  const download = (m: MemoCardView) => {
+  const download = (r: MemoRowView) => {
     const finish = () => {
-      recordDownload.mutate(m.id)
-      showToast('positive', `Downloading report for ${m.id}`)
+      recordDownload.mutate(r.id)
+      showToast('positive', `Downloading report for ${r.id}`)
     }
-    if (m.detailAvailable) {
+    if (r.detailAvailable) {
       const file = 'Parcel May - June 2026 Credit Request v2.xlsx'
       saveFile(`/demo-assets/${encodeURIComponent(file)}`, file)
         .then(finish)
@@ -334,115 +300,189 @@ export function MemosTab() {
     }
   }
 
-  // Findings are chosen on the memo page and outcomes recorded on its dispute
-  // cards; only Review & send and the dispute record open a dialog.
-  const ctaHref = (m: MemoCardView, kind: CtaKind) =>
-    ({ prep: `/memos/${m.id}`, send: `/memos/${m.id}?send=1`, outcome: `/memos/${m.id}`, view: `/memos/${m.id}?dispute=1` })[kind]
+  const firstWith = (key: RecoveryBucketKey) => list.find((r) => (r.buckets?.[key] ?? 0) > 0.005)?.id
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {/* Executive summary hero */}
-      <div className="db-card" style={{ gap: 18, background: 'var(--ds-bg-emphasis)', color: 'var(--ds-fg-reverse)' }}>
-        <div className="ds-caption-small" style={{ color: 'var(--ds-fg-brand-muted)', textTransform: 'uppercase' }}>
-          Executive summary
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '18px 0', alignItems: 'stretch' }}>
-          <div style={{ paddingInlineEnd: 24, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--ds-fg-brand-muted)' }}>
-              <span style={HERO_LABEL}>Total variance identified</span>
-              <InfoTip text={VARIANCE_TIP} color="var(--ds-fg-brand-muted)" />
+    <div className={styles.tab}>
+      {summary.memoCount > 0 && (
+        <section className={styles.summary} aria-labelledby="tracker-summary-title">
+          <div className={styles.summaryHead}>
+            <div>
+              <h2 id="tracker-summary-title" className={`ds-body-base ${styles.summaryTitle}`}>
+                Where your money is
+              </h2>
+              <p className={styles.total}>
+                <span className="ds-heading-xlarge">{fmtMoney(summary.totalN)}</span>{' '}
+                <span className={`ds-body-base ${styles.totalNote}`}>
+                  overcharged across {plural(summary.memoCount, 'credit memo')} <InfoTip text={TOTAL_TIP} size={14} />
+                </span>
+              </p>
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 4 }}>
-              <div
-                style={{
-                  ...BIG_NUMBER,
-                  fontSize: 'clamp(25px, 3.2vw, 36px)',
-                  color: 'var(--ds-fg-accent)',
-                  minWidth: 0,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {exec.over}
-              </div>
-              <img src="/brand/variance-arrow.svg" alt="" aria-hidden="true" style={{ width: 20, height: 20, marginTop: 2, flex: 'none' }} />
-            </div>
-            <div style={{ ...HERO_LABEL, marginTop: 6 }}>Across {exec.count} credit memos</div>
+            <Link to="/tracker/outcomes" variant="accent" size="small" bold iconRight={<ArrowRightIcon aria-hidden="true" />}>
+              See credit outcomes
+            </Link>
           </div>
-          <div style={{ padding: '0 22px', boxShadow: HERO_DIVIDER, display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--ds-fg-brand-muted)' }}>
-              <span style={HERO_LABEL}>Credits realized</span>
-              <InfoTip text={CREDITS_TIP} color="var(--ds-fg-brand-muted)" />
-            </div>
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 10,
-                marginTop: 8,
-                padding: '8px 14px',
-                border: '1px solid var(--ds-green-100)',
-                borderRadius: 'var(--ds-radius-large)',
-                background: 'color-mix(in srgb, var(--ds-green-500) 24%, transparent)',
-                minWidth: 0,
-                alignSelf: 'flex-start',
-              }}
-            >
-              <img src="/brand/credits-check.svg" alt="" style={{ width: 22, height: 22, flex: 'none' }} />
-              <span
-                style={{
-                  font: 'var(--ds-weight-semi) clamp(21px, 2vw, 25px)/1.3 var(--ds-font)',
-                  fontVariantNumeric: 'tabular-nums',
-                  color: 'var(--ds-green-100)',
-                  letterSpacing: 'var(--ds-tracking-heading)',
-                  overflowWrap: 'anywhere',
-                }}
-              >
-                {fmtMoney(credits)}
-              </span>
-            </div>
-            <div style={{ ...HERO_LABEL, font: 'var(--ds-weight-medium) 10px/1.16 var(--ds-font)', marginTop: 6 }}>Recorded by your team</div>
-          </div>
-          <div style={{ padding: '0 22px', boxShadow: HERO_DIVIDER, display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
-            <div style={HERO_LABEL}>Credit memos ready</div>
-            <div style={{ font: 'var(--ds-weight-semi) 30px/1.32 var(--ds-font)', fontVariantNumeric: 'tabular-nums' }}>{exec.memosReady}</div>
-          </div>
-          <div style={{ padding: '0 22px', boxShadow: HERO_DIVIDER, display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
-            <div style={HERO_LABEL}>Reports downloaded</div>
-            <div style={{ font: 'var(--ds-weight-semi) 30px var(--ds-font)', fontVariantNumeric: 'tabular-nums' }}>{exec.reportsDownloaded}</div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', borderTop: '1px solid var(--ds-neutral-800)', paddingTop: 12, ...HERO_LABEL }}>
-          <span>
-            Billed for affected packages{' '}
-            <strong style={{ color: 'var(--ds-fg-brand-disabled)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{exec.invoiced}</strong>
-          </span>
-        </div>
-      </div>
+          <MoneyBar buckets={b} large />
 
-      {/* Filter row */}
-      <div className="db-card" style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: '12px 14px', flexWrap: 'wrap', overflow: 'visible' }}>
-        <FilterButton filters={filters} />
-        <span className="imp-small" style={{ margin: '0 0 0 auto' }} aria-live="polite">
-          {cards.length} credit memo{cards.length === 1 ? '' : 's'}
-        </span>
+          <div className={styles.cards}>
+            <div className={`${styles.card} ${summary.toDispute.memos > 0 ? styles.cardMove : ''}`}>
+              <div className={styles.cardTop}>
+                <p className={`ds-body-base ds-w-medium ${styles.cardName}`}>
+                  <Swatch bucket="open" />
+                  Left to dispute
+                </p>
+                {summary.toDispute.memos > 0 && <Tag>Your move</Tag>}
+              </div>
+              <p className={`ds-heading-medium ${styles.cardValue}`}>{fmtMoney(b.open)}</p>
+              {summary.toDispute.memos > 0 ? (
+                <>
+                  <p className={`ds-body-small ${styles.cardBody}`}>
+                    <span className="ds-w-medium">{plural(summary.toDispute.memos, 'credit memo')}.</span> Dispute or skip each finding.
+                    {summary.toDispute.nextDeadline && summary.toDispute.daysLeft != null && (
+                      <>
+                        {' '}
+                        Next deadline {shortDate(summary.toDispute.nextDeadline)} · {countdownText(summary.toDispute.daysLeft).toLowerCase()}.
+                      </>
+                    )}
+                  </p>
+                  <div className={styles.cardFoot}>
+                    <Button variant="primary" size="small" fullWidth onClick={() => goToRow(firstWith('open'))}>
+                      Review overcharges
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <p className={`ds-body-small ${styles.cardBody}`}>Nothing left to dispute.</p>
+              )}
+            </div>
+
+            <div className={styles.card}>
+              <div className={styles.cardTop}>
+                <p className={`ds-body-base ds-w-medium ${styles.cardName}`}>
+                  <Swatch bucket="awaiting" />
+                  Waiting on Biller
+                </p>
+              </div>
+              <p className={`ds-heading-medium ${styles.cardValue}`}>{fmtMoney(b.awaiting)}</p>
+              {summary.waiting.memos > 0 ? (
+                <>
+                  <p className={`ds-body-small ${styles.cardBody}`}>
+                    <span className="ds-w-medium">{plural(summary.waiting.memos, 'credit memo')}.</span>
+                    {summary.waiting.oldestSent && <> Oldest sent {summary.waiting.oldestSent}.</>} Record each answer when it comes in.
+                  </p>
+                  <div className={styles.cardFoot}>
+                    <Button size="small" fullWidth onClick={() => goToRow(firstWith('awaiting'))}>
+                      Record answers
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <p className={`ds-body-small ${styles.cardBody}`}>Nothing waiting on an answer.</p>
+              )}
+            </div>
+
+            <div className={`${styles.card} ${styles.cardResult}`}>
+              <div className={styles.cardTop}>
+                <p className={`ds-body-base ds-w-medium ${styles.cardName}`}>
+                  <Swatch bucket="collected" />
+                  Recovered <InfoTip text={RECOVERED_TIP} size={14} />
+                </p>
+              </div>
+              <p className={`ds-heading-medium ${styles.cardValue}`} style={{ color: amountColor('collected') }}>
+                {fmtMoney(b.collected)}
+              </p>
+              <div className={styles.cardLines}>
+                <p className={`ds-body-base ${styles.kv}`}>
+                  <span>Recovery rate</span>
+                  <span className="ds-w-semi">{summary.recoveryRate == null ? '—' : `${(summary.recoveryRate * 100).toFixed(1)}%`}</span>
+                </p>
+                <p className={`ds-body-small ${styles.cardBody} ${summary.recoveryRate == null ? '' : styles.cardNote}`}>
+                  {summary.recoveryRate == null ? 'No answers recorded yet.' : 'Of what Billers answered, as recorded by your team.'}
+                </p>
+              </div>
+            </div>
+
+            <div className={`${styles.card} ${styles.cardResult}`}>
+              <div className={styles.cardTop}>
+                <p className={`ds-body-base ds-w-medium ${styles.cardName}`}>Off the table</p>
+              </div>
+              <p className={`ds-heading-medium ${styles.cardValue} ${styles.muted}`}>{fmtMoney(b.notRecovered + b.notDisputed)}</p>
+              <div className={styles.cardLines}>
+                <p className={`ds-body-base ${styles.kv}`}>
+                  <span>
+                    <Swatch bucket="notRecovered" />
+                    Not recovered
+                  </span>
+                  <span className="ds-w-semi">{fmtMoney(b.notRecovered)}</span>
+                </p>
+                <p className={`ds-body-base ${styles.kv}`}>
+                  <span>
+                    <Swatch bucket="notDisputed" />
+                    Not disputed
+                  </span>
+                  <span className="ds-w-semi">{fmtMoney(b.notDisputed)}</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <div className={styles.listHead}>
+        <h2 className={`ds-heading-tiny ${styles.listCount}`} aria-live="polite">
+          {plural(shownCount, 'credit memo')}
+          {allClearCount > 0 && <span className={styles.listCountNote}> · {allClearCount} with no overcharges</span>}
+        </h2>
+        <div className={styles.listTools}>
+          <Select aria-label="Sort credit memos" size="small" value={sort} onValueChange={setSort} options={TRACKER_SORTS} />
+          <FilterButton filters={filters} />
+        </div>
       </div>
       <FilterGroup filters={filters} />
+      {inAudit.length > 0 && (
+        <p className={`ds-body-small ${styles.inAudit}`}>
+          <ClockIcon aria-hidden="true" />
+          <span>
+            Audit in progress: {inAudit.map((v) => `${v.id} (${v.provider} · ${v.period})`).join(', ')}. Findings appear here once they’re validated.
+          </span>
+        </p>
+      )}
 
-      {cards.map((m) => (
-        <MemoCard
-          key={m.id}
-          m={m}
-          openTo={`/memos/${m.id}`}
-          ctaTo={(kind) => ctaHref(m, kind)}
-          onDownload={() => download(m)}
-        />
-      ))}
+      {list.length > 0 && (
+        <div className={styles.list}>
+          {list.map((r) => (
+            <MemoRow key={r.id} r={r} demo={demo} onDownload={() => download(r)} />
+          ))}
+        </div>
+      )}
 
-      {cards.length === 0 && (
+      {finished.length > 0 && (
+        <section className={styles.finished} aria-labelledby="tracker-finished">
+          <h2 id="tracker-finished" className={`ds-heading-tiny ${styles.finishedTitle}`}>
+            {list.length > 0 ? (
+              <button type="button" className={styles.disclosure} aria-expanded={finishedShown} onClick={() => setFinishedOpen((v) => !v)}>
+                {finishedShown ? <ChevronDownIcon aria-hidden="true" /> : <ChevronRightIcon aria-hidden="true" />}
+                Finished ({finished.length})
+              </button>
+            ) : (
+              <>Finished ({finished.length})</>
+            )}
+          </h2>
+          {finishedShown && (
+            <div className={styles.list}>
+              {finished.map((r) => (
+                <MemoRow key={r.id} r={r} demo={demo} onDownload={() => download(r)} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {views.length === 0 && (
         <div className="db-card" style={{ padding: 0 }}>
           <EmptyState
             title="No credit memos match these filters"
-            subtitle="Try other billers, report statuses, or reporting periods."
+            subtitle="Try other billers or reporting periods."
             action={
               <Button size="small" onClick={filters.clear}>
                 Clear filters

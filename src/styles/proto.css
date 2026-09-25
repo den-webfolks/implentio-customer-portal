@@ -87,7 +87,3 @@
 .ia-om-detail-grid { display: flex; gap: 14px; flex-wrap: wrap; }
 @container om (max-width: 460px) { .ia-om-detail-grid { flex-direction: column; } }
 
-/* ---------- Tracker memo card action column (container query) ---------- */
-.ia-tracker-action-col { container-type: inline-size; container-name: tracker-actions; }
-.ia-tracker-secondary { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-@container tracker-actions (max-width: 340px) { .ia-tracker-secondary { flex-direction: column; align-items: stretch; gap: 10px; } }

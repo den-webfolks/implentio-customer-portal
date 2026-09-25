@@ -1,0 +1,500 @@
+/* Parcel Credit Tracker — Credit memos tab (DESIGN-SYSTEM.md "Parcel Credit
+   Tracker"). Adapts to the `page` container, not the viewport: at a 1280px
+   window the container is about 990px wide. */
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-4);
+}
+
+.tab p {
+  margin: 0;
+}
+
+.muted {
+  color: var(--ds-fg-muted);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.swatch {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: calc(var(--ds-radius-small) / 2);
+}
+
+/* One bar for the five money buckets; parts are separated by the card colour. */
+.bar {
+  display: flex;
+  height: 8px;
+  border-radius: var(--ds-radius-full);
+  overflow: hidden;
+  background: var(--ds-bg-disabled);
+}
+
+.bar > span {
+  flex-basis: 0;
+  min-width: 4px;
+}
+
+.bar > span + span {
+  border-inline-start: 2px solid var(--ds-bg-default);
+}
+
+.barLarge {
+  height: 12px;
+}
+
+/* ---------- summary ---------- */
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-2);
+  padding: var(--ds-space-5);
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-bg-default);
+}
+
+.summaryHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ds-space-2) var(--ds-space-4);
+  flex-wrap: wrap;
+}
+
+.summaryTitle {
+  margin: 0;
+  color: var(--ds-fg-muted);
+}
+
+.total {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 var(--ds-space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.totalNote {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-1);
+  color: var(--ds-fg-muted);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ds-space-3);
+  margin-top: var(--ds-space-4);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--ds-space-4);
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-bg-default);
+}
+
+/* The one card that needs you gets the brand edge. */
+.cardMove {
+  border-color: var(--ds-stroke-brand-emphasis);
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-2);
+  min-height: 22px;
+}
+
+.cardName {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  color: var(--ds-fg-muted);
+}
+
+.cardValue {
+  margin-top: var(--ds-space-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.tab .cardBody {
+  margin-top: var(--ds-space-1);
+  color: var(--ds-fg-muted);
+  text-wrap: pretty;
+}
+
+.cardBody :global(.ds-w-medium) {
+  color: var(--ds-fg-default);
+}
+
+.cardLines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-1);
+  margin-top: var(--ds-space-3);
+}
+
+.tab .cardLines .cardBody {
+  margin-top: 0;
+}
+
+.kv {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ds-space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.kv > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+}
+
+.cardFoot {
+  margin-top: auto;
+  padding-top: var(--ds-space-3);
+}
+
+@container page (max-width: 1100px) {
+  .card {
+    padding: var(--ds-space-4) var(--ds-space-3);
+  }
+}
+
+@container page (max-width: 900px) {
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Phone: the two cards you act on stay full width; the two results share a line. */
+@container page (max-width: 540px) {
+  .summary {
+    padding: var(--ds-space-4);
+  }
+  .card:not(.cardResult) {
+    grid-column: 1 / -1;
+  }
+  .cardResult {
+    padding: var(--ds-space-3);
+  }
+  .tab .cardResult .cardNote {
+    display: none;
+  }
+  .cardResult .kv {
+    flex-direction: column;
+    gap: 0;
+  }
+}
+
+/* ---------- list ---------- */
+
+.listHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+  flex-wrap: wrap;
+  margin-top: var(--ds-space-4);
+}
+
+.listCount {
+  margin: 0;
+  color: var(--ds-fg-default);
+}
+
+.listCountNote {
+  color: var(--ds-fg-muted);
+  font-weight: var(--ds-weight-medium);
+}
+
+.listTools {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  flex-wrap: wrap;
+}
+
+.inAudit {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-2);
+  color: var(--ds-fg-muted);
+}
+
+.inAudit svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-3);
+}
+
+.finished {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-3);
+  margin-top: var(--ds-space-2);
+}
+
+.finishedTitle {
+  margin: 0;
+  color: var(--ds-fg-default);
+}
+
+.disclosure {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  padding: 2px 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.disclosure svg {
+  width: 16px;
+  height: 16px;
+}
+
+.disclosure:focus-visible {
+  outline: 2px solid var(--ds-stroke-focus);
+  outline-offset: 2px;
+  border-radius: var(--ds-radius-small);
+}
+
+/* ---------- memo row ---------- */
+
+/* Wide: memo · money · progress · status · actions on one line. Every row uses
+   the same template, so the amounts, bars and buttons line up down the list. */
+.row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(170px, 1fr) minmax(190px, 1.1fr) minmax(200px, 1.2fr) auto;
+  grid-template-areas: 'memo money progress status actions';
+  align-items: start;
+  gap: var(--ds-space-3) var(--ds-space-5);
+  padding: var(--ds-space-4) var(--ds-space-5);
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-bg-default);
+  scroll-margin-top: 88px;
+}
+
+.row > * {
+  min-width: 0;
+}
+
+.memo {
+  grid-area: memo;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.memoId {
+  margin: 0;
+}
+
+.tab .who {
+  color: var(--ds-fg-muted);
+  margin-bottom: var(--ds-space-1);
+}
+
+.demoLabel {
+  color: var(--ds-fg-muted);
+  text-transform: uppercase;
+}
+
+.money {
+  grid-area: money;
+}
+
+.heroLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ds-fg-muted);
+}
+
+.hero {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.heroZero {
+  color: var(--ds-fg-muted);
+}
+
+.sub {
+  color: var(--ds-fg-muted);
+  text-wrap: pretty;
+}
+
+.clear {
+  color: var(--ds-status-success-fg);
+}
+
+/* A small ring of the memo's money, with the rest of it beside. */
+.progress {
+  grid-area: progress;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-3);
+  padding-top: var(--ds-space-2);
+}
+
+.donut {
+  flex: none;
+  width: 48px;
+  height: 48px;
+}
+
+.donutTrack {
+  fill: none;
+  stroke: var(--ds-bg-disabled);
+  stroke-width: 5;
+}
+
+.donutPart {
+  fill: none;
+  stroke-width: 5;
+}
+
+.tab .facts {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ds-fg-muted);
+}
+
+.facts li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.factAmount {
+  color: var(--ds-fg-default);
+  font-weight: var(--ds-weight-semi);
+  font-variant-numeric: tabular-nums;
+}
+
+.tab .factsText {
+  color: var(--ds-fg-muted);
+}
+
+/* What has been done and what's next: a status chip, then its details. */
+.status {
+  grid-area: status;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ds-space-1);
+  padding-top: var(--ds-space-2);
+}
+
+.tab .status > :first-child {
+  margin-bottom: 2px;
+}
+
+.tab .statusDetail {
+  color: var(--ds-fg-default);
+  text-wrap: pretty;
+}
+
+.tab .statusDetail + .statusDetail {
+  color: var(--ds-fg-muted);
+}
+
+.actions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  padding-top: 20px;
+}
+
+/* Laptop widths: the status moves under the ring. */
+@container page (max-width: 1100px) {
+  .row {
+    grid-template-columns: minmax(160px, 1fr) minmax(170px, 1fr) minmax(0, 1.5fr) auto;
+    grid-template-areas:
+      'memo money progress actions'
+      'memo money status actions';
+    row-gap: var(--ds-space-2);
+  }
+  .status {
+    padding-top: 0;
+  }
+}
+
+/* Narrow tablet: who and the button on top, the money beside its bar, then the date. */
+@container page (max-width: 760px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+    grid-template-areas:
+      'memo actions'
+      'money progress'
+      'status status';
+    row-gap: var(--ds-space-3);
+    padding: var(--ds-space-4);
+  }
+  .actions {
+    padding-top: 0;
+    justify-content: flex-end;
+  }
+  .status {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--ds-space-3);
+    padding-top: var(--ds-space-3);
+    border-top: 1px solid var(--ds-stroke-disabled);
+  }
+}
+
+/* Phone: one column, grouped — who, the money, then when and the button. */
+@container page (max-width: 520px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'memo' 'money' 'progress' 'status' 'actions';
+  }
+  .progress {
+    padding-top: 0;
+  }
+  .actions {
+    justify-content: flex-start;
+  }
+  .actions > :first-child {
+    flex: 1;
+  }
+}

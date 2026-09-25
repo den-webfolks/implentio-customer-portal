@@ -6,6 +6,14 @@ parity; Phase 2a aligns the shared components with the Figma design library
 (DESIGN-SYSTEM.md); Phase 2b will restyle page layouts. See ARCHITECTURE.md for
 decisions, PRODUCT.md for the mined requirements, ROADMAP.md for phases.
 
+
+## UI/UX review
+
+@.claude/ui-review-protocol.md
+
+Use the `better-layout` skill when working on UI layout (grouping, alignment,
+reading order, progressive disclosure).
+
 ## Commands
 
 - `npm run dev` — Vite dev server

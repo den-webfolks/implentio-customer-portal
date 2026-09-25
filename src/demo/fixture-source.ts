@@ -9,10 +9,11 @@ import type {
   DownloadState,
   InvoiceIndexRow,
   OutcomeRow,
+  PrepareDisputeInput,
   SendDisputeInput,
 } from '@/data/source'
 import { classifyInvoice } from '@/domain/memo'
-import { fmtDateShort, fmtDateTime } from '@/domain/dates'
+import { daysUntilDeadline, fmtDateShort, fmtDateTime, isoDate } from '@/domain/dates'
 import { fmtMoney, r2 } from '@/domain/money'
 import { plural } from '@/domain/plural'
 import { COLLECTION_LABELS } from '@/domain/outcomes'
@@ -51,6 +52,21 @@ export class FixtureDataSource implements AppDataSource {
 
   private log(memoId: string, icon: ActivityEntry['icon'], text: string) {
     this.store.activity = [{ memoId, icon, text, time: fmtDateTime(this.clock.now()) }, ...this.store.activity]
+  }
+
+  private sentDisputes(): DisputeRecord[] {
+    return this.store.disputes.filter((d) => d.state === 'sent')
+  }
+
+  /** The memo's one prepared email, if any (one per memo at a time). */
+  private preparedDispute(memoId: string): DisputeRecord | undefined {
+    return this.store.disputes.find((d) => d.state === 'prepared' && d.memoId === memoId)
+  }
+
+  /** Reserved flags for a finding in the shared prepared email. */
+  private preparedFlags(groupId: string): { prepared?: boolean; preparedAt?: string | null } {
+    const d = this.store.disputes.find((x) => x.state === 'prepared' && x.groupIds.includes(groupId))
+    return d ? { prepared: true, preparedAt: d.preparedAt ?? null } : {}
   }
 
   /** Appends the previous outcome to the history and stamps the change. */
@@ -142,7 +158,8 @@ export class FixtureDataSource implements AppDataSource {
         if (m.status !== 'complete' || this.store.auditProcessing) continue
         const base = { memoId: m.id, memoVersion: m.version, threePl: m.provider }
         if (this.store.findingsUnavailable) {
-          const d = this.store.disputes.find((x) => x.scope === 'memo')
+          const d = this.sentDisputes().find((x) => x.scope === 'memo')
+          const prepared = this.store.disputes.find((x) => x.state === 'prepared' && x.scope === 'memo')
           rows.push({
             ...base,
             id: `${m.id}-complete`,
@@ -152,13 +169,13 @@ export class FixtureDataSource implements AppDataSource {
             carrier: m.carriers.join(', '),
             amountN: m.netN ?? 0,
             pursuit: d ? 'pursued' : null,
-            pursuedAt: d ? fmtDateShort(new Date(d.sentAt)) : null,
+            pursuedAt: d?.sentAt ? fmtDateShort(new Date(d.sentAt)) : null,
             pursuedTs: d?.sentAt ?? null,
             pursuedBy: d?.sentBy ?? null,
             pursuedVia: d?.via ?? null,
             disputeDeadline: null,
             collection: d?.collection ?? null,
-            lastCheckedAt: d?.lastCheckedAt ?? null,
+            ...(prepared && !d ? { prepared: true, preparedAt: prepared.preparedAt ?? null } : {}),
           })
           continue
         }
@@ -177,7 +194,7 @@ export class FixtureDataSource implements AppDataSource {
             pursuedVia: g.pursuedVia ?? null,
             disputeDeadline: g.disputeDeadline,
             collection: g.collection,
-            lastCheckedAt: this.store.disputes.find((d) => d.groupIds.includes(g.id))?.lastCheckedAt ?? null,
+            ...this.preparedFlags(g.id),
           })
         }
         continue
@@ -265,61 +282,148 @@ export class FixtureDataSource implements AppDataSource {
     return Promise.resolve()
   }
 
-  recordDisputeSent(input: SendDisputeInput): Promise<DisputeRecord> {
-    const now = this.clock.now()
-    const memo = this.store.memos.find((m) => m.id === input.memoId) ?? this.golden()
-    const groupIds = input.scope === 'memo' ? [] : input.groupIds
-    const groups = this.store.findingGroups.filter((g) => groupIds.includes(g.id))
-    const amountN =
-      input.scope === 'memo' ? (memo?.netN ?? 0) : r2(groups.reduce((s, g) => s + g.varN, 0))
-    const record: DisputeRecord = {
-      id: `dsp-${this.store.disputes.length + 1}`,
-      memoId: input.memoId,
-      memoVersion: memo?.version ?? '',
-      biller: memo?.provider ?? 'Biller',
-      scope: input.scope,
-      groupIds,
-      amountN,
-      sentAt: now.toISOString(),
-      sentBy: this.store.account.user.name,
-      via: input.via,
-      senderEmail: input.senderEmail,
-      to: input.to,
-      cc: input.cc,
-      subject: input.subject,
-      body: input.body,
-      evidenceFile: input.evidenceFile,
-      collection:
-        input.scope === 'memo'
-          ? { status: 'awaiting', amountN: null, date: null, reason: '', history: [] }
-          : null,
-    }
-    const pursuedAt = fmtDateShort(now)
+  /** Marks the findings of a dispute pursued as of `sentAt`, and clears the draft. */
+  private markPursued(groupIds: string[], sentAt: Date, via: 'connected' | 'manual', by: string) {
     this.store.findingGroups = this.store.findingGroups.map((g) =>
       groupIds.includes(g.id)
         ? {
             ...g,
             pursuit: 'pursued',
-            pursuedAt,
-            pursuedTs: now.toISOString(),
-            pursuedBy: this.store.account.user.name,
-            pursuedVia: input.via,
+            pursuedAt: fmtDateShort(sentAt),
+            pursuedTs: sentAt.toISOString(),
+            pursuedBy: by,
+            pursuedVia: via,
             collection: { status: 'awaiting', amountN: null, date: null, reason: '', history: [] },
           }
         : g,
     )
-    this.store.disputes = [...this.store.disputes, record]
     // Sending clears the draft; nothing is pre-selected for the next one.
     this.store.disputeExcludedIds = this.store.findingGroups.map((g) => g.id)
     this.store.disputeDraftDate = null
-    const what =
-      input.scope === 'memo' ? 'complete credit memo' : plural(groups.length, 'variance group')
+  }
+
+  private whatText(scope: 'groups' | 'memo', count: number) {
+    return scope === 'memo' ? 'complete credit memo' : plural(count, 'variance group')
+  }
+
+  private newRecord(input: Pick<PrepareDisputeInput, 'memoId' | 'scope' | 'groupIds' | 'to' | 'cc' | 'subject' | 'body' | 'attachments'>): DisputeRecord {
+    const memo = this.store.memos.find((m) => m.id === input.memoId) ?? this.golden()
+    const groupIds = input.scope === 'memo' ? [] : input.groupIds
+    const groups = this.store.findingGroups.filter((g) => groupIds.includes(g.id))
+    return {
+      id: `dsp-${this.store.disputes.length + 1}`,
+      memoId: input.memoId,
+      memoVersion: memo?.version ?? '',
+      biller: memo?.provider ?? 'Biller',
+      state: 'sent',
+      scope: input.scope,
+      groupIds,
+      amountN: input.scope === 'memo' ? (memo?.netN ?? 0) : r2(groups.reduce((s, g) => s + g.varN, 0)),
+      sentAt: null,
+      sentBy: this.store.account.user.name,
+      via: 'manual',
+      senderEmail: null,
+      to: input.to,
+      cc: input.cc,
+      subject: input.subject,
+      body: input.body,
+      attachments: [...input.attachments],
+      handoffs: [],
+      collection: input.scope === 'memo' ? { status: 'awaiting', amountN: null, date: null, reason: '', history: [] } : null,
+    }
+  }
+
+  recordDisputeSent(input: SendDisputeInput): Promise<DisputeRecord> {
+    const now = this.clock.now()
+    const record: DisputeRecord = {
+      ...this.newRecord({ ...input, body: input.body ?? '' }),
+      sentAt: now.toISOString(),
+      via: input.via,
+      senderEmail: input.senderEmail,
+    }
+    this.markPursued(record.groupIds, now, input.via, record.sentBy)
+    this.store.disputes = [...this.store.disputes, record]
     this.log(
       input.memoId,
       'send',
-      `${input.via === 'manual' ? 'Dispute marked as sent' : 'Dispute sent'} to ${record.biller} — ${what} · ${fmtMoney(amountN)}`,
+      `${input.via === 'manual' ? 'Dispute marked as sent' : 'Dispute sent'} to ${record.biller} — ${this.whatText(input.scope, record.groupIds.length)} · ${fmtMoney(record.amountN)}`,
     )
     return Promise.resolve(structuredClone(record))
+  }
+
+  prepareDispute(input: PrepareDisputeInput): Promise<DisputeRecord> {
+    const now = this.clock.now()
+    const by = this.store.account.user.name
+    const handoff = { at: now.toISOString(), by, method: input.method, to: input.to, cc: input.cc, subject: input.subject, body: input.body, attachments: [...input.attachments] }
+    const existing = this.preparedDispute(input.memoId)
+    if (existing) {
+      const updated: DisputeRecord = {
+        ...existing,
+        to: input.to,
+        cc: input.cc,
+        subject: input.subject,
+        body: input.body,
+        attachments: [...input.attachments],
+        recipientsChecked: existing.recipientsChecked || input.recipientsChecked,
+        handoffs: [...existing.handoffs, handoff],
+      }
+      this.store.disputes = this.store.disputes.map((d) => (d.id === existing.id ? updated : d))
+      this.log(input.memoId, 'send', `Dispute email opened again — ${updated.biller}`)
+      return Promise.resolve(structuredClone(updated))
+    }
+    const record: DisputeRecord = {
+      ...this.newRecord(input),
+      state: 'prepared',
+      preparedAt: now.toISOString(),
+      preparedBy: by,
+      recipientsChecked: input.recipientsChecked,
+      handoffs: [handoff],
+    }
+    this.store.disputes = [...this.store.disputes, record]
+    // Preparing clears the draft, like sending does (the dialog took every ticked finding).
+    this.store.disputeExcludedIds = this.store.findingGroups.map((g) => g.id)
+    this.store.disputeDraftDate = null
+    this.log(
+      input.memoId,
+      'send',
+      `Dispute email prepared for ${record.biller} — ${this.whatText(input.scope, record.groupIds.length)} · ${fmtMoney(record.amountN)} · not confirmed as sent`,
+    )
+    return Promise.resolve(structuredClone(record))
+  }
+
+  confirmDisputeSent(input: { disputeId: string; sentOn: string; via?: 'connected' | 'manual'; senderEmail?: string | null; to?: string; cc?: string; subject?: string; body?: string; attachments?: string[] }): Promise<DisputeRecord> {
+    const d = this.store.disputes.find((x) => x.id === input.disputeId && x.state === 'prepared')
+    if (!d) return Promise.reject(new Error('no prepared dispute'))
+    const now = this.clock.now()
+    const preparedDay = d.preparedAt ? isoDate(new Date(d.preparedAt)) : isoDate(now)
+    // Never earlier than the day it was prepared, never later than today.
+    const sentOn = input.sentOn < preparedDay ? preparedDay : input.sentOn > isoDate(now) ? isoDate(now) : input.sentOn
+    const sentAt = sentOn === isoDate(now) ? now : new Date(sentOn + 'T12:00:00')
+    const deadlines = this.store.findingGroups.filter((g) => d.groupIds.includes(g.id)).map((g) => g.disputeDeadline).filter((x): x is string => !!x)
+    const sentAfterDeadline = deadlines.some((dl) => daysUntilDeadline(dl, sentAt) < 0)
+    const by = this.store.account.user.name
+    const via = input.via ?? 'manual'
+    // What actually went out (a connected send) replaces the last-prepared snapshot.
+    const sent = via === 'connected' ? { to: input.to ?? d.to, cc: input.cc ?? d.cc, subject: input.subject ?? d.subject, body: input.body ?? d.body, attachments: input.attachments ?? d.attachments } : {}
+    const record: DisputeRecord = { ...d, ...sent, state: 'sent', sentAt: sentAt.toISOString(), sentBy: by, via, senderEmail: via === 'connected' ? (input.senderEmail ?? null) : null, sentAfterDeadline }
+    this.store.disputes = this.store.disputes.map((x) => (x.id === d.id ? record : x))
+    this.markPursued(record.groupIds, sentAt, via, by)
+    this.log(
+      d.memoId,
+      'send',
+      via === 'connected'
+        ? `Dispute sent to ${record.biller} — ${this.whatText(record.scope, record.groupIds.length)} · ${fmtMoney(record.amountN)}`
+        : `Dispute confirmed as sent to ${record.biller} on ${fmtDateShort(sentAt)} — ${this.whatText(record.scope, record.groupIds.length)} · ${fmtMoney(record.amountN)}${sentAfterDeadline ? ' · after the deadline' : ''}`,
+    )
+    return Promise.resolve(structuredClone(record))
+  }
+
+  discardPreparedDispute(disputeId: string): Promise<void> {
+    const d = this.store.disputes.find((x) => x.id === disputeId && x.state === 'prepared')
+    if (!d) return Promise.resolve()
+    this.store.disputes = this.store.disputes.map((x) => (x.id === disputeId ? { ...x, state: 'discarded' } : x))
+    this.log(d.memoId, 'send', `Prepared dispute email discarded — not sent to ${d.biller} · ${this.whatText(d.scope, d.groupIds.length)} · ${fmtMoney(d.amountN)}`)
+    return Promise.resolve()
   }
 
   recordGroupOutcome(input: { groupId: string; collection: Collection }): Promise<void> {
@@ -329,7 +433,7 @@ export class FixtureDataSource implements AppDataSource {
     this.store.findingGroups = this.store.findingGroups.map((x) =>
       x.id === input.groupId ? { ...x, collection } : x,
     )
-    const memoId = this.store.disputes.find((d) => d.groupIds.includes(g.id))?.memoId ?? this.store.goldenMemoId
+    const memoId = this.sentDisputes().find((d) => d.groupIds.includes(g.id))?.memoId ?? this.store.goldenMemoId
     this.log(memoId, 'outcome', this.outcomeText(g.title, collection, g.varN))
     return Promise.resolve()
   }
@@ -345,18 +449,9 @@ export class FixtureDataSource implements AppDataSource {
     return Promise.resolve()
   }
 
-  markDisputeChecked(disputeId: string): Promise<void> {
-    const d = this.store.disputes.find((x) => x.id === disputeId)
-    if (!d) return Promise.resolve()
-    const lastCheckedAt = this.clock.now().toISOString()
-    this.store.disputes = this.store.disputes.map((x) => (x.id === disputeId ? { ...x, lastCheckedAt } : x))
-    this.log(d.memoId, 'outcome', `No reply yet from ${d.biller}`)
-    return Promise.resolve()
-  }
-
   setGroupNotPursued(input: { groupId: string; notPursued: boolean }): Promise<void> {
     const g = this.store.findingGroups.find((x) => x.id === input.groupId)
-    if (!g || g.pursuit === 'pursued') return Promise.resolve()
+    if (!g || g.pursuit === 'pursued' || this.preparedFlags(g.id).prepared) return Promise.resolve()
     this.store.findingGroups = this.store.findingGroups.map((x) =>
       x.id === input.groupId ? { ...x, pursuit: input.notPursued ? 'excluded' : null } : x,
     )

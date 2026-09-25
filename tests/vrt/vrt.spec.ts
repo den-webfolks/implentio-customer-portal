@@ -56,6 +56,8 @@ const DESKTOP_ONLY: { name: string; url: string }[] = [
   { name: 'tracker-dispute-recorded', url: '/tracker/memos?scenario=dispute-recorded' },
   { name: 'memo-dispute-deadline', url: '/memos/CM-2026-0630?scenario=dispute-deadline' },
   { name: 'memo-dispute-awaiting', url: '/memos/CM-2026-0630?scenario=dispute-awaiting' },
+  { name: 'memo-dispute-prepared', url: '/memos/CM-2026-0630?scenario=dispute-prepared' },
+  { name: 'tracker-dispute-prepared', url: '/tracker/memos?scenario=dispute-prepared' },
 ]
 
 for (const route of DESKTOP_ONLY) {
@@ -72,8 +74,24 @@ test('vrt review & send', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/memos/CM-2026-0630?scenario=dispute-prep-started&demo=1&send=1')
   await settle(page)
-  await expect(page.getByRole('dialog', { name: 'Review & send' })).toBeVisible()
+  const dialog = page.getByRole('dialog', { name: /^Dispute with QuickBox/ })
+  await expect(dialog).toBeVisible()
   await expect(page).toHaveScreenshot('review-send-desktop.png', { maxDiffPixelRatio: 0.001 })
+  await dialog.getByRole('button', { name: 'Next: check the email' }).click()
+  await expect(page).toHaveScreenshot('review-send-email-desktop.png', { maxDiffPixelRatio: 0.001 })
+  await dialog.getByRole('button', { name: 'Next: review' }).click()
+  await expect(page).toHaveScreenshot('review-send-review-desktop.png', { maxDiffPixelRatio: 0.001 })
+  await dialog.getByRole('button', { name: 'Continue manually' }).click()
+  await expect(page).toHaveScreenshot('review-send-manual-desktop.png', { maxDiffPixelRatio: 0.001 })
+})
+
+test('vrt review & send @phone', async ({ page }) => {
+  await page.setViewportSize({ width: 480, height: 900 })
+  await page.goto('/memos/CM-2026-0630?scenario=dispute-prep-started&demo=1&send=1')
+  await settle(page)
+  const dialog = page.getByRole('dialog', { name: /^Dispute with QuickBox/ })
+  await dialog.getByRole('button', { name: 'Next: check the email' }).click()
+  await expect(page).toHaveScreenshot('review-send-email-phone.png', { maxDiffPixelRatio: 0.001 })
 })
 
 test('vrt package view', async ({ page }) => {

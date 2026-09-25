@@ -1,6 +1,6 @@
 /**
  * Builds a ready-to-send email file (.eml, RFC 822 / MIME) with the evidence
- * attached, for customers who send disputes from their own mail client.
+ * files attached, for customers who send disputes from their own mail client.
  * `X-Unsent: 1` makes Outlook open it as an editable draft; Apple Mail opens
  * it too. Web Gmail can't open .eml files.
  */
@@ -17,7 +17,7 @@ export interface EmlInput {
   cc?: string
   subject: string
   body: string
-  attachment?: EmlAttachment
+  attachments?: EmlAttachment[]
 }
 
 const CRLF = '\r\n'
@@ -50,15 +50,15 @@ export function buildEml(input: EmlInput, boundary = 'implentio-dispute-part'): 
     '',
     wrap76(utf8Base64(input.body)),
   ]
-  if (input.attachment) {
-    const name = header(input.attachment.name)
+  for (const attachment of input.attachments ?? []) {
+    const name = header(attachment.name)
     lines.push(
       `--${boundary}`,
-      `Content-Type: ${input.attachment.mimeType}; name="${name}"`,
+      `Content-Type: ${attachment.mimeType}; name="${name}"`,
       `Content-Disposition: attachment; filename="${name}"`,
       'Content-Transfer-Encoding: base64',
       '',
-      wrap76(input.attachment.base64),
+      wrap76(attachment.base64),
     )
   }
   lines.push(`--${boundary}--`, '')

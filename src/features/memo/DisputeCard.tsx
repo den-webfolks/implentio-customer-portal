@@ -21,7 +21,6 @@ import styles from './DisputeCard.module.css'
 
 type Row = DisputeSection['rows'][number]
 
-const since = (days: number, verb: string) => (days <= 0 ? `${verb} today` : `${verb} ${plural(days, 'day')} ago`)
 const asItem = (r: Row) => ({ amountN: r.amountN, pursuit: 'pursued' as const, disputeDeadline: null, collection: r.collection })
 
 export function DisputeCard({
@@ -29,7 +28,6 @@ export function DisputeCard({
   detailsOpen: detailsOpenAtStart = false,
   activityHref,
   onRecord,
-  onNoReply,
   onJump,
   onDownloadEvidence,
 }: {
@@ -38,7 +36,6 @@ export function DisputeCard({
   detailsOpen?: boolean
   activityHref: string
   onRecord: (rowId: string, collection: Collection) => void
-  onNoReply: () => void
   /** Scroll to a finding's card. */
   onJump: (findingId: string) => void
   onDownloadEvidence: () => void
@@ -51,20 +48,17 @@ export function DisputeCard({
   const status = disputeStatus(rows.map((r) => r.collection))
   const waiting = rows.filter((r) => !r.collection || r.collection.status === 'awaiting')
   const totals = recoveryBuckets(rows.map(asItem), now)
-  const sentOn = new Date(record.sentAt)
-  const checked = record.lastCheckedAt ? new Date(record.lastCheckedAt) : null
+  const sentOn = new Date(record.sentAt ?? 0)
   const waitedDays = daysSince(sentOn, now)
-  const waitingLine = checked
-    ? since(daysSince(checked, now), 'No reply when you checked')
-    : waitedDays <= 0
-      ? 'Sent today'
-      : `Waiting ${plural(waitedDays, 'day')}`
+  const waitingLine = waitedDays <= 0 ? 'Sent today' : `Waiting ${plural(waitedDays, 'day')}`
   const open = waiting.length > 0
 
   return (
     <section
+      id={`dispute-${record.id}`}
       aria-label={`${record.biller} dispute, ${fmtDateShort(sentOn)}`}
       style={{
+        scrollMarginTop: 88,
         border: '1px solid var(--ds-stroke-disabled)',
         borderInlineStart: `4px solid ${open ? TONE_CHART_COLOR.info : TONE_CHART_COLOR.success}`,
         borderRadius: 'var(--ds-radius-large)',
@@ -82,13 +76,15 @@ export function DisputeCard({
           <PaperAirplaneIcon width={20} height={20} aria-hidden="true" />
         </span>
         <div style={{ flex: '1 1 260px', minWidth: 0 }}>
-          <h4 className="ds-heading-small" style={{ margin: 0 }}>
+          {/* Focus target for tracker links (?outcomes=1). */}
+          <h4 id={`dispute-${record.id}-title`} tabIndex={-1} className="ds-heading-small" style={{ margin: 0 }}>
             Dispute sent to {record.biller} · {fmtDateShort(sentOn)}
           </h4>
           <div className="ds-body-base" style={{ margin: '2px 0 0', color: 'var(--ds-fg-muted)' }}>
             {plural(rows.length, 'finding')} · {fmtMoney(record.amountN)}
             {' · '}
             {open ? waitingLine : `Collected ${fmtMoney(totals.collected)} · Not recovered ${fmtMoney(totals.notRecovered)}`}
+            {record.sentAfterDeadline ? ' · sent after the deadline' : ''}
           </div>
         </div>
         <StatusChip tone={DISPUTE_STATUS_TONE[status]}>{DISPUTE_STATUS_LABELS[status]}</StatusChip>
@@ -124,11 +120,6 @@ export function DisputeCard({
         >
           {detailsOpen ? 'Hide details' : 'Show details'}
         </Link>
-        {open && (
-          <Button size="small" onClick={onNoReply} style={{ marginInlineStart: 'auto' }}>
-            No reply yet
-          </Button>
-        )}
       </div>
       {detailsOpen && <DisputeDetails section={section} activityHref={activityHref} onDownloadEvidence={onDownloadEvidence} />}
     </section>
@@ -304,7 +295,7 @@ function DisputeDetails({
 }) {
   const { record, rows } = section
   const [messageOpen, setMessageOpen] = useState(false)
-  const sentOn = new Date(record.sentAt)
+  const sentOn = new Date(record.sentAt ?? 0)
   const emails = (list: string) =>
     list
       ? list
@@ -346,17 +337,20 @@ function DisputeDetails({
             l={record.via === 'manual' ? 'Confirmed by' : 'Sent by'}
             v={record.via === 'manual' ? `${record.sentBy} · sent from their own email` : `${record.sentBy} · from ${record.senderEmail ?? 'the connected account'}`}
           />
-          <Detail l="Date and time" v={fmtDateTime(sentOn)} />
+          <Detail l="Date and time" v={`${fmtDateTime(sentOn)}${record.sentAfterDeadline ? ' · sent after the deadline' : ''}`} />
+          {record.preparedAt && (
+            <Detail l="Prepared" v={`${fmtDateTime(new Date(record.preparedAt))} by ${record.preparedBy ?? record.sentBy} · ${plural(record.handoffs.length, 'handoff')}`} />
+          )}
           <Detail l="To" v={emails(record.to)} />
           <Detail l="CC" v={emails(record.cc)} />
           <Detail l="Subject" v={record.subject} />
           <Detail
-            l="Evidence package"
+            l="Files"
             v={
               <span style={{ display: 'inline-flex', gap: 12, flexWrap: 'wrap', alignItems: 'baseline' }}>
-                <span>{record.evidenceFile}</span>
+                <span>{record.attachments.join(' · ') || '—'}</span>
                 <Link variant="accent" size="small" bold onClick={onDownloadEvidence}>
-                  Download
+                  Download the credit memo
                 </Link>
               </span>
             }
@@ -370,6 +364,13 @@ function DisputeDetails({
                   <Link variant="accent" size="small" bold aria-expanded={messageOpen} onClick={() => setMessageOpen((o) => !o)} style={{ alignSelf: 'flex-start' }}>
                     {messageOpen ? 'Hide the message' : 'Show the message'}
                   </Link>
+                  {messageOpen && (
+                    <span className="imp-small" style={{ margin: 0 }}>
+                      {record.via === 'manual'
+                        ? `Email as prepared in Implentio${record.preparedAt ? ` on ${fmtDateShort(new Date(record.preparedAt))}` : ''}. Your Sent folder has the final version.`
+                        : 'An exact copy of what was sent.'}
+                    </span>
+                  )}
                   {messageOpen && (
                     <span className="ds-body-base" style={{ whiteSpace: 'pre-wrap', fontWeight: 'var(--ds-weight-regular)', background: 'var(--ds-bg-disabled)', border: '1px solid var(--ds-stroke-disabled)', borderRadius: 'var(--ds-radius-small)', padding: '10px 12px' }}>
                       {record.body}
