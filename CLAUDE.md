@@ -6,6 +6,14 @@ parity; Phase 2a aligns the shared components with the Figma design library
 (DESIGN-SYSTEM.md); Phase 2b will restyle page layouts. See ARCHITECTURE.md for
 decisions, PRODUCT.md for the mined requirements, ROADMAP.md for phases.
 
+
+## UI/UX review
+
+@.claude/ui-review-protocol.md
+
+Use the `better-layout` skill when working on UI layout (grouping, alignment,
+reading order, progressive disclosure).
+
 ## Commands
 
 - `npm run dev` — Vite dev server
@@ -53,7 +61,7 @@ decisions, PRODUCT.md for the mined requirements, ROADMAP.md for phases.
 ## Demo/scenario harness (temporary infrastructure)
 
 `?demo=1` shows the scenario picker; `?scenario=<id>` seeds the fixture store
-(18 scenarios, see `src/demo/scenarios.ts`). Useful URLs:
+(21 scenarios, see `src/demo/scenarios.ts`). Useful URLs:
 `/tracker/memos?demo=1`, `/memos/CM-2026-0630?scenario=dispute-awaiting&demo=1`.
 Playwright tests use these as setup. Revisit/remove before any
 customer-facing deployment (see ARCHITECTURE.md).

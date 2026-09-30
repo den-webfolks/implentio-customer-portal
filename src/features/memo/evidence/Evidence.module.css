@@ -1,0 +1,1344 @@
+/* A finding card and its "Show why" panel, as drawn in
+   prototype-planning/02-findings-evidence.html (`.fc`, `.sc`, `.dv`, `.hg`,
+   `.pkg`, `.srcs2`). Tokens only: the plan's kit variables map onto --ds-*. */
+
+/* ---------- step 1: the card ---------- */
+
+.card {
+  container: fc / inline-size;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-bg-default);
+  box-shadow: var(--ds-shadow-disabled);
+  transition: border-color 150ms;
+}
+
+.card:has(.actions input[type='checkbox']:checked) {
+  border-color: var(--ds-purple-500);
+  /* 2px without moving the layout: the border plus a 1px ring. */
+  box-shadow:
+    0 0 0 1px var(--ds-purple-500),
+    var(--ds-shadow-popover);
+}
+
+.card:has(.actions input[type='checkbox']:checked) .top {
+  border-radius: var(--ds-radius-large) var(--ds-radius-large) 0 0;
+  background: color-mix(in srgb, var(--ds-purple-100) 45%, var(--ds-bg-default));
+}
+
+/* Closed card: the head is all there is, so all four corners are round. */
+.card:has(.actions input[type='checkbox']:checked) .top:last-child {
+  border-radius: var(--ds-radius-large);
+}
+
+.top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'main amt' 'bar bar';
+  column-gap: 24px;
+  row-gap: 16px;
+  padding: 18px 24px;
+}
+
+.main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font: var(--ds-weight-semi) 18px/1.3 var(--ds-font);
+  letter-spacing: var(--ds-tracking-heading);
+  color: var(--ds-fg-default);
+  text-wrap: balance;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 0;
+  margin: 0;
+  font: var(--ds-weight-regular) 13px/1.4 var(--ds-font);
+  color: var(--ds-fg-muted);
+}
+
+.meta > div {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.meta > div + div::before {
+  content: '·';
+  margin: 0 10px;
+  color: var(--ds-neutral-500);
+}
+
+.meta dt {
+  flex: none;
+  white-space: nowrap;
+}
+
+.meta dd {
+  margin: 0;
+  font-weight: var(--ds-weight-medium);
+  color: var(--ds-neutral-800);
+}
+
+.meta dd .more {
+  font-weight: var(--ds-weight-regular);
+  color: var(--ds-fg-muted);
+}
+
+.mismatch {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  max-width: 72ch;
+  font: var(--ds-weight-medium) 13px/1.45 var(--ds-font);
+  color: var(--ds-status-attention-fg);
+}
+
+.mismatch svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--ds-icon-warning);
+}
+
+.amount {
+  grid-area: amt;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: end;
+  font: var(--ds-weight-regular) 13px/1.4 var(--ds-font);
+  color: var(--ds-fg-muted);
+}
+
+.money {
+  font: var(--ds-weight-semi) 26px/1.1 var(--ds-font);
+  letter-spacing: -0.03em;
+  color: var(--ds-fg-accent-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  grid-area: bar;
+  display: flex;
+  align-items: center;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 6px 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-inline-start: auto;
+  font: var(--ds-weight-regular) 13px/1.4 var(--ds-font);
+  color: var(--ds-fg-muted);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--ds-radius-medium);
+  background: none;
+  font: var(--ds-weight-medium) 13.5px/1 var(--ds-font);
+  color: var(--ds-purple-500);
+  cursor: pointer;
+}
+
+.toggle:hover {
+  background: var(--ds-purple-100);
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--ds-stroke-focus);
+  outline-offset: 0;
+}
+
+.toggle svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.toggle[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.subtle {
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  font: var(--ds-weight-medium) 13px/1.4 var(--ds-font);
+  color: var(--ds-purple-500);
+  cursor: pointer;
+}
+
+.subtle:hover {
+  text-decoration: underline;
+}
+
+/* Past the deadline: a warning line that wraps (a chip would cut it off on a phone). */
+.warn {
+  display: inline-flex;
+  gap: 6px;
+  max-width: 100%;
+  font-weight: var(--ds-weight-medium);
+  color: var(--ds-status-attention-fg);
+}
+
+.warn svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--ds-icon-warning);
+}
+
+/* The meta line stacks once the card itself is narrow (plan: ≤620px), so no line starts with "·". */
+@container fc (max-width: 620px) {
+  .meta {
+    flex-direction: column;
+  }
+  .meta > div + div::before {
+    content: none;
+  }
+}
+
+/* ---------- step 2: the panel, a tinted well of section cards ---------- */
+
+.well {
+  container: why / inline-size;
+  animation: whyIn 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  border-top: 1px solid var(--ds-stroke-disabled);
+  border-radius: 0 0 var(--ds-radius-large) var(--ds-radius-large);
+  background: var(--ds-neutral-50);
+}
+
+@keyframes whyIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .well {
+    animation: none;
+  }
+}
+
+/* The title, amount and "Hide why" stay in view while the open panel scrolls. */
+.sticky {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  margin-bottom: -44px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--ds-stroke-disabled);
+  /* Solid, not the plan's see-through: text over scrolling content lost contrast (axe). */
+  background: var(--ds-bg-default);
+  font: var(--ds-weight-semi) 13.5px/1.3 var(--ds-font);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition:
+    opacity 180ms,
+    transform 180ms;
+}
+
+.sticky.stuck {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+.stickyTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stickyMoney {
+  color: var(--ds-fg-accent-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px;
+}
+
+.section {
+  container: sc / inline-size;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-bg-default);
+  box-shadow: var(--ds-shadow-disabled);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ds-stroke-disabled);
+}
+
+.headIcon {
+  display: grid;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: var(--ds-radius-medium);
+  background: var(--ds-purple-100);
+  color: var(--ds-purple-500);
+}
+
+.headIcon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.titles {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.eyebrow {
+  font: var(--ds-weight-semi) 11px/1.3 var(--ds-font);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ds-fg-muted);
+}
+
+.sectionTitle {
+  margin: 0;
+  font: var(--ds-weight-semi) 14.5px/1.35 var(--ds-font);
+  color: var(--ds-fg-default);
+}
+
+.aside {
+  margin-inline-start: auto;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  font: var(--ds-weight-regular) 13.5px/1.5 var(--ds-font);
+  color: var(--ds-fg-default);
+}
+
+.body p {
+  margin: 0;
+}
+
+/* A fixed 2×2: breakdown and spread on the first row, the example package and
+   how-we-checked on the second — never one card spanning both columns. */
+@container why (min-width: 720px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 4px 16px 16px;
+}
+
+.muted {
+  color: var(--ds-fg-muted);
+}
+
+.small {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ds-fg-muted);
+}
+
+/* ---------- billed − contract = overcharged ---------- */
+
+.equation {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px 14px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: var(--ds-radius-medium);
+  background: var(--ds-neutral-50);
+}
+
+/* The spread's box: two figures side by side, no operators between them. */
+.equation.spread {
+  gap: 6px 40px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statLabel {
+  font-size: 12px;
+  color: var(--ds-fg-muted);
+}
+
+.statValue {
+  font: var(--ds-weight-semi) 18px/1.3 var(--ds-font);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.op {
+  padding-bottom: 1px;
+  font-size: 18px;
+  color: var(--ds-fg-muted);
+}
+
+.moneyText {
+  color: var(--ds-fg-accent-text);
+}
+
+/* ---------- every charge on one zero line ---------- */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--ds-fg-muted);
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.swOver {
+  background: var(--ds-orange-500);
+}
+
+.swUnder {
+  background: var(--ds-blue-500);
+}
+
+.dv {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dvRow,
+.dvAxis {
+  display: grid;
+  grid-template-columns: 136px minmax(0, 1fr) 92px;
+  column-gap: 12px;
+  align-items: center;
+}
+
+.dvRow {
+  min-height: 32px;
+}
+
+.dvLabel {
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.dvValue {
+  font-size: 13px;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dvOver {
+  color: var(--ds-fg-accent-text);
+  font-weight: var(--ds-weight-medium);
+}
+
+.dvUnder {
+  color: var(--ds-green-500);
+}
+
+.dvTrack {
+  position: relative;
+  align-self: stretch;
+  background-image: linear-gradient(to right, var(--ds-neutral-200) 1px, transparent 1px);
+  background-repeat: repeat-x;
+  background-size: var(--grid) 100%;
+}
+
+.dvTrack::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--zero);
+  width: 1px;
+  background: var(--ds-neutral-600);
+}
+
+.dvBar {
+  position: absolute;
+  top: 50%;
+  height: 12px;
+  min-width: 2px;
+  transform: translateY(-50%);
+}
+
+.dvBarOver {
+  border-radius: 0 4px 4px 0;
+  background: var(--ds-orange-500);
+}
+
+.dvBarUnder {
+  border-radius: 4px 0 0 4px;
+  background: var(--ds-blue-500);
+}
+
+.dvAxis {
+  height: 22px;
+}
+
+.dvTicks {
+  position: relative;
+  height: 100%;
+}
+
+.dvTicks span {
+  position: absolute;
+  top: 4px;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--ds-fg-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dvTicks .t0 {
+  color: var(--ds-fg-default);
+  font-weight: var(--ds-weight-semi);
+}
+
+@container why (max-width: 480px) {
+  .dvTicks .t2 {
+    display: none;
+  }
+}
+
+/* ---------- charge and spread tables (the charts' twins) ---------- */
+
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tbl th {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--ds-stroke-disabled);
+  font-weight: var(--ds-weight-regular);
+  text-align: start;
+  color: var(--ds-fg-muted);
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.tbl td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ds-stroke-disabled);
+  vertical-align: middle;
+}
+
+.tbl .num {
+  text-align: end;
+  white-space: nowrap;
+}
+
+.tbl .group th {
+  padding: 12px 10px 4px;
+  font-size: 12px;
+  font-weight: var(--ds-weight-semi);
+}
+
+.tbl .total td {
+  font-weight: var(--ds-weight-semi);
+  background: var(--ds-neutral-50);
+}
+
+.tbl .hot td {
+  background: var(--ds-bg-warning-muted);
+}
+
+.diff {
+  color: var(--ds-fg-accent-text);
+  font-weight: var(--ds-weight-semi);
+}
+
+.fav {
+  color: var(--ds-green-500);
+}
+
+/* ---------- overcharge per package: one accent bucket, the rest grey ---------- */
+
+.hgWrap {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 210px;
+}
+
+.hg {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-rows: auto minmax(130px, 1fr) auto;
+  column-gap: 6px;
+}
+
+.hgYTitle {
+  grid-column: 1 / -1;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: var(--ds-fg-muted);
+}
+
+.hgY {
+  position: relative;
+}
+
+.hgY span {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--ds-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.hgPlot {
+  position: relative;
+}
+
+.hgGrid i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--ds-neutral-300);
+}
+
+.hgGrid i:first-child {
+  background: var(--ds-neutral-400);
+}
+
+.hgBars {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hgBar {
+  position: relative;
+  flex: 1;
+  height: var(--h);
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  background: var(--ds-neutral-500);
+}
+
+.hgBar.hot {
+  background: var(--ds-orange-500);
+}
+
+.hgCap {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: var(--ds-weight-semi);
+  white-space: nowrap;
+}
+
+.hgBracket {
+  position: absolute;
+  right: 0;
+  height: 8px;
+  border: 1px solid var(--ds-neutral-600);
+  border-bottom: 0;
+  border-radius: 2px 2px 0 0;
+}
+
+.hgBracket span {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--ds-fg-muted);
+  white-space: nowrap;
+}
+
+.hgX {
+  grid-column: 2;
+  display: flex;
+  gap: 2px;
+  padding-top: 5px;
+}
+
+.hgX span {
+  flex: 1;
+  font-size: 11px;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--ds-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.hgXTitle {
+  margin: 4px 0 0;
+  padding-left: 36px;
+  font-size: 11.5px;
+  text-align: center;
+  color: var(--ds-fg-muted);
+}
+
+/* ---------- the example package: the section card is the slip ---------- */
+
+.example .head {
+  position: relative;
+  border-bottom: 0;
+}
+
+.example .head::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: repeating-linear-gradient(
+    to right,
+    var(--ds-stroke-emphasis) 0 6px,
+    transparent 6px 11px
+  );
+}
+
+.example .body {
+  gap: 0;
+  border-radius: 0 0 var(--ds-radius-large) var(--ds-radius-large);
+  background: color-mix(in srgb, var(--ds-neutral-50) 40%, var(--ds-bg-default));
+}
+
+.pkg {
+  container: pkg / inline-size;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pkgTab {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 1px 9px;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-orange-100);
+  color: var(--ds-fg-accent-text);
+  font: var(--ds-weight-semi) 11px/18px var(--ds-font);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pkgHead,
+.pkgSpecs {
+  display: grid;
+  gap: 10px 0;
+  margin: 0;
+}
+
+.pkgHead {
+  grid-template-columns: repeat(auto-fit, minmax(180px, max-content));
+  column-gap: 32px;
+  padding-right: 150px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--ds-stroke-muted);
+}
+
+.pkgSpecs {
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+}
+
+.pkgHead > div,
+.pkgSpecs > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.pkgSpecs > div {
+  padding: 0 12px;
+  border-inline-start: 1px solid var(--ds-stroke-disabled);
+}
+
+.pkgSpecs > div:first-child {
+  padding-inline-start: 0;
+  border-inline-start: 0;
+}
+
+.pkg dt {
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: var(--ds-fg-muted);
+}
+
+.pkg dd {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: var(--ds-weight-medium);
+  line-height: 1.4;
+}
+
+.mono {
+  font-family: var(--ds-font-mono);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.pkgTable {
+  table-layout: fixed;
+}
+
+.pkgTable th.num {
+  width: 22%;
+}
+
+.pkgTable th:first-child,
+.pkgTable td:first-child {
+  padding-inline-start: 0;
+}
+
+.pkgTable th:last-child,
+.pkgTable td:last-child {
+  padding-inline-end: 0;
+}
+
+.pkgTable td {
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.pkgTable .total td {
+  border-top: 1px solid var(--ds-stroke-muted);
+  border-bottom: 0;
+  background: transparent;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--ds-fg-muted);
+}
+
+@container pkg (max-width: 519px) {
+  .pkgTab {
+    position: static;
+    align-self: flex-start;
+  }
+  .pkgHead {
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: 20px;
+    padding-right: 0;
+  }
+  .pkgSpecs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .pkgSpecs > div:nth-child(3n + 1) {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+}
+
+@container pkg (max-width: 400px) {
+  .pkgSpecs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pkgSpecs > div:nth-child(3n + 1) {
+    padding-inline-start: 12px;
+    border-inline-start: 1px solid var(--ds-stroke-disabled);
+  }
+  .pkgSpecs > div:nth-child(2n + 1) {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+}
+
+/* Narrow: each charge is two lines — name and difference, then billed and contract. */
+@container pkg (max-width: 460px) {
+  .pkgTable,
+  .pkgTable tbody,
+  .pkgTable tfoot {
+    display: block;
+  }
+  .pkgTable thead {
+    display: none;
+  }
+  .pkgTable tr:not(.explainRow) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'name diff' 'billed contract';
+    column-gap: 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--ds-stroke-disabled);
+  }
+  .pkgTable td,
+  .pkgTable th {
+    padding: 1px 0;
+    border: 0;
+  }
+  .pkgTable tr > :nth-child(1) {
+    grid-area: name;
+  }
+  .pkgTable tr > :nth-child(2) {
+    grid-area: billed;
+    text-align: start;
+    font-size: 12.5px;
+  }
+  .pkgTable tr > :nth-child(3) {
+    grid-area: contract;
+    text-align: end;
+    font-size: 12.5px;
+  }
+  .pkgTable tr > :nth-child(4) {
+    grid-area: diff;
+    text-align: end;
+  }
+  .pkgTable td[data-label]::before {
+    content: attr(data-label) ' ';
+    color: var(--ds-fg-muted);
+  }
+  .pkgTable .total {
+    border-bottom: 0;
+  }
+  .pkgTable .explainRow {
+    display: block;
+  }
+  .pkgTable .explainRow td {
+    display: block;
+    padding: 0 0 8px;
+  }
+}
+
+/* A word that explains itself: dotted underline and a "?" mark. */
+.term {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  text-decoration: underline dotted var(--ds-purple-300);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.term:hover,
+.term[aria-expanded='true'] {
+  color: var(--ds-purple-500);
+  text-decoration-color: var(--ds-purple-500);
+}
+
+.term:focus-visible {
+  outline: 2px solid var(--ds-stroke-focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* "?" only in tables and on complex labels; on the card the underline is enough (`.bare`). */
+.term:not(.fact):not(.bare)::after {
+  content: '?' / '';
+  display: inline-grid;
+  width: 16px;
+  height: 16px;
+  margin-inline-start: 5px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ds-purple-100);
+  color: var(--ds-purple-500);
+  font: var(--ds-weight-semi) 9.5px/1 var(--ds-font);
+  text-decoration: none;
+  vertical-align: 1px;
+}
+
+.term.fact {
+  font-weight: var(--ds-weight-medium);
+}
+
+/* The one explanation every helper's popover shows: what it is in general,
+   then this case (label, picture, why), then the invoice's word. */
+.xp {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 400px;
+  font: var(--ds-weight-regular) 13px/1.5 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  color: var(--ds-fg-default);
+}
+
+.xp p {
+  margin: 0;
+}
+
+.xp strong {
+  font-weight: var(--ds-weight-semi);
+}
+
+.xpCase {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--ds-stroke-disabled);
+}
+
+.onInvoice {
+  display: block;
+  font-size: 12.5px;
+  color: var(--ds-fg-muted);
+}
+
+/* Diagram parts (SVG), as in the plan's glossary drawings. */
+.popArt svg text {
+  font: var(--ds-weight-regular) 10.5px var(--ds-font);
+  fill: var(--ds-fg-muted);
+}
+.popArt svg .tb {
+  font-weight: var(--ds-weight-semi);
+  fill: var(--ds-fg-default);
+}
+.popArt svg .tm {
+  font-weight: var(--ds-weight-semi);
+  fill: var(--ds-fg-accent-text);
+}
+.popArt svg .tg {
+  font-weight: var(--ds-weight-semi);
+  fill: var(--ds-green-500);
+}
+.popArt svg .ln {
+  fill: none;
+  stroke: var(--ds-stroke-emphasis);
+  stroke-width: 1.2;
+}
+.popArt svg .box {
+  fill: var(--ds-bg-default);
+  stroke: var(--ds-stroke-muted);
+}
+.popArt svg .soft {
+  fill: var(--ds-purple-100);
+  stroke: var(--ds-purple-300);
+}
+.popArt svg .hl {
+  fill: var(--ds-orange-100);
+  stroke: var(--ds-orange-500);
+}
+.popArt svg .gd {
+  fill: var(--ds-green-100);
+  stroke: var(--ds-green-500);
+}
+.popArt svg .zero {
+  fill: none;
+  stroke: var(--ds-stroke-emphasis);
+  stroke-dasharray: 3 2;
+}
+.popArt svg .br {
+  fill: var(--ds-purple-500);
+}
+.popArt svg .brf {
+  fill: var(--ds-purple-300);
+}
+.popArt svg .mut {
+  fill: var(--ds-neutral-300);
+}
+.popArt svg .dim {
+  opacity: 0.35;
+}
+
+/* ---------- how we checked: documents as tiles ---------- */
+
+.docs {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Keyed to the card's own width (it's a fixed grid cell now, not a full-width
+   card), so two columns only show once a tile has room to breathe. */
+@container sc (min-width: 460px) {
+  .docs {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.doc {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-medium);
+  background: var(--ds-neutral-50);
+}
+
+.docIcon {
+  display: grid;
+  align-self: start;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.docIcon svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 3;
+}
+
+.docOk {
+  background: var(--ds-green-100);
+  color: var(--ds-status-success-fg);
+}
+
+.docNamed {
+  background: var(--ds-yellow-100);
+  color: var(--ds-status-attention-fg);
+}
+
+.docNone {
+  background: var(--ds-neutral-200);
+  color: var(--ds-fg-muted);
+}
+
+.docText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.docName {
+  font-size: 13.5px;
+  font-weight: var(--ds-weight-semi);
+}
+
+.docName span {
+  font-weight: var(--ds-weight-regular);
+  color: var(--ds-fg-muted);
+}
+
+.docSub {
+  font-size: 12.5px;
+  color: var(--ds-fg-muted);
+}
+
+.reviewed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: var(--ds-weight-medium);
+  color: var(--ds-status-success-fg);
+}
+
+.reviewed svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ---------- phone ---------- */
+
+@container page (max-width: 560px) {
+  .top {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'main' 'amt' 'bar';
+    row-gap: 12px;
+    padding: 14px 16px 16px;
+  }
+  .title {
+    font-size: 17px;
+  }
+  .amount {
+    align-items: flex-start;
+    text-align: start;
+  }
+  .money {
+    font-size: 24px;
+  }
+  /* Status first, then the actions full width. */
+  .bar {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .status {
+    justify-content: flex-start;
+    margin-inline-start: 0;
+  }
+  .actions > label {
+    flex: 1;
+    justify-content: center;
+  }
+  .grid {
+    gap: 10px;
+    padding: 10px;
+  }
+  .head {
+    padding: 12px 14px;
+  }
+  .body {
+    padding: 14px;
+  }
+  .sticky {
+    padding: 10px 16px;
+  }
+  .foot {
+    padding: 2px 14px 14px;
+  }
+  .equation {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, auto));
+    justify-content: space-between;
+    gap: 4px 10px;
+    padding: 10px 12px;
+  }
+  .equation .op {
+    display: none;
+  }
+  .statValue {
+    font-size: 15px;
+  }
+  .dvRow,
+  .dvAxis {
+    grid-template-columns: 92px minmax(0, 1fr) 76px;
+    column-gap: 8px;
+  }
+  .dvRow {
+    min-height: 38px;
+  }
+  .dvLabel,
+  .dvValue {
+    font-size: 12.5px;
+  }
+  .dvTicks .t2,
+  .dvTicks .t4:first-child {
+    display: none;
+  }
+  .hgX span {
+    font-size: 10px;
+  }
+  .titles {
+    flex: 1 1 calc(100% - 38px);
+  }
+  .aside {
+    margin-inline-start: 38px;
+  }
+}
+
+/* Anything else that reflows with its own width (the package list's row detail). */
+.fits {
+  container: pkg / inline-size;
+}
+
+.vh {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* An explanation's picture, in place or in a popover. */
+.popArt svg {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  border-radius: var(--ds-radius-medium);
+  background: var(--ds-bg-default);
+}

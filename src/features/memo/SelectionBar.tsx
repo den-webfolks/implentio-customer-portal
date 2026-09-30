@@ -51,7 +51,11 @@ export function SelectionBar({
       <Link variant="accent" size="small" bold onClick={onClear}>
         Clear
       </Link>
-      <Button variant="primary" iconLeft={<PaperAirplaneIcon aria-hidden="true" />} onClick={onReview}>
+      <Button
+        variant="primary"
+        iconLeft={<PaperAirplaneIcon aria-hidden="true" />}
+        onClick={onReview}
+      >
         Review &amp; send
       </Button>
     </div>

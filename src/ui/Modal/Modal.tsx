@@ -19,8 +19,10 @@ export interface ModalProps {
   title: ReactNode
   description?: ReactNode
   size?: ModalSize
-  /** Narrower fixed width (px) for small confirm-style dialogs. */
+  /** Fixed max width (px): narrower confirm dialogs, or a wider working dialog. */
   width?: number
+  /** Take the full viewport height, less the 24px margins (long multi-step dialogs). */
+  fill?: boolean
   children: ReactNode
   /** Primary actions, right-aligned (Figma button-group end). */
   footer?: ReactNode
@@ -30,7 +32,7 @@ export interface ModalProps {
   dismissDisabled?: boolean
 }
 
-export function Modal({ open, onClose, title, description, size = 'medium', width, children, footer, footerStart, dismissDisabled = false }: ModalProps) {
+export function Modal({ open, onClose, title, description, size = 'medium', width, fill = false, children, footer, footerStart, dismissDisabled = false }: ModalProps) {
   // Controlled dialogs have no Radix Trigger, so remember the opener and
   // return focus to it on close.
   const openerRef = useRef<HTMLElement | null>(null)
@@ -43,10 +45,14 @@ export function Modal({ open, onClose, title, description, size = 'medium', widt
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && !dismissDisabled && onClose()}>
       <Dialog.Portal>
+        {/* One stacking layer per dialog, so a dialog opened from another one
+            dims it with its own overlay (before, every overlay sat below every
+            open dialog, so stacked dialogs ran together). */}
+        <div className={styles.layer}>
         <Dialog.Overlay className={styles.overlay} />
         <div className={styles.positioner}>
           <Dialog.Content
-            className={[styles.content, size === 'large' ? styles.large : ''].filter(Boolean).join(' ')}
+            className={[styles.content, size === 'large' ? styles.large : '', fill ? styles.fill : ''].filter(Boolean).join(' ')}
             style={width ? { maxWidth: `min(${width}px, 100%)` } : undefined}
             {...(description ? {} : { 'aria-describedby': undefined })}
             onCloseAutoFocus={(e) => {
@@ -84,6 +90,7 @@ export function Modal({ open, onClose, title, description, size = 'medium', widt
               </div>
             )}
           </Dialog.Content>
+        </div>
         </div>
       </Dialog.Portal>
     </Dialog.Root>

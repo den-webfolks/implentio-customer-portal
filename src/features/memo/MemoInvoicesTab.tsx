@@ -11,7 +11,14 @@ import { ActionTab, ActionTabs } from '@/ui/Tabs/Tabs'
 import { TextField } from '@/ui/Form/TextField'
 import { EmptyState } from '@/ui/Display/Display'
 import { Table, TableScroll, SortableHeader, nextSort, type SortDirection } from '@/ui/Table/Table'
-import { useFilters, FilterButton, FilterGroup, matchesFilter, type FilterField, type FilterValues } from '@/ui/Filters/Filters'
+import {
+  useFilters,
+  FilterButton,
+  FilterGroup,
+  matchesFilter,
+  type FilterField,
+  type FilterValues,
+} from '@/ui/Filters/Filters'
 import { STATUS_PILL } from '../invoices/InvoicesPage'
 import { Button } from '@/ui/Button/Button'
 
@@ -35,8 +42,18 @@ function hash(s: string, seed: number): number {
 }
 
 const MONTH_NUM: Record<string, number> = {
-  January: 1, February: 2, March: 3, April: 4, May: 5, June: 6,
-  July: 7, August: 8, September: 9, October: 10, November: 11, December: 12,
+  January: 1,
+  February: 2,
+  March: 3,
+  April: 4,
+  May: 5,
+  June: 6,
+  July: 7,
+  August: 8,
+  September: 9,
+  October: 10,
+  November: 11,
+  December: 12,
 }
 const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
@@ -106,14 +123,33 @@ export function MemoInvoicesTab({ detail }: { detail: MemoDetail }) {
   const q = search.trim().toLowerCase()
   if (q) rows = rows.filter((r) => r.inv.toLowerCase().includes(q))
   if (metric !== 'all') rows = rows.filter((r) => r.status === metric)
-  if (selectedCarriers.length > 0) rows = rows.filter((r) => selectedCarriers.some((c) => r.carrierText.includes(c)))
+  if (selectedCarriers.length > 0)
+    rows = rows.filter((r) => selectedCarriers.some((c) => r.carrierText.includes(c)))
   rows = rows.filter((r) => matchesFilter(filterValues, 'miStatus', r.status))
-  if (sort) rows = [...rows].sort((a, b) => (sort === 'desc' ? b.sortKey - a.sortKey : a.sortKey - b.sortKey))
+  if (sort)
+    rows = [...rows].sort((a, b) =>
+      sort === 'desc' ? b.sortKey - a.sortKey : a.sortKey - b.sortKey,
+    )
 
   const metricDefs = [
-    { key: 'all' as const, label: 'Invoices included', value: all.length, type: 'neutral' as const },
-    { key: 'variance' as const, label: 'Variance identified', value: all.filter((r) => r.status === 'variance').length, type: 'negative' as const },
-    { key: 'clear' as const, label: 'No significant variance', value: all.filter((r) => r.status === 'clear').length, type: 'positive' as const },
+    {
+      key: 'all' as const,
+      label: 'Invoices included',
+      value: all.length,
+      type: 'neutral' as const,
+    },
+    {
+      key: 'variance' as const,
+      label: 'Variance identified',
+      value: all.filter((r) => r.status === 'variance').length,
+      type: 'negative' as const,
+    },
+    {
+      key: 'clear' as const,
+      label: 'No significant variance',
+      value: all.filter((r) => r.status === 'clear').length,
+      type: 'positive' as const,
+    },
   ]
 
   return (
@@ -123,18 +159,36 @@ export function MemoInvoicesTab({ detail }: { detail: MemoDetail }) {
           Invoices in this credit memo
         </h2>
         <p className="imp-small" style={{ margin: '8px 0 0' }}>
-          Review the invoices included in this credit memo and see whether significant variance was identified.
+          Review the invoices included in this credit memo and see whether significant variance was
+          identified.
         </p>
       </div>
 
       <ActionTabs ariaLabel="Invoice status">
         {metricDefs.map((md) => (
-          <ActionTab key={md.key} label={md.label} value={md.value} type={md.type} active={metric === md.key} onClick={() => setMetric(md.key)} />
+          <ActionTab
+            key={md.key}
+            label={md.label}
+            value={md.value}
+            type={md.type}
+            active={metric === md.key}
+            onClick={() => setMetric(md.key)}
+          />
         ))}
       </ActionTabs>
 
       <div className="db-card" style={{ padding: 0, gap: 0, overflow: 'visible', minHeight: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid var(--ds-stroke-disabled)', flexWrap: 'wrap', flex: 'none' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '14px 16px',
+            borderBottom: '1px solid var(--ds-stroke-disabled)',
+            flexWrap: 'wrap',
+            flex: 'none',
+          }}
+        >
           <div style={{ flex: '0 1 252px', minWidth: 0 }}>
             <TextField
               aria-label="Search invoice number"
@@ -152,7 +206,9 @@ export function MemoInvoicesTab({ detail }: { detail: MemoDetail }) {
           </span>
         </div>
         {filters.expanded && (
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--ds-stroke-disabled)' }}>
+          <div
+            style={{ padding: '12px 16px', borderBottom: '1px solid var(--ds-stroke-disabled)' }}
+          >
             <FilterGroup filters={filters} />
           </div>
         )}
@@ -161,7 +217,11 @@ export function MemoInvoicesTab({ detail }: { detail: MemoDetail }) {
             <thead>
               <tr>
                 <th>Invoice</th>
-                <SortableHeader label="Invoice date" direction={sort} onSort={() => setSort(nextSort)} />
+                <SortableHeader
+                  label="Invoice date"
+                  direction={sort}
+                  onSort={() => setSort(nextSort)}
+                />
                 <th>Carriers</th>
                 <th>Warehouse</th>
                 <th className="num">Original invoice total</th>
@@ -181,7 +241,9 @@ export function MemoInvoicesTab({ detail }: { detail: MemoDetail }) {
                   <td className="num">{r.parcelN == null ? '—' : fmtMoney(r.parcelN)}</td>
                   <td className="num">{r.packages.toLocaleString('en-US')}</td>
                   <td>
-                    <StatusChip tone={STATUS_PILL[r.status].tone}>{STATUS_PILL[r.status].label}</StatusChip>
+                    <StatusChip tone={STATUS_PILL[r.status].tone}>
+                      {STATUS_PILL[r.status].label}
+                    </StatusChip>
                   </td>
                 </tr>
               ))}

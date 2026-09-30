@@ -3,22 +3,17 @@ import { useState } from 'react'
 import { ArrowRightIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline'
 import { fmtMoney } from '@/domain/money'
 import { fmtDateLong } from '@/domain/dates'
-import { plural } from '@/domain/plural'
 import {
-  ACTION_NEEDED_WITHIN_DAYS,
   COLLECTION_LABELS,
   STATUS_LABELS,
-  OUTCOME_NUDGE_DAYS,
   RECOVERY_BUCKETS,
   groupStatusLine,
-  needsUpdate,
   outcomesBy3pl,
 } from '@/domain/outcomes'
 import type { OutcomeRow } from '@/data/source'
 import { useClock } from '@/lib/clock'
 import { COLLECTION_TONE, GROUP_STATUS_TONE } from '@/features/status-tones'
 import type { StatusTone } from '@/ui/Chip/StatusChip'
-import { Banner } from '@/ui/Banner/Banner'
 import { Button, ButtonLink } from '@/ui/Button/Button'
 import { Link } from '@/ui/Link/Link'
 import { StatusChip } from '@/ui/Chip/StatusChip'
@@ -61,7 +56,6 @@ const PURSUIT_OPTIONS = [
   { value: 'eligible', label: STATUS_LABELS.eligible },
   { value: 'pursued', label: 'Disputed' },
   { value: 'not_pursued', label: STATUS_LABELS.not_pursued },
-  { value: 'expired', label: STATUS_LABELS.expired },
 ]
 
 /** The filter chips a donut slice stands for (display only; rows are
@@ -71,7 +65,7 @@ const SLICE_CHIPS: Record<DispositionKey, { ocPursuit: string[]; ocOutcome: stri
   awaiting: { ocPursuit: ['pursued'], ocOutcome: ['awaiting'] },
   collected: { ocPursuit: ['pursued'], ocOutcome: ['full', 'partial'] },
   notRecovered: { ocPursuit: ['pursued'], ocOutcome: ['partial', 'not_issued'] },
-  notDisputed: { ocPursuit: ['not_pursued', 'expired'], ocOutcome: [] },
+  notDisputed: { ocPursuit: ['not_pursued'], ocOutcome: [] },
 }
 
 const rowKey = (g: OutcomeRow) => `${g.memoId}-${g.id}`
@@ -93,7 +87,6 @@ export function OutcomesTab() {
   const rowsQ = useOutcomeRows()
   const now = useClock().now()
   const [filterValues, setFilterValues] = useState<FilterValues>(EMPTY_FILTERS)
-  const [needsOnly, setNeedsOnly] = useState(false)
   const [disposition, setDisposition] = useState<SliceFilter>('all')
   const [hoverSlice, setHoverSlice] = useState<DispositionKey | null>(null)
   const [selectedSlice, setSelectedSlice] = useState<DispositionKey | null>(null)
@@ -126,10 +119,8 @@ export function OutcomesTab() {
 
   if (!rowsQ.data) return null
 
-  // Pursuit filter value: pursued, or the unpursued state (eligible / not pursued / expired).
+  // Pursuit filter value: pursued, or the unpursued state (eligible / not pursued).
   const pursuitKey = (g: OutcomeRow) => (g.pursuit === 'pursued' ? 'pursued' : groupStatusLine(g, now).key)
-  const needs = needsUpdate(allRows, now)
-  const needsKeys = new Set(needs.map((n) => rowKey(n.row)))
 
   let rows = allRows.filter(
     (g) =>
@@ -139,7 +130,7 @@ export function OutcomesTab() {
   )
   const donutRows = rows
   if (disposition !== 'all') {
-    rows = rows.filter((g) => dispositionMatch(g, disposition, now))
+    rows = rows.filter((g) => dispositionMatch(g, disposition))
   } else {
     rows = rows.filter(
       (g) =>
@@ -147,10 +138,9 @@ export function OutcomesTab() {
         matchesFilter(filterValues, 'ocOutcome', g.collection?.status ?? ''),
     )
   }
-  if (needsOnly) rows = rows.filter((g) => needsKeys.has(rowKey(g)))
 
-  const disp = dispositionAmounts(donutRows, now)
-  const donut = dispositionDonut(donutRows, now)
+  const disp = dispositionAmounts(donutRows)
+  const donut = dispositionDonut(donutRows)
   const metricValue: Record<SliceFilter, string> = {
     all: donut.total,
     open: fmtMoney(disp.open),
@@ -181,10 +171,10 @@ export function OutcomesTab() {
 
   const table = rows.map((g) => {
     const sl = groupStatusLine(g, now)
-    const ci: { label: string; tone: StatusTone } =
+    const ci: { label: string; tone: StatusTone; pastDeadline?: boolean } =
       g.pursuit === 'pursued'
         ? { label: COLLECTION_LABELS[g.collection?.status ?? 'awaiting'], tone: COLLECTION_TONE[g.collection?.status ?? 'awaiting'] }
-        : { label: sl.label, tone: GROUP_STATUS_TONE[sl.key] }
+        : { label: sl.label, tone: GROUP_STATUS_TONE[sl.key], pastDeadline: sl.pastDeadline }
     const reason =
       g.collection?.status === 'not_issued' && g.collection.reason
         ? {
@@ -205,7 +195,7 @@ export function OutcomesTab() {
   })
 
   const oc3pl = outcomesBy3pl(allRows)
-  const activeCount = activeFilterCount(filterValues) + (disposition !== 'all' ? 1 : 0) + (needsOnly ? 1 : 0)
+  const activeCount = activeFilterCount(filterValues) + (disposition !== 'all' ? 1 : 0)
   const groupClearVisible = filters.expanded && activeFilterCount(shownValues) > 0
   const showClearAll = activeCount > 0 && !groupClearVisible
   const clearAll = () => {
@@ -213,34 +203,9 @@ export function OutcomesTab() {
     setDisposition('all')
     setSelectedSlice(null)
     setOpenNotesId(null)
-    setNeedsOnly(false)
   }
-  const waitingCount = needs.filter((n) => n.reason === 'waiting').length
-  const deadlineCount = needs.length - waitingCount
-
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {needs.length > 0 && (
-        <Banner
-          type="warning"
-          title={`${plural(needs.length, 'finding')} ${needs.length === 1 ? 'needs' : 'need'} your update`}
-          actions={
-            <Button size="small" aria-pressed={needsOnly} onClick={() => setNeedsOnly((v) => !v)}>
-              {needsOnly ? 'Show all findings' : 'Show them'}
-            </Button>
-          }
-        >
-          {[
-            waitingCount > 0 &&
-              `${plural(waitingCount, 'finding')} sent ${OUTCOME_NUDGE_DAYS} or more days ago ${waitingCount === 1 ? 'has' : 'have'} no outcome recorded yet.`,
-            deadlineCount > 0 &&
-              `${plural(deadlineCount, 'finding')} must be disputed within ${ACTION_NEEDED_WITHIN_DAYS} days.`,
-          ]
-            .filter(Boolean)
-            .join(' ')}
-        </Banner>
-      )}
       <ActionTabs ariaLabel="Credit outcome totals">
         {METRIC_DEFS.map((md) => (
           <ActionTab
@@ -380,7 +345,7 @@ export function OutcomesTab() {
                 <th>Biller</th>
                 <th className="num">Identified</th>
                 <th className="num">Disputed</th>
-                <th className="num">Collected</th>
+                <th className="num">Recovered</th>
                 <th>Dispute deadline</th>
                 <th>Dispute</th>
                 <th>Outcome</th>
@@ -420,7 +385,7 @@ export function OutcomesTab() {
                 <th>Biller</th>
                 <th>Variance group</th>
                 <th className="num">Amount disputed</th>
-                <th className="num">Amount collected</th>
+                <th className="num">Amount recovered</th>
                 <th className="num">Fully / partly collected</th>
                 <th className="num">Denied</th>
                 <th className="num">Collection rate</th>
@@ -456,7 +421,7 @@ function RowGroup({
   onToggleNotes,
 }: {
   g: OutcomeRow
-  ci: { label: string; tone: StatusTone }
+  ci: { label: string; tone: StatusTone; pastDeadline?: boolean }
   reason: { text: string; author: string; when: string } | null
   isNotIssued: boolean
   canExpand: boolean
@@ -488,7 +453,17 @@ function RowGroup({
         <td className="num">{fmtMoney(g.amountN ?? 0)}</td>
         <td className="num">{g.pursuit === 'pursued' ? fmtMoney(g.amountN ?? 0) : DASH}</td>
         <td className="num">{g.collection?.amountN != null ? fmtMoney(g.collection.amountN) : DASH}</td>
-        <td className="ds-muted nowrap">{g.disputeDeadline ? fmtDateLong(g.disputeDeadline) : DASH}</td>
+        <td className="ds-muted nowrap">
+          {g.disputeDeadline ? fmtDateLong(g.disputeDeadline) : DASH}
+          {ci.pastDeadline && (
+            <>
+              <br />
+              <span className="ds-w-medium" style={{ color: 'var(--ds-status-attention-fg)' }}>
+                Past the deadline
+              </span>
+            </>
+          )}
+        </td>
         <td className="ds-muted nowrap">
           {g.pursuit === 'pursued' ? (
             <>

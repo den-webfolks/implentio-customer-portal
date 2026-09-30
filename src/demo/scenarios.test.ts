@@ -37,9 +37,9 @@ describe('base seed', () => {
 })
 
 describe('scenarios', () => {
-  it('defines the 17 prototype scenarios plus dispute-deadline', () => {
-    expect(scenarios).toHaveLength(18)
-    expect(new Set(scenarios.map((s) => s.id)).size).toBe(18)
+  it('defines the 17 prototype scenarios plus the dispute-deadline, prepared-email and more-findings ones', () => {
+    expect(scenarios).toHaveLength(21)
+    expect(new Set(scenarios.map((s) => s.id)).size).toBe(21)
   })
 
   it('falls back to report-ready for unknown ids', () => {
@@ -125,5 +125,20 @@ describe('scenarios', () => {
         break
       }
     }
+  })
+})
+
+describe('more-findings scenario', () => {
+  it('adds made-up findings whose packages add up, and keeps the memo total equal to the findings', () => {
+    const s = getScenario('more-findings').seed(buildBaseSeed())
+    const extra = s.findingGroups.filter((g) => g.id.startsWith('ex-'))
+    expect(extra.map((g) => g.packages)).toEqual([40, 30, 9, 1])
+    for (const g of extra) {
+      const tv = g.services.flatMap((v) => v.pkgs).reduce((t, p) => t + p.tv, 0)
+      expect(Math.abs(tv - g.varN)).toBeLessThan(0.01)
+    }
+    const golden = s.memos.find((m) => m.id === s.goldenMemoId)
+    const total = s.findingGroups.reduce((t, g) => t + g.varN, 0)
+    expect(Math.abs((golden?.netN ?? 0) - total)).toBeLessThan(0.01)
   })
 })

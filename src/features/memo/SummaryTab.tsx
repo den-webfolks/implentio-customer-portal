@@ -2,14 +2,31 @@
  *  flow; first ported from template ~4608–5184): a one-sentence summary with
  *  the deadline, the disputes already sent, then findings biggest first with a
  *  selection bar. See DESIGN-SYSTEM.md "Parcel dispute flow — Phase 2". */
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router'
-import { CheckCircleIcon, ClockIcon, ChevronDownIcon, ChevronUpIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
+import {
+  CheckCircleIcon,
+  ClockIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  EnvelopeOpenIcon,
+  PaperAirplaneIcon,
+} from '@heroicons/react/24/outline'
+import { ExclamationTriangleIcon } from '@heroicons/react/20/solid'
 import type { Collection, FindingGroup, MemoDetail } from '@/domain/types'
 import { useClock } from '@/lib/clock'
 import { fmtMoney } from '@/domain/money'
-import { countdownText, fmtDateLong, fmtDateShort } from '@/domain/dates'
-import { RECOVERY_BUCKETS, STATUS_LABELS, findingPhase, groupStatusLine, memoStatus, recoveryBuckets, type GroupStatusKey } from '@/domain/outcomes'
+import { countdownText, daysUntilDeadline, fmtDateLong, fmtDateShort } from '@/domain/dates'
+import {
+  RECOVERY_BUCKETS,
+  STATUS_LABELS,
+  findingPhase,
+  groupPastDeadline,
+  groupStatusLine,
+  memoStatus,
+  recoveryBuckets,
+  type GroupStatusKey,
+} from '@/domain/outcomes'
 import { findingProblem } from '@/domain/finding-copy'
 import { plural } from '@/domain/plural'
 import { InfoTip } from '@/ui/Tooltip/Tooltip'
@@ -19,13 +36,27 @@ import { Link } from '@/ui/Link/Link'
 import { Banner } from '@/ui/Banner/Banner'
 import { StatusChip } from '@/ui/Chip/StatusChip'
 import { EmptyState, Spinner } from '@/ui/Display/Display'
-import { FilterButton, FilterGroup, useFilters, type FilterField, type FilterValues } from '@/ui/Filters/Filters'
-import { BUCKET_TONE, GROUP_STATUS_TONE, MEMO_STATUS_TONE, TONE_CHART_COLOR } from '@/features/status-tones'
-import { Table, TableScroll } from '@/ui/Table/Table'
 import {
+  FilterButton,
+  FilterGroup,
+  useFilters,
+  type FilterField,
+  type FilterValues,
+} from '@/ui/Filters/Filters'
+import {
+  BUCKET_TONE,
+  GROUP_STATUS_TONE,
+  MEMO_STATUS_TONE,
+  TONE_CHART_COLOR,
+} from '@/features/status-tones'
+import { Table, TableScroll } from '@/ui/Table/Table'
+import { useToast } from '@/ui/Toast/ToastProvider'
+import {
+  useAccountForDispute,
+  useConfirmDisputeSent,
+  useDiscardPreparedDispute,
   useDisputeContext,
   useDisputes,
-  useMarkDisputeChecked,
   useRecordGroupOutcome,
   useRecordMemoDisputeOutcome,
   useSetDisputeDraft,
@@ -36,25 +67,34 @@ import {
   disputeSections,
   filterGroups,
   memoDisputeItems,
+  preparedDispute,
   serviceList,
   splitFindings,
   titleCase,
   workspaceSummary,
 } from './derive'
-import { FindingCard } from './FindingCard'
+import { FindingCard, downloadFindingPackages } from './FindingCard'
 import { DisputeCard } from './DisputeCard'
 import { SelectionBar } from './SelectionBar'
-import { ReviewSendModal } from './ReviewSendModal'
+import { ReviewSendModal } from './review-send/ReviewSendModal'
+import { PreparedCard } from './PreparedCard'
 import { PackagesModal } from './PackagesModal'
 import { ReportPreviewModal } from './ReportPreviewModal'
 
 const VARIANCE_TIP =
   'Only packages that were charged more than your contract allows — not all invoices and spend reviewed in this audit period.'
 
-const DISPUTE_STATUS_OPTIONS = (Object.keys(STATUS_LABELS) as GroupStatusKey[]).map((k) => ({ value: k, label: STATUS_LABELS[k] }))
+const DISPUTE_STATUS_OPTIONS = (Object.keys(STATUS_LABELS) as GroupStatusKey[]).map((k) => ({
+  value: k,
+  label: STATUS_LABELS[k],
+}))
 
-/** Dialogs that deep links (tracker CTAs, activity entries) can open. */
-const MODAL_PARAMS = ['send'] as const
+/** Places tracker links land on (see the effect in SummaryTab). */
+const DEEP_LINKS = ['findings', 'prepared', 'outcomes', 'dispute'] as const
+
+/** Dialogs that deep links (tracker CTAs, activity entries) can open:
+ *  ?send=1 opens Review & send, ?confirm=1 opens it on "Did you send it?". */
+const MODAL_PARAMS = ['send', 'confirm'] as const
 type ModalParam = (typeof MODAL_PARAMS)[number]
 
 const EYEBROW_ACCENT: CSSProperties = {
@@ -81,31 +121,60 @@ export function SummaryTab({
   const setNotPursued = useSetGroupNotPursued()
   const recordGroupOutcome = useRecordGroupOutcome()
   const recordMemoOutcome = useRecordMemoDisputeOutcome()
-  const markChecked = useMarkDisputeChecked()
+  const discardPrepared = useDiscardPreparedDispute()
+  const confirmSent = useConfirmDisputeSent()
+  const accountQ = useAccountForDispute()
   const [filterValues, setFilterValues] = useState<FilterValues>({})
   const [showSmaller, setShowSmaller] = useState(false)
   const [methodOpen, setMethodOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [packagesFor, setPackagesFor] = useState<FindingGroup | null>(null)
+  const [skipRestOpen, setSkipRestOpen] = useState(false)
+  const showToast = useToast()
 
   // Review & send lives in the URL so tracker links can open it; closing
-  // removes the parameter, so switching tabs doesn't reopen it. Links to a
-  // memo's outcomes or dispute record scroll to the dispute cards instead.
+  // removes the parameter, so switching tabs doesn't reopen it. Tracker links
+  // to the findings (?findings=1), an outcome (?outcomes=1) or the dispute
+  // record (?dispute=1) land there instead: scroll, move focus, drop the param.
   const [params, setParams] = useSearchParams()
   const [detailsFromLink] = useState(() => params.has('dispute'))
-  const disputeLink = params.has('outcomes') || params.has('dispute')
+  const deepLink = DEEP_LINKS.find((k) => params.has(k)) ?? null
   useEffect(() => {
-    if (!disputeLink || !disputesQ.data) return
-    document.getElementById('disputes')?.scrollIntoView({ block: 'start' })
+    if (!deepLink || !disputesQ.data) return
+    const byId = (id: string | null | undefined) => (id ? document.getElementById(id) : null)
+    let target: HTMLElement | null = null
+    if (deepLink === 'findings') target = byId('findings-title')
+    else if (deepLink === 'prepared') target = byId('prepared-title') ?? byId('findings-title')
+    else {
+      // "Record outcome" goes to the dispute that has waited longest, else the
+      // list of disputes.
+      const items = memoDisputeItems(detail, disputesQ.data)
+      const waitingIds = new Set(
+        items.filter((i) => findingPhase(i) === 'waiting').map((i) => i.id),
+      )
+      const oldestWaiting = disputesQ.data.find(
+        (d) =>
+          d.state === 'sent' &&
+          (waitingIds.has(d.id) || d.groupIds.some((id) => waitingIds.has(id))),
+      )
+      const dispute = deepLink === 'outcomes' ? oldestWaiting : undefined
+      target =
+        byId(dispute && `dispute-${dispute.id}-title`) ??
+        byId('disputes-title') ??
+        byId('findings-title')
+    }
+    if (target) {
+      target.scrollIntoView({ block: 'start' })
+      target.focus({ preventScroll: true })
+    }
     setParams(
       (p) => {
-        p.delete('outcomes')
-        p.delete('dispute')
+        for (const k of DEEP_LINKS) p.delete(k)
         return p
       },
       { replace: true },
     )
-  }, [disputeLink, disputesQ.data, setParams])
+  }, [deepLink, disputesQ.data, detail, clock, setParams])
 
   const modal = MODAL_PARAMS.find((k) => params.has(k)) ?? null
   const openModal = (key: ModalParam) =>
@@ -133,12 +202,16 @@ export function SummaryTab({
     {
       key: FINDING_FILTER_KEYS.carrier,
       label: 'Carrier',
-      options: [...new Set(groups.flatMap((g) => g.carriers))].sort().map((v) => ({ value: v, label: v })),
+      options: [...new Set(groups.flatMap((g) => g.carriers))]
+        .sort()
+        .map((v) => ({ value: v, label: v })),
     },
     {
       key: FINDING_FILTER_KEYS.service,
       label: 'Service level',
-      options: [...new Set(groups.flatMap(serviceList))].sort().map((v) => ({ value: v, label: titleCase(v) })),
+      options: [...new Set(groups.flatMap(serviceList))]
+        .sort()
+        .map((v) => ({ value: v, label: titleCase(v) })),
     },
     { key: FINDING_FILTER_KEYS.disputeStatus, label: 'Status', options: DISPUTE_STATUS_OPTIONS },
   ]
@@ -156,11 +229,17 @@ export function SummaryTab({
     )
   }
 
-  if (!ctxQ.data || !disputesQ.data) return null
+  if (!ctxQ.data || !disputesQ.data || !accountQ.data) return null
   const { excludedIds, draftDate } = ctxQ.data
   const disputes = disputesQ.data
+  const account = accountQ.data
   const wholeMemo = detail.findingsUnavailable
   const hasFindings = groups.length > 0 && !wholeMemo
+  const prepared = preparedDispute(disputes)
+  const preparedIds = new Set(prepared?.groupIds ?? [])
+  const mailboxConnected = Object.values(account.emailAccounts).some(
+    (a) => a.status === 'connected',
+  )
 
   const items = memoDisputeItems(detail, disputes)
   // A whole-memo dispute has no finding selection, so no draft.
@@ -177,16 +256,88 @@ export function SummaryTab({
     status?.nextDeadline && status.daysLeft != null
       ? `Dispute by ${fmtDateLong(status.nextDeadline)} · ${countdownText(status.daysLeft)}`
       : null
+  // Beside the chip: the next deadline, as the prototype shows it.
+  const statusNotes: { key: string; icon: ReactNode; text: string }[] = []
+  if (deadline)
+    statusNotes.push({
+      key: 'deadline',
+      icon: <ClockIcon width={16} height={16} aria-hidden="true" style={{ flex: 'none' }} />,
+      text: deadline,
+    })
+  if (status && status.pastDeadline.count > 0)
+    statusNotes.push({
+      key: 'past',
+      icon: (
+        <ExclamationTriangleIcon
+          width={16}
+          height={16}
+          aria-hidden="true"
+          style={{ flex: 'none', color: 'var(--ds-icon-warning)' }}
+        />
+      ),
+      text: `${plural(status.pastDeadline.count, 'finding')} past the dispute deadline`,
+    })
+  if (prepared)
+    statusNotes.unshift({
+      key: 'prepared',
+      icon: <EnvelopeOpenIcon width={16} height={16} aria-hidden="true" style={{ flex: 'none' }} />,
+      text: `Email prepared ${prepared.preparedAt ? fmtDateShort(new Date(prepared.preparedAt)) : ''}, not confirmed as sent`.replace(
+        '  ',
+        ' ',
+      ),
+    })
   const sections = disputeSections(detail, disputes)
   const auditedInvoices = (memo.invoices ?? 0) + (memo.invoicesNoVariance ?? 0)
 
-  const openGroups = groups.filter((g) => findingPhase(g, now) === 'open')
+  const openGroups = groups.filter((g) => findingPhase(g) === 'open' && !preparedIds.has(g.id))
   const isSelected = (g: FindingGroup) => !excludedIds.includes(g.id)
   const selectedGroups = openGroups.filter(isSelected).sort((a, b) => b.varN - a.varN)
+  // The selection bar speaks for what's ticked: its earliest deadline, passed or not.
+  const selDeadlineIso =
+    selectedGroups
+      .map((g) => g.disputeDeadline)
+      .filter((d): d is string => !!d)
+      .sort()[0] ?? null
+  const selDaysLeft = selDeadlineIso ? daysUntilDeadline(selDeadlineIso, now) : null
+  const selDeadline =
+    selDeadlineIso && selDaysLeft != null
+      ? selDaysLeft < 0
+        ? `Past the dispute deadline (${fmtDateLong(selDeadlineIso)})`
+        : `Dispute by ${fmtDateLong(selDeadlineIso)} · ${countdownText(selDaysLeft)}`
+      : null
   const filtersActive = Object.values(filterValues).some((v) => (v?.length ?? 0) > 0)
-  const groupsFiltered = filterGroups(groups, filterValues, excludedIds, memo.provider, now)
+  const groupsFiltered = filterGroups(
+    groups,
+    filterValues,
+    excludedIds,
+    memo.provider,
+    now,
+    preparedIds,
+  )
   const { visible, hidden } = splitFindings(groupsFiltered, { showAll: filtersActive })
-  const hiddenSelected = hidden.filter((g) => findingPhase(g, now) === 'open' && isSelected(g)).length
+  const hiddenSelected = hidden.filter((g) => findingPhase(g) === 'open' && isSelected(g)).length
+  // "Won't pursue the rest": the undecided findings past their deadline that
+  // aren't ticked — whatever the filters show. Findings still on time, ticked,
+  // or in a prepared email are left alone (user decision 2026-09-29).
+  const skipRest = openGroups
+    .filter((g) => !isSelected(g) && groupPastDeadline(g, now))
+    .sort((a, b) => b.varN - a.varN)
+  const skipRestN = skipRest.reduce((s, g) => s + g.varN, 0)
+  const confirmSkipRest = () =>
+    setNotPursued.mutate(
+      { groupIds: skipRest.map((g) => g.id), notPursued: true },
+      {
+        onSuccess: () => {
+          setSkipRestOpen(false)
+          // The button that opened the dialog is gone now; land on the list it acted on.
+          requestAnimationFrame(() => document.getElementById('findings-title')?.focus())
+          showToast(
+            'positive',
+            `${plural(skipRest.length, 'finding')} marked Won’t pursue. Undo from each finding.`,
+          )
+        },
+      },
+    )
 
   const saveOutcome = (rowId: string, collection: Collection) => {
     if (wholeMemo) recordMemoOutcome.mutate({ disputeId: rowId, collection })
@@ -198,7 +349,9 @@ export function SummaryTab({
     requestAnimationFrame(() => {
       const el = document.getElementById(`finding-${id}`)
       if (!el) return
-      const reduceMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      const reduceMotion =
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
       el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
       // Move focus with the view so keyboard and screen-reader users land on the finding.
       el.focus({ preventScroll: true })
@@ -211,34 +364,53 @@ export function SummaryTab({
   const tableSplit = splitFindings(groups, { showAll: false })
   const smallerInTable = tableSplit.hidden
   const summaryRows = wholeMemo
-    ? items.map((i) => ({ id: i.id, title: i.title, amountN: i.amountN, status: groupStatusLine(i, now), jump: false }))
+    ? items.map((i) => ({
+        id: i.id,
+        title: i.title,
+        amountN: i.amountN,
+        status: groupStatusLine(i, now),
+        jump: false,
+      }))
     : [...tableSplit.visible, ...(showSmaller ? smallerInTable : [])].map((g) => ({
         id: g.id,
         title: findingProblem(g),
         amountN: g.varN,
-        status: groupStatusLine({ ...g, amountN: g.varN, threePl: memo.provider }, now),
+        status: groupStatusLine(
+          { ...g, prepared: preparedIds.has(g.id), amountN: g.varN, threePl: memo.provider },
+          now,
+        ),
         jump: true,
       }))
-  const buckets = recoveryBuckets(items, now)
+  const buckets = recoveryBuckets(items)
   // Where the money is, once it's split more than one way.
-  const moneyBuckets = disputes.length > 0 ? RECOVERY_BUCKETS.filter((b) => buckets[b.key] > 0.005) : []
+  const moneyBuckets =
+    disputes.length > 0 ? RECOVERY_BUCKETS.filter((b) => buckets[b.key] > 0.005) : []
 
   const toggleSelected = (groupId: string, on: boolean) => {
     const next = on ? excludedIds.filter((id) => id !== groupId) : [...excludedIds, groupId]
-    setDraft.mutate({ excludedIds: next, draftDate: on ? (draftDate ?? fmtDateShort(now)) : draftDate })
+    setDraft.mutate({
+      excludedIds: next,
+      draftDate: on ? (draftDate ?? fmtDateShort(now)) : draftDate,
+    })
   }
-  const clearSelection = () => setDraft.mutate({ excludedIds: groups.map((g) => g.id), draftDate: null })
+  const clearSelection = () =>
+    setDraft.mutate({ excludedIds: groups.map((g) => g.id), draftDate: null })
 
   const findingCard = (g: FindingGroup) => (
     <FindingCard
       key={g.id}
       group={g}
+      allGroups={groups}
       provider={memo.provider}
+      contact={account.csm?.email ? account.csm : null}
       selected={isSelected(g)}
+      prepared={preparedIds.has(g.id)}
+      selectable={!prepared}
       now={now}
       onToggleSelected={toggleSelected}
-      onSetNotPursued={(id, notPursued) => setNotPursued.mutate({ groupId: id, notPursued })}
+      onSetNotPursued={(id, notPursued) => setNotPursued.mutate({ groupIds: [id], notPursued })}
       onOpenPackages={setPackagesFor}
+      onJump={(id) => (groupsFiltered.some((x) => x.id === id) ? () => jumpToFinding(id) : null)}
     />
   )
 
@@ -248,7 +420,9 @@ export function SummaryTab({
         <Banner
           type="info"
           title={
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
+            >
               {memo.report === 'updated' && <StatusChip tone="info">Updated</StatusChip>}
               {memo.version} · {memo.updatedText ?? memo.completedText}
             </span>
@@ -258,52 +432,148 @@ export function SummaryTab({
         </Banner>
       )}
 
+      {prepared && (
+        <PreparedCard
+          record={prepared}
+          currentUser={account.user.name}
+          memoVersion={memo.version}
+          deadline={
+            groups
+              .filter((g) => preparedIds.has(g.id))
+              .map((g) => g.disputeDeadline)
+              .filter((d): d is string => !!d)
+              .sort()[0] ?? null
+          }
+          now={now}
+          mailboxConnected={mailboxConnected}
+          onConfirm={(sentOn) => confirmSent.mutate({ disputeId: prepared.id, sentOn })}
+          onOpen={() => openModal('send')}
+          onDiscard={() => discardPrepared.mutate(prepared.id)}
+        />
+      )}
+
       {memo.allNoVariance ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, border: SURFACE_BORDER, borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-bg-success-muted)', padding: '24px 28px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ds-fg-success)' }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            border: SURFACE_BORDER,
+            borderRadius: 'var(--ds-radius-large)',
+            background: 'var(--ds-bg-success-muted)',
+            padding: '24px 28px',
+          }}
+        >
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ds-fg-success)' }}
+          >
             <CheckCircleIcon width={20} height={20} aria-hidden="true" style={{ flex: 'none' }} />
             <span style={{ ...EYEBROW_ACCENT, color: 'var(--ds-fg-success)' }}>All clear</span>
           </div>
           <p className="ds-heading-small" style={{ margin: 0 }}>
-            No overcharges found. All {plural(auditedInvoices, 'invoice')} in this audit matched your contract closely enough to need no action.
+            No overcharges found. All {plural(auditedInvoices, 'invoice')} in this audit matched
+            your contract closely enough to need no action.
           </p>
         </div>
       ) : (
         <section
           aria-label="Summary"
           className="ia-memo-summary"
-          style={{ display: 'grid', gridTemplateColumns: '34fr 66fr', border: SURFACE_BORDER, borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-orange-100)', boxShadow: 'var(--ds-shadow-disabled)', overflow: 'hidden' }}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '34fr 66fr',
+            border: SURFACE_BORDER,
+            borderRadius: 'var(--ds-radius-large)',
+            background: 'var(--ds-orange-100)',
+            boxShadow: 'var(--ds-shadow-disabled)',
+            overflow: 'hidden',
+          }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '20px 26px', minWidth: 0 }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              padding: '20px 26px',
+              minWidth: 0,
+            }}
+          >
             {status && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px 10px', flexWrap: 'wrap', marginBottom: 4 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px 10px',
+                  flexWrap: 'wrap',
+                  marginBottom: 4,
+                }}
+              >
                 <StatusChip tone={MEMO_STATUS_TONE[status.key]}>{status.label}</StatusChip>
-                {deadline && (
-                  <span className="ds-body-small ds-w-medium" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                    <ClockIcon width={16} height={16} aria-hidden="true" style={{ flex: 'none' }} />
-                    {deadline}
+                {statusNotes.map((n) => (
+                  <span
+                    key={n.key}
+                    className="ds-body-small ds-w-medium"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                  >
+                    {n.icon}
+                    {n.text}
                   </span>
-                )}
+                ))}
               </div>
             )}
             {summary && (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={EYEBROW_ACCENT}>{summary.hero.label}</span>
-                  {summary.hero.label === 'Total overcharged' && <InfoTip text={VARIANCE_TIP} color="var(--ds-fg-accent-text)" />}
+                  {summary.hero.label === 'Total overcharged' && (
+                    <InfoTip text={VARIANCE_TIP} color="var(--ds-fg-accent-text)" />
+                  )}
                 </div>
-                <div style={{ font: 'var(--ds-weight-semi) clamp(30px, 3vw, 40px)/1.05 var(--ds-font)', fontVariantNumeric: 'tabular-nums', letterSpacing: 'var(--ds-tracking-heading)', color: 'var(--ds-fg-accent-text)', whiteSpace: 'nowrap' }}>
+                <div
+                  style={{
+                    font: 'var(--ds-weight-semi) clamp(30px, 3vw, 40px)/1.05 var(--ds-font)',
+                    fontVariantNumeric: 'tabular-nums',
+                    letterSpacing: 'var(--ds-tracking-heading)',
+                    color: 'var(--ds-fg-accent-text)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
                   {fmtMoney(summary.hero.amountN)}
                 </div>
                 <div className="ds-body-small ds-muted">{summary.hero.context}</div>
               </>
             )}
             {moneyBuckets.length > 1 && (
-              <ul aria-label="Where the money is" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', margin: 0, padding: 0, listStyle: 'none' }}>
+              <ul
+                aria-label="Where the money is"
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '4px 14px',
+                  margin: 0,
+                  padding: 0,
+                  listStyle: 'none',
+                }}
+              >
                 {moneyBuckets.map((b) => (
-                  <li key={b.key} className="ds-body-small" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: 'var(--ds-radius-full)', background: TONE_CHART_COLOR[BUCKET_TONE[b.key]], flex: 'none' }} />
-                    {b.label} <span className="ds-w-semi" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtMoney(buckets[b.key])}</span>
+                  <li
+                    key={b.key}
+                    className="ds-body-small"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 'var(--ds-radius-full)',
+                        background: TONE_CHART_COLOR[BUCKET_TONE[b.key]],
+                        flex: 'none',
+                      }}
+                    />
+                    {b.label}{' '}
+                    <span className="ds-w-semi" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {fmtMoney(buckets[b.key])}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -314,13 +584,31 @@ export function SummaryTab({
               </p>
             )}
             {summary?.action === 'send' && (
-              <Button variant="primary" iconLeft={<PaperAirplaneIcon aria-hidden="true" />} onClick={() => openModal('send')} style={{ alignSelf: 'flex-start', marginTop: 4 }}>
+              <Button
+                variant="primary"
+                iconLeft={<PaperAirplaneIcon aria-hidden="true" />}
+                onClick={() => openModal('send')}
+                style={{ alignSelf: 'flex-start', marginTop: 4 }}
+              >
                 Review &amp; send
               </Button>
             )}
           </div>
-          <div className="ia-memo-rollup" style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '18px 22px', background: 'var(--ds-bg-default)', borderInlineStart: SURFACE_BORDER, minWidth: 0 }}>
-            <div className="ds-heading-tiny">{wholeMemo ? 'What you’ll dispute' : 'Biggest findings'}</div>
+          <div
+            className="ia-memo-rollup"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              padding: '18px 22px',
+              background: 'var(--ds-bg-default)',
+              borderInlineStart: SURFACE_BORDER,
+              minWidth: 0,
+            }}
+          >
+            <div className="ds-heading-tiny">
+              {wholeMemo ? 'What you’ll dispute' : 'Biggest findings'}
+            </div>
             <TableScroll>
               <Table style={{ minWidth: 440 }}>
                 <thead>
@@ -342,19 +630,32 @@ export function SummaryTab({
                           <span className="ds-w-semi">{r.title}</span>
                         )}
                       </td>
-                      <td className="num" style={{ color: 'var(--ds-fg-accent-text)', fontWeight: 600 }}>
+                      <td
+                        className="num"
+                        style={{ color: 'var(--ds-fg-accent-text)', fontWeight: 600 }}
+                      >
                         {fmtMoney(r.amountN)}
                       </td>
                       <td>
-                        <StatusChip tone={GROUP_STATUS_TONE[r.status.key]}>{r.status.label}</StatusChip>
+                        <StatusChip tone={GROUP_STATUS_TONE[r.status.key]}>
+                          {r.status.label}
+                        </StatusChip>
                       </td>
                     </tr>
                   ))}
                   {smallerInTable.length > 0 && (
                     <tr>
                       <td colSpan={3}>
-                        <Link variant="accent" size="small" bold aria-expanded={showSmaller} onClick={() => setShowSmaller((v) => !v)}>
-                          {showSmaller ? 'Hide' : 'Show'} {plural(smallerInTable.length, 'smaller finding')} ({fmtMoney(smallerInTable.reduce((a, g) => a + g.varN, 0))} in total)
+                        <Link
+                          variant="accent"
+                          size="small"
+                          bold
+                          aria-expanded={showSmaller}
+                          onClick={() => setShowSmaller((v) => !v)}
+                        >
+                          {showSmaller ? 'Hide' : 'Show'}{' '}
+                          {plural(smallerInTable.length, 'smaller finding')} (
+                          {fmtMoney(smallerInTable.reduce((a, g) => a + g.varN, 0))} in total)
                         </Link>
                       </td>
                     </tr>
@@ -376,8 +677,16 @@ export function SummaryTab({
       )}
 
       {sections.length > 0 && (
-        <div id="disputes" style={{ display: 'flex', flexDirection: 'column', gap: 12, scrollMarginTop: 88 }}>
-          <h3 className="db-h3" style={{ margin: 0 }}>
+        <div
+          id="disputes"
+          style={{ display: 'flex', flexDirection: 'column', gap: 12, scrollMarginTop: 88 }}
+        >
+          <h3
+            id="disputes-title"
+            tabIndex={-1}
+            className="db-h3"
+            style={{ margin: 0, scrollMarginTop: 88 }}
+          >
             {plural(sections.length, 'dispute')} sent
           </h3>
           {[...sections].reverse().map((sec) => (
@@ -387,7 +696,6 @@ export function SummaryTab({
               detailsOpen={detailsFromLink}
               activityHref={`/memos/${memo.id}/activity${params.toString() ? `?${params.toString()}` : ''}`}
               onRecord={saveOutcome}
-              onNoReply={() => markChecked.mutate(sec.record.id)}
               onJump={jumpToFinding}
               onDownloadEvidence={onDownloadExcel}
             />
@@ -397,36 +705,85 @@ export function SummaryTab({
 
       {!memo.allNoVariance && (
         <div id="findings" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', borderTop: SURFACE_BORDER, paddingTop: 20 }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-end',
+              gap: 16,
+              flexWrap: 'wrap',
+              borderTop: SURFACE_BORDER,
+              paddingTop: 20,
+            }}
+          >
             <div>
-              <h3 className="db-h3" style={{ margin: 0 }}>
+              <h3
+                id="findings-title"
+                tabIndex={-1}
+                className="db-h3"
+                style={{ margin: 0, scrollMarginTop: 88 }}
+              >
                 Findings
               </h3>
               <p className="imp-small" style={{ margin: '6px 0 0' }}>
-                {hasFindings && openGroups.length > 0 ? 'Biggest first. Tick the ones you want to dispute.' : 'Biggest first.'}{' '}
+                {hasFindings && openGroups.length > 0
+                  ? prepared
+                    ? 'Biggest first. Answer “Did you send it?” above before choosing more to dispute.'
+                    : 'Biggest first. Tick the ones you want to dispute.'
+                  : 'Biggest first.'}{' '}
                 <Link variant="accent" size="small" bold onClick={() => setMethodOpen(true)}>
                   How findings are calculated
                 </Link>
               </p>
             </div>
-            {hasFindings && <FilterButton filters={filters} />}
+            {hasFindings && (
+              <div style={{ display: 'flex', gap: 'var(--ds-space-3)', flexWrap: 'wrap' }}>
+                {skipRest.length > 0 && (
+                  <Button size="small" onClick={() => setSkipRestOpen(true)}>
+                    Won’t pursue the rest ({plural(skipRest.length, 'finding')} ·{' '}
+                    {fmtMoney(skipRestN)})
+                  </Button>
+                )}
+                <FilterButton filters={filters} />
+              </div>
+            )}
           </div>
           {hasFindings && <FilterGroup filters={filters} />}
 
           {wholeMemo && (
             <div className="db-card" style={{ padding: '32px' }}>
               <EmptyState
-                media={<img src="/brand/empty-state.png" alt="" style={{ width: 200, height: 'auto', opacity: 0.55 }} />}
+                media={
+                  <img
+                    src="/brand/empty-state.png"
+                    alt=""
+                    style={{ width: 200, height: 'auto', opacity: 0.55 }}
+                  />
+                }
                 title="Detailed breakdown unavailable"
                 subtitle="Implentio reviews every finding before it appears here. A breakdown isn’t available for this credit memo, so the complete credit memo is disputed as one. You can still download the full report."
               />
             </div>
           )}
           {!wholeMemo && groups.length === 0 && (
-            <div className="db-card" style={{ padding: '32px', background: 'var(--ds-bg-success-muted)' }}>
+            <div
+              className="db-card"
+              style={{ padding: '32px', background: 'var(--ds-bg-success-muted)' }}
+            >
               <EmptyState
                 media={
-                  <span style={{ width: 56, height: 56, borderRadius: 'var(--ds-radius-full)', background: 'var(--ds-bg-default)', color: 'var(--ds-icon-success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 'var(--ds-radius-full)',
+                      background: 'var(--ds-bg-default)',
+                      color: 'var(--ds-icon-success)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
                     <CheckCircleIcon width={28} height={28} aria-hidden="true" />
                   </span>
                 }
@@ -457,13 +814,30 @@ export function SummaryTab({
                 className="db-card"
                 aria-expanded={showSmaller}
                 onClick={() => setShowSmaller((v) => !v)}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, cursor: 'pointer', textAlign: 'start', font: 'inherit', color: 'var(--ds-fg-default)' }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                  cursor: 'pointer',
+                  textAlign: 'start',
+                  font: 'inherit',
+                  color: 'var(--ds-fg-default)',
+                }}
               >
-                {showSmaller ? <ChevronUpIcon width={18} height={18} aria-hidden="true" /> : <ChevronDownIcon width={18} height={18} aria-hidden="true" />}
+                {showSmaller ? (
+                  <ChevronUpIcon width={18} height={18} aria-hidden="true" />
+                ) : (
+                  <ChevronDownIcon width={18} height={18} aria-hidden="true" />
+                )}
                 <span className="ds-body-base ds-w-semi">
-                  {showSmaller ? 'Hide' : 'Show'} {plural(hidden.length, 'smaller finding')} ({fmtMoney(hidden.reduce((s, g) => s + g.varN, 0))} in total)
+                  {showSmaller ? 'Hide' : 'Show'} {plural(hidden.length, 'smaller finding')} (
+                  {fmtMoney(hidden.reduce((s, g) => s + g.varN, 0))} in total)
                 </span>
-                {hiddenSelected > 0 && <span className="imp-small" style={{ margin: 0 }}>{hiddenSelected} selected</span>}
+                {hiddenSelected > 0 && (
+                  <span className="imp-small" style={{ margin: 0 }}>
+                    {hiddenSelected} selected
+                  </span>
+                )}
               </button>
               {showSmaller && hidden.map(findingCard)}
             </>
@@ -480,10 +854,30 @@ export function SummaryTab({
             </p>
           </div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap', padding: '12px 16px', border: SURFACE_BORDER, borderRadius: 'var(--ds-radius-large)', background: 'var(--ds-bg-brand-disabled)' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 16,
+            flexWrap: 'wrap',
+            padding: '12px 16px',
+            border: SURFACE_BORDER,
+            borderRadius: 'var(--ds-radius-large)',
+            background: 'var(--ds-bg-brand-disabled)',
+          }}
+        >
           <div className="ds-body-base">
             Total overcharge in this report{' '}
-            <strong style={{ color: 'var(--ds-fg-accent-text)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{memo.netN == null ? '—' : fmtMoney(memo.netN)}</strong>
+            <strong
+              style={{
+                color: 'var(--ds-fg-accent-text)',
+                fontWeight: 600,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {memo.netN == null ? '—' : fmtMoney(memo.netN)}
+            </strong>
           </div>
           <div style={{ display: 'flex', gap: 'var(--ds-space-3)', flexWrap: 'wrap' }}>
             <Button size="small" onClick={onDownloadExcel}>
@@ -496,33 +890,90 @@ export function SummaryTab({
         </div>
       </div>
 
-      {status?.hasDraft && !wholeMemo && modal !== 'send' && (
+      {status?.hasDraft && !wholeMemo && !prepared && modal !== 'send' && (
         <SelectionBar
           count={status.selected.count}
           amountN={status.selected.amountN}
-          deadline={deadline}
+          deadline={selDeadline}
           onReview={() => openModal('send')}
           onClear={clearSelection}
         />
       )}
 
-      <Modal open={methodOpen} onClose={() => setMethodOpen(false)} title="How findings are calculated" width={640}>
+      <Modal
+        open={methodOpen}
+        onClose={() => setMethodOpen(false)}
+        title="How findings are calculated"
+        width={640}
+      >
         <p className="imp-small" style={{ margin: 0 }}>
-          Implentio works out what every package should have cost from its shipment details — carrier, service level, zone, billed weight, and surcharges — using your contracted rates, then compares that with what your Biller charged.
+          Implentio works out what every package should have cost from its shipment details —
+          carrier, service level, zone, billed weight, and surcharges — using your contracted rates,
+          then compares that with what your Biller charged.
         </p>
         <p className="imp-small" style={{ margin: 0 }}>
-          Packages with the same kind of difference are grouped into one finding. Charges billed below contract are netted against the others on the same package, and only packages that were overcharged overall are included.
+          Packages with the same kind of difference are grouped into one finding, and each package
+          is in one finding only. Charges billed below contract are netted against the others on the
+          same package, and only packages that were overcharged overall are included.
         </p>
         <p className="imp-small" style={{ margin: 0 }}>
-          Every finding links to its packages, the rates used, and the invoice records that show what was billed.
+          “Show why” on each finding shows what makes up its amount, how one package was priced, and
+          every package, with the invoices it was checked against.
         </p>
       </Modal>
 
-      {modal === 'send' && (
-        <ReviewSendModal detail={detail} groups={wholeMemo ? [] : selectedGroups} openCount={openGroups.length} onChange={closeModal} onClose={closeModal} />
+      {modal && (
+        <ReviewSendModal
+          detail={detail}
+          groups={wholeMemo ? [] : selectedGroups}
+          openGroups={openGroups}
+          prepared={prepared}
+          focusPrompt={modal === 'confirm'}
+          onChange={closeModal}
+          onClose={closeModal}
+        />
       )}
-      {packagesFor && <PackagesModal group={packagesFor} onExport={onDownloadExcel} onClose={() => setPackagesFor(null)} />}
-      {reportOpen && <ReportPreviewModal detail={detail} onClose={() => setReportOpen(false)} onDownload={onDownloadExcel} />}
+      <Modal
+        open={skipRestOpen}
+        onClose={() => setSkipRestOpen(false)}
+        width={560}
+        title={`Won’t pursue ${plural(skipRest.length, 'finding')} past the deadline?`}
+        footer={
+          <>
+            <Button onClick={() => setSkipRestOpen(false)}>Cancel</Button>
+            <Button variant="primary" loading={setNotPursued.isPending} onClick={confirmSkipRest}>
+              Won’t pursue {plural(skipRest.length, 'finding')}
+            </Button>
+          </>
+        }
+      >
+        <ul className="ds-body-base" style={{ margin: 0, paddingInlineStart: 20 }}>
+          {skipRest.map((g) => (
+            <li key={g.id}>
+              {findingProblem(g)} · {fmtMoney(g.varN)}
+            </li>
+          ))}
+        </ul>
+        <p className="ds-body-base" style={{ margin: 0 }}>
+          {fmtMoney(skipRestN)} moves to Not disputed. Findings you ticked or that are still on time
+          stay as they are. You can undo this on each finding.
+        </p>
+      </Modal>
+      {packagesFor && (
+        <PackagesModal
+          group={packagesFor}
+          provider={memo.provider}
+          onDownload={() => downloadFindingPackages(packagesFor)}
+          onClose={() => setPackagesFor(null)}
+        />
+      )}
+      {reportOpen && (
+        <ReportPreviewModal
+          detail={detail}
+          onClose={() => setReportOpen(false)}
+          onDownload={onDownloadExcel}
+        />
+      )}
     </div>
   )
 }

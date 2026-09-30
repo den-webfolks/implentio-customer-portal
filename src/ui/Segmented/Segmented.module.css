@@ -1,0 +1,54 @@
+/* Segmented switch (prototype-planning/02 `.seg`). Tokens only. */
+
+.track {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-neutral-200);
+}
+
+.item {
+  padding: 5px 12px;
+  border: 0;
+  border-radius: var(--ds-radius-medium);
+  background: transparent;
+  color: var(--ds-fg-muted);
+  font: var(--ds-weight-medium) 13px/1.4 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  cursor: pointer;
+  transition:
+    background-color var(--ds-dur-fast) var(--ds-ease-out),
+    transform 100ms var(--ds-ease-out);
+}
+
+.item:hover {
+  color: var(--ds-fg-default);
+}
+
+.item:active {
+  transform: scale(0.97);
+}
+
+.item[aria-pressed='true'] {
+  background: var(--ds-bg-default);
+  color: var(--ds-fg-default);
+  box-shadow: var(--ds-shadow-popover);
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--ds-stroke-focus);
+  outline-offset: 1px;
+}
+
+.small .item {
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item {
+    transition: none;
+  }
+}

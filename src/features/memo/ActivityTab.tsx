@@ -1,7 +1,12 @@
 /** Memo detail — Activity & exports tab (template ~5272–5357). */
 import { useState } from 'react'
 import { useLocation } from 'react-router'
-import { ArrowDownTrayIcon, ClipboardDocumentCheckIcon, DocumentTextIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
+import {
+  ArrowDownTrayIcon,
+  ClipboardDocumentCheckIcon,
+  DocumentTextIcon,
+  PaperAirplaneIcon,
+} from '@heroicons/react/24/outline'
 import type { MemoDetail } from '@/domain/types'
 import { Button } from '@/ui/Button/Button'
 import { Link } from '@/ui/Link/Link'
@@ -54,7 +59,8 @@ export function ActivityTab({
           Activity and export history
         </h3>
         <p className="imp-small" style={{ margin: '6px 0 0' }}>
-          See report versions, downloads, dispute submissions, and outcome changes for this credit memo.
+          See report versions, downloads, dispute submissions, and outcome changes for this credit
+          memo.
         </p>
       </div>
 
@@ -64,7 +70,11 @@ export function ActivityTab({
           {memo.reportVersions
             .filter((v) => v.superseded)
             .map((v) => (
-              <div key={v.num} className="db-card" style={{ gap: 12, background: 'var(--ds-bg-disabled)' }}>
+              <div
+                key={v.num}
+                className="db-card"
+                style={{ gap: 12, background: 'var(--ds-bg-disabled)' }}
+              >
                 <div className="db-card-head">
                   <div>
                     <h3 className="db-h3" style={{ margin: 0 }}>
@@ -83,7 +93,14 @@ export function ActivityTab({
                 )}
                 {/* The summary preview isn't available for superseded versions; say so
                     instead of offering a button that always fails. */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ds-space-3)', flexWrap: 'wrap' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--ds-space-3)',
+                    flexWrap: 'wrap',
+                  }}
+                >
                   <Button size="small" onClick={onDownloadExcel}>
                     Download credit memo
                   </Button>
@@ -105,15 +122,52 @@ export function ActivityTab({
             Downloading a report does not submit a dispute.
           </span>
         </div>
-        <RadioGroup aria-label="Filter activity" bordered direction="row" options={FILTERS} value={filter} onValueChange={setFilter} />
+        <RadioGroup
+          aria-label="Filter activity"
+          bordered
+          direction="row"
+          options={FILTERS}
+          value={filter}
+          onValueChange={setFilter}
+        />
         {events.length === 0 && (
-          <EmptyState title="No matching activity" subtitle="Try a different filter to see other credit-memo activity." />
+          <EmptyState
+            title="No matching activity"
+            subtitle="Try a different filter to see other credit-memo activity."
+          />
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {events.map((a, i) => (
-            <div key={`${a.text}-${i}`} style={{ display: 'flex', gap: 14, padding: '10px 0', borderTop: '1px solid var(--ds-stroke-disabled)' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 'none' }}>
-                <span style={{ width: 34, height: 34, borderRadius: 'var(--ds-radius-full)', background: 'var(--ds-bg-brand-disabled)', color: 'var(--ds-icon-brand-emphasis)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+            <div
+              key={`${a.text}-${i}`}
+              style={{
+                display: 'flex',
+                gap: 14,
+                padding: '10px 0',
+                borderTop: '1px solid var(--ds-stroke-disabled)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  flex: 'none',
+                }}
+              >
+                <span
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 'var(--ds-radius-full)',
+                    background: 'var(--ds-bg-brand-disabled)',
+                    color: 'var(--ds-icon-brand-emphasis)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flex: 'none',
+                  }}
+                >
                   {a.icon === 'dl' ? (
                     <ArrowDownTrayIcon width={16} height={16} aria-hidden="true" />
                   ) : a.icon === 'send' ? (
@@ -124,11 +178,29 @@ export function ActivityTab({
                     <DocumentTextIcon width={16} height={16} aria-hidden="true" />
                   )}
                 </span>
-                <span style={{ width: 1, flex: 1, background: 'var(--ds-stroke-disabled)', marginTop: 4 }} />
+                <span
+                  style={{
+                    width: 1,
+                    flex: 1,
+                    background: 'var(--ds-stroke-disabled)',
+                    marginTop: 4,
+                  }}
+                />
               </div>
-              <div style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+              <div
+                style={{
+                  flex: '1 1 auto',
+                  minWidth: 0,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: 16,
+                  flexWrap: 'wrap',
+                }}
+              >
                 <div style={{ flex: '1 1 320px', minWidth: 0 }}>
-                  <div className="ds-body-base ds-w-semi" style={{ color: 'var(--ds-fg-default)' }}>{a.text}</div>
+                  <div className="ds-body-base ds-w-semi" style={{ color: 'var(--ds-fg-default)' }}>
+                    {a.text}
+                  </div>
                   {a.icon === 'send' && (
                     <Link to={disputeHref} variant="accent" size="small" bold>
                       View dispute details
