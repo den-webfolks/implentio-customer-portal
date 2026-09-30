@@ -449,20 +449,18 @@ export class FixtureDataSource implements AppDataSource {
     return Promise.resolve()
   }
 
-  setGroupNotPursued(input: { groupId: string; notPursued: boolean }): Promise<void> {
-    const g = this.store.findingGroups.find((x) => x.id === input.groupId)
-    if (!g || g.pursuit === 'pursued' || this.preparedFlags(g.id).prepared) return Promise.resolve()
+  setGroupNotPursued(input: { groupIds: string[]; notPursued: boolean }): Promise<void> {
+    const from = input.notPursued ? null : 'excluded'
+    const targets = this.store.findingGroups.filter((g) => input.groupIds.includes(g.id) && g.pursuit === from && !this.preparedFlags(g.id).prepared)
+    const g = targets[0]
+    if (!g) return Promise.resolve()
+    const ids = targets.map((t) => t.id)
     this.store.findingGroups = this.store.findingGroups.map((x) =>
-      x.id === input.groupId ? { ...x, pursuit: input.notPursued ? 'excluded' : null } : x,
+      ids.includes(x.id) ? { ...x, pursuit: input.notPursued ? 'excluded' : null } : x,
     )
-    if (input.notPursued && !this.store.disputeExcludedIds.includes(g.id)) {
-      this.store.disputeExcludedIds = [...this.store.disputeExcludedIds, g.id]
-    }
-    this.log(
-      this.store.goldenMemoId,
-      'outcome',
-      input.notPursued ? `Marked won’t pursue — ${g.title}` : `Ready to dispute again — ${g.title}`,
-    )
+    if (input.notPursued) this.store.disputeExcludedIds = [...new Set([...this.store.disputeExcludedIds, ...ids])]
+    const what = targets.length === 1 ? g.title : `${targets.map((t) => t.title).join(', ')} (${fmtMoney(targets.reduce((s, t) => s + t.varN, 0))})`
+    this.log(this.store.goldenMemoId, 'outcome', input.notPursued ? `Marked won’t pursue — ${what}` : `Ready to dispute again — ${what}`)
     return Promise.resolve()
   }
 

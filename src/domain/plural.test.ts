@@ -10,6 +10,8 @@ describe('plural', () => {
     expect(plural(1204, 'package')).toBe('1,204 packages')
   })
   it('accepts an irregular plural', () => {
-    expect(plural(2, 'variance group summary', 'variance group summaries')).toBe('2 variance group summaries')
+    expect(plural(2, 'variance group summary', 'variance group summaries')).toBe(
+      '2 variance group summaries',
+    )
   })
 })

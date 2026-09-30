@@ -1,0 +1,1617 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05 · Credit outcomes as intelligence — Implentio planning</title>
+<style id="kit">
+/* Planning kit — shared by every prototype-planning/*.html file.
+   Inlined into each file's style block with id="kit" by sync-kit.mjs, so
+   every file stays self-contained (never write a closing style tag here). Edit here, then run:
+     node prototype-planning/_kit/sync-kit.mjs
+   Token values are copied from src/styles/tokens.css (--ds-*). */
+
+:root {
+  --ds-purple-700: #34287c; --ds-purple-600: #4535a5; --ds-purple-500: #5642ce;
+  --ds-purple-300: #bbb3eb; --ds-purple-100: #eeecfa;
+  --ds-orange-700: #913806; --ds-orange-500: #f25e0a; --ds-orange-100: #feefe6;
+  --ds-neutral-900: #10103e; --ds-neutral-800: #393863; --ds-neutral-700: #61608b;
+  --ds-neutral-600: #9a98b7; --ds-neutral-500: #bab8d1; --ds-neutral-400: #cccadc;
+  --ds-neutral-300: #e0dfec; --ds-neutral-200: #eceafa; --ds-neutral-100: #f6f4fe;
+  --ds-neutral-50: #f7f6f9; --ds-neutral-0: #ffffff;
+  --ds-red-500: #aa261b; --ds-red-100: #fbd8d6; --ds-green-500: #3a802f; --ds-green-100: #d3edce;
+  --ds-yellow-500: #9c6d11; --ds-yellow-100: #ffeac2;
+  --ds-blue-800: #1f4366; --ds-blue-500: #477db2; --ds-blue-300: #9dcaf5; --ds-blue-100: #d9ecff;
+
+  --fg: var(--ds-neutral-900); --muted: var(--ds-neutral-700); --faint: var(--ds-neutral-600);
+  --bg: var(--ds-neutral-50); --surface: var(--ds-neutral-0);
+  --line: rgba(16, 16, 62, 0.1); --line-2: rgba(16, 16, 62, 0.16); --line-3: rgba(16, 16, 62, 0.24);
+  --brand: var(--ds-purple-500); --brand-dark: var(--ds-purple-600); --brand-soft: var(--ds-purple-100);
+  --money: var(--ds-orange-700); --accent-soft: var(--ds-orange-100);
+  --focus: var(--ds-blue-300);
+
+  --t-neutral-fg: var(--ds-purple-500); --t-neutral-bg: var(--ds-purple-100);
+  --t-info-fg: var(--ds-blue-800); --t-info-bg: var(--ds-blue-100);
+  --t-success-fg: #2e6a28; --t-success-bg: var(--ds-green-100);
+  --t-attention-fg: #7f5a14; --t-attention-bg: var(--ds-yellow-100);
+  --t-danger-fg: var(--ds-red-500); --t-danger-bg: var(--ds-red-100);
+  --t-muted-fg: var(--ds-neutral-700); --t-muted-bg: var(--ds-neutral-50);
+
+  /* chart colours = the app's TONE_CHART_COLOR */
+  --c-open: var(--ds-purple-500); --c-wait: var(--ds-blue-500); --c-good: var(--ds-green-500);
+  --c-part: var(--ds-yellow-500); --c-bad: var(--ds-red-500); --c-none: var(--ds-neutral-500);
+
+  --r-s: 4px; --r-m: 6px; --r-l: 8px; --r-xl: 12px;
+  --shadow: 0 1px 0 rgba(27, 31, 35, 0.04);
+  --shadow-pop: 0 1px 0 rgba(27, 31, 35, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+  --font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* planning-layer colours (annotations, never product UI) */
+  --k-existing: #5d5c78; --k-existing-bg: #eceaf3;
+  --k-confirmed: #1f4366; --k-confirmed-bg: #d9ecff;
+  --k-proposed: #913806; --k-proposed-bg: #feefe6;
+  --k-unresolved: #7f5a14; --k-unresolved-bg: #ffeac2;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 400 14px/1.5 var(--font); letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums;
+}
+h1, h2, h3, h4 { margin: 0; letter-spacing: -0.02em; font-weight: 600; line-height: 1.25; }
+h1 { font-size: 28px; letter-spacing: -0.03em; }
+h2 { font-size: 21px; }
+h3 { font-size: 16px; }
+h4 { font-size: 14px; }
+p { margin: 0; }
+a { color: var(--brand); text-decoration: none; font-weight: 500; }
+a:hover { text-decoration: underline; }
+button { font: inherit; letter-spacing: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+ul, ol { margin: 0; padding-inline-start: 20px; }
+li + li { margin-top: 4px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
+
+/* ---------- document shell ---------- */
+.doc { max-width: 1200px; margin: 0 auto; padding: 28px 24px 96px; display: flex; flex-direction: column; gap: 40px; }
+.doc-head { display: flex; flex-direction: column; gap: 10px; }
+.crumbs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 13px; }
+.crumbs a { font-weight: 500; }
+.eyebrow { font: 600 12px/1.3 var(--font); letter-spacing: 0.05em; text-transform: uppercase; color: var(--brand); }
+.lede { font-size: 16px; color: var(--muted); max-width: 80ch; }
+.toc {
+  position: sticky; top: 0; z-index: 50; display: flex; gap: 6px; flex-wrap: wrap;
+  padding: 10px 0; margin: -10px 0 0; background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(6px); border-bottom: 1px solid var(--line);
+}
+.toc a { padding: 4px 10px; border-radius: 99px; font-size: 13px; color: var(--muted); border: 1px solid var(--line); background: var(--surface); }
+.toc a:hover { color: var(--brand); border-color: var(--ds-purple-300); text-decoration: none; }
+.sec { display: flex; flex-direction: column; gap: 16px; scroll-margin-top: 64px; }
+.sec-head { display: flex; flex-direction: column; gap: 6px; }
+.sec-num { font: 600 12px/1 var(--font); color: var(--faint); letter-spacing: 0.05em; text-transform: uppercase; }
+.sub { display: flex; flex-direction: column; gap: 12px; }
+.prose { max-width: 78ch; }
+.prose > * + * { margin-top: 8px; }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+.small { font-size: 13px; }
+.tiny { font-size: 12px; }
+.semi { font-weight: 600; }
+.medium { font-weight: 500; }
+.nowrap { white-space: nowrap; }
+.money { color: var(--money); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* layout helpers */
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.row.top { align-items: flex-start; }
+.between { justify-content: space-between; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.stack.s4 { gap: 4px; } .stack.s8 { gap: 8px; } .stack.s16 { gap: 16px; } .stack.s24 { gap: 24px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+.grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+
+/* ---------- planning layer (annotations) ---------- */
+.k { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 99px; font: 600 11px/18px var(--font); letter-spacing: 0.02em; white-space: nowrap; vertical-align: middle; }
+.k::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.k-existing { color: var(--k-existing); background: var(--k-existing-bg); }
+.k-confirmed { color: var(--k-confirmed); background: var(--k-confirmed-bg); }
+.k-proposed { color: var(--k-proposed); background: var(--k-proposed-bg); }
+.k-unresolved { color: var(--k-unresolved); background: var(--k-unresolved-bg); }
+.cx { display: inline-block; padding: 1px 7px; border-radius: var(--r-s); font: 600 11px/18px var(--font); border: 1px solid currentColor; white-space: nowrap; }
+.cx-change { color: var(--k-confirmed); }
+.cx-compat { color: var(--ds-green-500); }
+.cx-conflict { color: var(--ds-red-500); }
+.cx-verify { color: var(--k-unresolved); }
+.legend { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); }
+
+/* .note and .q are block containers: inline text inside them flows normally. */
+.note {
+  border: 1px dashed var(--line-3); border-radius: var(--r-l); background: #fffdf7;
+  padding: 12px 14px; font-size: 13px; color: var(--ds-neutral-800);
+}
+.note > .note-label { display: block; margin-bottom: 6px; font: 600 11px/1 var(--font); letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+.note > * + *:not(.note-label) { margin-top: 6px; }
+.q {
+  border-inline-start: 3px solid var(--ds-yellow-500); background: var(--k-unresolved-bg);
+  border-radius: 0 var(--r-m) var(--r-m) 0; padding: 10px 12px; font-size: 13px;
+}
+.q > b:first-child { display: block; margin-bottom: 4px; color: var(--k-unresolved); }
+.q > * + * { margin-top: 4px; }
+.problem { border-inline-start: 3px solid var(--ds-red-500); background: #fff6f5; border-radius: 0 var(--r-m) var(--r-m) 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.box.tint { background: var(--ds-neutral-100); }
+
+/* planning tables */
+.ptable { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); overflow: hidden; }
+.ptable th { text-align: start; font-weight: 600; color: var(--muted); background: var(--ds-neutral-50); padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+.ptable td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ptable tr:last-child td { border-bottom: 0; }
+.scroll-x { overflow-x: auto; border-radius: var(--r-l); }
+.d { display: inline-block; padding: 0 6px; border-radius: var(--r-s); font: 600 11px/18px var(--font); white-space: nowrap; }
+.d-have { background: var(--ds-green-100); color: #2e6a28; }
+.d-verify { background: var(--ds-yellow-100); color: #7f5a14; }
+.d-missing { background: var(--ds-red-100); color: var(--ds-red-500); }
+.d-new { background: var(--ds-blue-100); color: var(--ds-blue-800); }
+
+details.more { border: 1px solid var(--line); border-radius: var(--r-l); background: var(--surface); }
+details.more > summary { cursor: pointer; padding: 10px 14px; font-weight: 600; list-style: none; display: flex; gap: 8px; align-items: center; }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::before { content: '▸'; color: var(--faint); transition: transform 120ms; }
+details.more[open] > summary::before { transform: rotate(90deg); }
+details.more > .more-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+/* compare columns */
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; align-items: start; }
+.compare > .col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.col-head { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+
+/* segmented control & tabs (planning + app) */
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--r-l); background: var(--ds-neutral-200); flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; padding: 5px 12px; border-radius: var(--r-m); cursor: pointer; font-weight: 500; color: var(--muted); font-size: 13px; }
+.seg button[aria-pressed='true'], .seg button[aria-selected='true'] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow-pop); }
+.tabs { display: flex; gap: 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { border: 0; background: none; padding: 8px 2px 10px; cursor: pointer; color: var(--muted); font-weight: 500; font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button[aria-selected='true'] { color: var(--brand); border-bottom-color: var(--brand); }
+[data-panel][hidden] { display: none !important; }
+
+/* ---------- product UI mock (looks like the app) ---------- */
+/* Inline labels never stretch when they sit in a flex column. */
+.chip, .tag, .k, .cx, .d, .owner, .flag { width: fit-content; max-width: 100%; }
+.frame { border: 1px solid var(--line-2); border-radius: var(--r-xl); background: var(--bg); overflow: hidden; box-shadow: var(--shadow-pop); }
+.frame-bar { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--surface); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--faint); }
+.frame-bar::before { content: ''; width: 34px; height: 8px; background: radial-gradient(circle, var(--ds-neutral-400) 3.5px, transparent 4px) 0 0 / 12px 8px repeat-x; }
+.frame-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.frame.narrow { max-width: 420px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow); padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+.card.flat { box-shadow: none; }
+.card.accent { border-inline-start: 3px solid var(--brand); }
+.card.waiting { background: #f3f8fe; border-color: #d4e4f5; border-inline-start: 3px solid var(--ds-blue-500); }
+.card.warn { background: #fffaf0; border-color: #f1ddb2; border-inline-start: 3px solid var(--ds-yellow-500); }
+.card.implentio { background: #f7f5fe; border-color: #ddd8f6; border-inline-start: 3px solid var(--brand); }
+
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--r-m); font: 500 12px/20px var(--font); white-space: nowrap; background: var(--t-neutral-bg); color: var(--t-neutral-fg); vertical-align: middle; }
+.chip.lg { font-size: 14px; line-height: 24px; padding: 2px 10px; }
+.chip.info { background: var(--t-info-bg); color: var(--t-info-fg); }
+.chip.success { background: var(--t-success-bg); color: var(--t-success-fg); }
+.chip.attention { background: var(--t-attention-bg); color: var(--t-attention-fg); }
+.chip.danger { background: var(--t-danger-bg); color: var(--t-danger-fg); }
+.chip.muted { background: var(--t-muted-bg); color: var(--t-muted-fg); box-shadow: inset 0 0 0 1px var(--line); }
+.tag { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 99px; font: 500 12px/20px var(--font); border: 1px solid var(--line-2); color: var(--fg); background: var(--surface); white-space: nowrap; }
+.owner { display: inline-flex; align-items: center; gap: 5px; font: 500 12px/20px var(--font); color: var(--brand-dark); }
+.owner .dot { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--brand); color: #fff; font: 700 10px/1 var(--font); }
+.owner.you .dot { background: var(--ds-neutral-700); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 7px 12px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); color: var(--fg); font: 500 14px/1.46 var(--font); cursor: pointer; box-shadow: var(--shadow); white-space: nowrap; }
+.btn:hover { box-shadow: 0 1px 0 rgba(27, 31, 35, 0.12); }
+.btn.primary { background: var(--brand); border-color: var(--line); color: #fff; }
+.btn.primary:hover { background: var(--brand-dark); }
+.btn.sm { min-height: 32px; padding: 5px 11px; font-size: 13px; }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.lnk { border: 0; background: none; padding: 0; color: var(--brand); font-weight: 500; cursor: pointer; font-size: inherit; text-align: start; }
+.lnk:hover { text-decoration: underline; }
+.lnk.sm { font-size: 13px; }
+.lnk.bold { font-weight: 600; }
+
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat .lbl { font-size: 12px; color: var(--muted); }
+.stat .val { font-size: 18px; font-weight: 600; }
+.stat .val.big { font-size: 28px; letter-spacing: -0.03em; }
+.hero-amt { font: 600 34px/1.05 var(--font); letter-spacing: -0.03em; color: var(--money); }
+
+.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tbl th { text-align: start; color: var(--muted); font-weight: 400; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: bottom; }
+.tbl td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.tbl tbody tr:hover td { background: var(--ds-neutral-50); }
+.tbl .num, .tbl th.num { text-align: end; }
+.tbl tr.total td { font-weight: 600; background: var(--ds-neutral-50); }
+.tbl td.diff { color: var(--money); font-weight: 600; }
+.tbl tr.hl td { background: #fff8e8; }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label, .field .flabel { font-size: 13px; font-weight: 500; }
+.input, .textarea, .select { width: 100%; border: 1px solid var(--line-2); border-radius: var(--r-m); padding: 7px 10px; font: 400 14px/1.4 var(--font); background: var(--surface); color: var(--fg); }
+.textarea { min-height: 72px; resize: vertical; }
+.hint { font-size: 12px; color: var(--muted); }
+.radios { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.radios label { display: inline-flex; align-items: center; gap: 8px; padding: 5px 11px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); cursor: pointer; font-size: 14px; }
+.radios input { accent-color: var(--brand); margin: 0; }
+.radios label:has(input:checked) { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+.choice { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-l); background: var(--surface); cursor: pointer; }
+.choice input { accent-color: var(--brand); margin-top: 3px; }
+.choice:has(input:checked) { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); background: #fbfaff; }
+.check { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
+.check input { accent-color: var(--brand); width: 16px; height: 16px; margin: 0; }
+
+.banner { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--r-l); border: 1px solid var(--line); font-size: 13.5px; }
+.banner.info { background: var(--ds-blue-100); border-color: #bcd8f5; }
+.banner.warn { background: var(--ds-yellow-100); border-color: #f1d9a4; }
+.banner.good { background: var(--ds-green-100); border-color: #b9dcb2; }
+.banner.brand { background: var(--brand-soft); border-color: var(--ds-purple-300); }
+
+.stepper { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.stepper .step { display: inline-flex; align-items: center; gap: 6px; }
+.stepper .step b { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--ds-neutral-200); color: var(--muted); font-size: 11px; }
+.stepper .step.on { color: var(--fg); font-weight: 600; }
+.stepper .step.on b { background: var(--brand); color: #fff; }
+.stepper .step.done b { background: var(--ds-green-500); color: #fff; }
+.stepper .sep { width: 24px; height: 1px; background: var(--line-2); }
+
+.modal { border: 1px solid var(--line-2); border-radius: var(--r-xl); background: var(--surface); box-shadow: 0 12px 40px rgba(16, 16, 62, 0.18); display: flex; flex-direction: column; overflow: hidden; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.modal-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--line); background: var(--ds-neutral-50); flex-wrap: wrap; }
+.overlay-hint { background: rgba(16, 16, 62, 0.28); padding: 20px; border-radius: var(--r-xl); }
+
+/* bars */
+.bar { display: flex; height: 10px; border-radius: 99px; overflow: hidden; background: var(--ds-neutral-200); gap: 2px; }
+.bar > span { display: block; height: 100%; }
+.bar.thin { height: 8px; }
+.bar.tall { height: 14px; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; vertical-align: middle; margin-inline-end: 4px; }
+
+/* timeline */
+.tl { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; }
+.tl li { position: relative; padding: 0 0 14px 22px; margin: 0; }
+.tl li::before { content: ''; position: absolute; left: 4px; top: 5px; width: 9px; height: 9px; border-radius: 50%; background: var(--surface); border: 2px solid var(--line-3); }
+.tl li::after { content: ''; position: absolute; left: 8px; top: 16px; bottom: 0; width: 1px; background: var(--line-2); }
+.tl li:last-child::after { display: none; }
+.tl li.done::before { background: var(--ds-green-500); border-color: var(--ds-green-500); }
+.tl li.now::before { background: var(--brand); border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+.tl li.todo { color: var(--faint); }
+
+/* ---------- diagrams ---------- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; row-gap: 12px; }
+.flow .node { padding: 8px 12px; border-radius: var(--r-l); border: 1px solid var(--line-2); background: var(--surface); font-weight: 500; font-size: 13px; display: flex; flex-direction: column; gap: 2px; justify-content: center; min-width: 96px; }
+.flow .node small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.flow .arrow { align-self: center; color: var(--faint); padding: 0 6px; font-size: 16px; }
+.node.n-open { border-color: var(--ds-purple-300); background: var(--ds-purple-100); }
+.node.n-wait { border-color: #bcd8f5; background: var(--ds-blue-100); }
+.node.n-good { border-color: #b9dcb2; background: var(--ds-green-100); }
+.node.n-bad { border-color: #f0b8b3; background: var(--ds-red-100); }
+.node.n-part { border-color: #f1d9a4; background: var(--ds-yellow-100); }
+.node.n-muted { border-color: var(--line-2); background: var(--ds-neutral-50); color: var(--muted); }
+.node.n-new { border-style: dashed; border-color: var(--ds-orange-500); background: #fff8f3; }
+.node.n-gone { border-style: dashed; color: var(--faint); background: repeating-linear-gradient(135deg, #fff, #fff 6px, #f6f5f9 6px, #f6f5f9 12px); text-decoration: line-through; }
+
+/* print-ish */
+@media print { .toc { position: static; } body { background: #fff; } }
+@media (max-width: 640px) { .doc { padding: 16px 16px 64px; gap: 28px; } h1 { font-size: 23px; } .frame-body { padding: 14px; } }
+</style>
+<style>
+/* page-specific styles only; prefer kit classes */
+
+/* ---------- page mock (inside .frame) ---------- */
+.oc { container: oc / inline-size; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.oc-app { display: flex; flex-direction: column; gap: 10px; }
+.oc-h1 { font: 600 21px/1.3 var(--font); letter-spacing: -0.02em; }
+.oc-apptabs { display: flex; gap: 20px; border-bottom: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+.oc-apptabs span { padding: 4px 2px 8px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.oc-apptabs span.on { color: var(--brand); border-bottom-color: var(--brand); font-weight: 500; }
+.oc-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px 20px; flex-wrap: wrap; }
+.oc-head h3 { font-size: 18px; }
+.oc-scope { font-size: 13.5px; color: var(--muted); margin-top: 3px; }
+.oc-links { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13.5px; align-items: center; }
+.oc-filters { display: flex; gap: 10px 12px; flex-wrap: wrap; align-items: flex-end; }
+.oc-filters .field { width: 190px; max-width: 100%; }
+.oc-filters .flabel { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.oc-tabs { gap: 18px; }
+.oc-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow); min-width: 0; }
+.oc-legend { display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.oc-legend > span { display: inline-flex; align-items: center; gap: 2px; }
+.oc-foot { padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--line); }
+.oc-how { background: var(--ds-neutral-100); border: 1px solid var(--line); border-radius: var(--r-l); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.oc-how ul { font-size: 13px; }
+
+/* outcome mix bar: counts, 2px surface gaps, rounded outer ends */
+.mix { display: flex; gap: 2px; height: 10px; width: 100%; max-width: 200px; min-width: 96px; }
+.mix > span { display: block; height: 100%; min-width: 4px; }
+.mix > span:first-child { border-radius: 4px 0 0 4px; }
+.mix > span:last-child { border-radius: 0 4px 4px 0; }
+.mix > span:only-child { border-radius: 4px; }
+.mix > span:hover { filter: brightness(1.12); }
+.mix.nil { background: var(--ds-neutral-200); border-radius: 4px; }
+.mix-cap { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.35; }
+.wt { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.wt::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--c-wait); flex: none; }
+
+/* sample-size marker */
+.samp { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); margin-top: 3px; white-space: nowrap; }
+.samp .bars { display: inline-flex; align-items: flex-end; gap: 1.5px; height: 11px; }
+.samp .bars i { width: 3px; border-radius: 1px; background: var(--ds-neutral-400); }
+.samp .bars i:nth-child(1) { height: 5px; } .samp .bars i:nth-child(2) { height: 8px; } .samp .bars i:nth-child(3) { height: 11px; }
+.samp.t1 .bars i:nth-child(-n+1), .samp.t2 .bars i:nth-child(-n+2), .samp.t3 .bars i { background: var(--ds-neutral-800); }
+
+q.rq { quotes: '\201C' '\201D'; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 13px; color: var(--fg); }
+.qt { margin: 0; padding: 2px 0 2px 10px; border-inline-start: 2px solid var(--line-3); font-size: 13px; color: var(--fg); }
+.qt::before { content: '\201C'; } .qt::after { content: '\201D'; }
+.srcl { font-size: 12px; color: var(--muted); display: flex; gap: 4px 8px; flex-wrap: wrap; align-items: center; }
+
+/* outcome tables */
+.oct { font-size: 13.5px; }
+.oct th { white-space: normal; font-size: 12.5px; }
+.oct td { vertical-align: top; }
+.oct tr.orow { cursor: pointer; }
+.oct tr.orow.static { cursor: default; }
+.oct tr.orow.open > td { background: var(--ds-neutral-100); }
+.oct .rowbtn { display: inline-flex; gap: 6px; align-items: baseline; font-size: 14px; }
+.oct .rowbtn .chev { color: var(--faint); font-size: 11px; display: inline-block; transition: transform 120ms; }
+.oct .rowbtn[aria-expanded='true'] .chev { transform: rotate(90deg); }
+.oct tr.det-row > td { padding: 0; background: var(--ds-neutral-100); }
+.oct tr.det-row:hover > td { background: var(--ds-neutral-100); }
+.det { padding: 14px 16px 18px 16px; display: flex; flex-direction: column; gap: 14px; }
+.det-h { display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: baseline; justify-content: space-between; }
+.det-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 16px 24px; align-items: start; }
+.det h5 { font: 600 11.5px/1.3 var(--font); color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 8px; }
+.det section { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.mini { font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-m); }
+.mini th { font-size: 12px; white-space: normal; }
+.mini td, .mini th { padding: 6px 8px; }
+.mini td.z { color: var(--ds-neutral-500); }
+.cases { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.cases li { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-m); padding: 10px 12px; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.case-top { display: flex; gap: 6px 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.themes { display: flex; flex-direction: column; gap: 10px; }
+.theme { display: flex; flex-direction: column; gap: 6px; }
+.theme-h { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.rcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.rgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 12px; padding: 12px; }
+.plist { display: flex; flex-direction: column; gap: 3px; }
+.oc-empty { padding: 22px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.oc-empty ul { font-size: 13.5px; }
+.flow-hl { box-shadow: inset 0 0 0 2px var(--ds-orange-500) !important; border-radius: var(--r-m); }
+tr.flow-hl > td { box-shadow: inset 0 2px 0 var(--ds-orange-500), inset 0 -2px 0 var(--ds-orange-500); }
+tr.flow-hl > td:first-child { box-shadow: inset 2px 2px 0 var(--ds-orange-500), inset 0 -2px 0 var(--ds-orange-500); }
+tr.flow-hl > td:last-child { box-shadow: inset -2px 2px 0 var(--ds-orange-500), inset 0 -2px 0 var(--ds-orange-500); }
+.fb-right { margin-inline-start: auto; }
+.frame-bar { flex-wrap: wrap; }
+.fb-right .k { white-space: normal; }
+div.wt { display: flex; width: fit-content; }
+.oc-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.oc-tabs::-webkit-scrollbar { display: none; }
+.oc-tabs button { white-space: nowrap; flex: none; }
+
+/* table → cards when the page mock is narrow */
+@container oc (max-width: 760px) {
+  .oct thead { display: none; }
+  .oct, .oct tbody { display: block; width: 100%; }
+  .oct tr.orow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; padding: 12px; border-bottom: 1px solid var(--line); }
+  .oct tr.orow > td { display: block; padding: 0; border: 0; min-width: 0; }
+  .oct tr.orow > td[data-l]::before { content: attr(data-l); display: block; font-size: 11.5px; color: var(--muted); margin-bottom: 2px; }
+  .oct tr.orow > td.c-name, .oct tr.orow > td.c-wide { grid-column: 1 / -1; }
+  .oct tr.orow > td.num { text-align: start; }
+  .oct tr.det-row, .oct tr.det-row > td { display: block; width: 100%; }
+  .oct tr.orow.flow-hl { box-shadow: inset 0 0 0 2px var(--ds-orange-500); }
+  .oct tr.orow.flow-hl > td { box-shadow: none; }
+  .mix { max-width: none; }
+  .oct tr.orow > td, .oct tbody tr.orow:hover > td { background: transparent; }
+  .oct tr.orow.open, .oct tbody tr.orow:hover { background: var(--ds-neutral-100); }
+  .mcards thead { display: none; }
+  .mcards, .mcards tbody { display: block; width: 100%; }
+  .mcards tr { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; padding: 10px; border-bottom: 1px solid var(--line); }
+  .mcards tr:last-child { border-bottom: 0; }
+  .mcards tr > td { display: block; padding: 0; border: 0; min-width: 0; background: transparent !important; }
+  .mcards td[data-l]::before { content: attr(data-l); display: block; font-size: 11.5px; color: var(--muted); margin-bottom: 2px; }
+  .mcards td.c-name { grid-column: 1 / -1; }
+}
+@container oc (max-width: 520px) {
+  .oc-filters { display: grid; grid-template-columns: 1fr 1fr; }
+  .oc-filters .field { width: auto; min-width: 0; }
+}
+
+/* ---------- wireframes (compare) ---------- */
+.wf { border: 1px solid var(--line-2); border-radius: var(--r-l); background: var(--surface); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.wf-b { border-radius: var(--r-m); background: var(--ds-neutral-100); border: 1px solid var(--line); padding: 8px 10px; font-size: 12.5px; color: var(--ds-neutral-800); display: flex; justify-content: space-between; gap: 6px 10px; align-items: center; flex-wrap: wrap; }
+.wf-b.gone { color: var(--faint); background: repeating-linear-gradient(135deg, #fff, #fff 6px, #f6f5f9 6px, #f6f5f9 12px); border-style: dashed; }
+.wf-b.gone .wf-t { text-decoration: line-through; }
+.wf-b.new { border-style: dashed; border-color: var(--ds-orange-500); background: #fff8f3; }
+.wf-tiles { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; width: 100%; }
+.wf-tiles i { height: 20px; border-radius: 4px; background: #fff; border: 1px solid var(--line-2); }
+.wf-lines { display: flex; flex-direction: column; gap: 3px; width: 100%; }
+.wf-lines i { height: 6px; border-radius: 3px; background: var(--ds-neutral-300); }
+.wf-mixrow { display: grid; grid-template-columns: 1.3fr 0.4fr 1.4fr 0.9fr; gap: 8px; align-items: center; width: 100%; }
+.wf-mixrow i { height: 6px; border-radius: 3px; background: var(--ds-neutral-300); }
+.fate { display: inline-block; font: 600 11px/18px var(--font); padding: 0 6px; border-radius: 4px; white-space: nowrap; }
+.fate.rm { color: var(--ds-red-500); background: var(--ds-red-100); }
+.fate.mv { color: var(--ds-blue-800); background: var(--ds-blue-100); }
+.fate.kp { color: #2e6a28; background: var(--ds-green-100); }
+.fate.nw { color: var(--ds-orange-700); background: var(--ds-orange-100); }
+
+/* ---------- flow ---------- */
+.flowx { display: grid; grid-template-columns: minmax(230px, 290px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.fsteps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; position: sticky; top: 64px; }
+.fsteps li { margin: 0; }
+.fsteps button { width: 100%; text-align: start; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-l); padding: 9px 12px; cursor: pointer; display: flex; gap: 10px; align-items: flex-start; font-size: 13px; }
+.fsteps button b { flex: none; width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--ds-neutral-200); color: var(--muted); font-size: 11px; }
+.fsteps button[aria-current='step'] { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); background: #fbfaff; }
+.fsteps button[aria-current='step'] b { background: var(--brand); color: #fff; }
+.fsteps button.done b { background: var(--ds-green-500); color: #fff; }
+.fstage { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.fcap { display: flex; flex-direction: column; gap: 4px; }
+@media (max-width: 900px) { .flowx { grid-template-columns: 1fr; } .fsteps { position: static; } }
+
+/* ---------- misc ---------- */
+.plan-ctl { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center; padding: 10px 12px; border: 1px dashed var(--line-3); border-radius: var(--r-l); background: #fffdf7; }
+.plan-ctl .lbl { font: 600 11px/1 var(--font); letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+.defs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.def { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-l); background: var(--surface); font-size: 13px; }
+.def h4 { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.formula { font: 500 13px/1.5 var(--mono); background: var(--ds-neutral-100); border-radius: var(--r-s); padding: 4px 8px; }
+.cvb { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 8px 12px; align-items: center; font-size: 13px; }
+.cvb .mix { max-width: none; height: 14px; }
+.bench { opacity: 0.55; border: 1px dashed var(--line-3); border-radius: var(--r-l); padding: 12px 14px; background: repeating-linear-gradient(135deg, #fff, #fff 8px, #faf9fc 8px, #faf9fc 16px); display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+#tip { position: fixed; z-index: 200; pointer-events: none; background: var(--ds-neutral-900); color: #fff; padding: 6px 9px; border-radius: 6px; font-size: 12px; line-height: 1.35; box-shadow: var(--shadow-pop); max-width: 260px; display: none; }
+#tip b { display: block; font-size: 13px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.state-row { display: flex; flex-direction: column; gap: 12px; }
+.h5 { font: 600 12px/1.3 var(--font); color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+</style>
+</head>
+<body>
+<main class="doc">
+  <header class="doc-head">
+    <nav class="crumbs" aria-label="Planning files"><a href="00-overview.html">← Overview</a><span>·</span><a href="../docs/client-app-prototype-plan.md">Plan document</a><span>·</span><span>Exploration 05 of 06</span></nav>
+    <div class="eyebrow">Planning exploration · not production UI</div>
+    <h1>Credit outcomes as intelligence</h1>
+    <p class="lede">What has your team learned from past disputes, by variance type and by Biller? This page replaces a second money dashboard with that history, and it still has to read well when there are only 3 answers.</p>
+    <div class="legend"><span class="k k-existing">Existing</span><span class="k k-confirmed">Newly confirmed</span><span class="k k-proposed">Proposed</span><span class="k k-unresolved">Unresolved</span><span>· Mock data is labelled; package rows and history are synthetic.</span></div>
+  </header>
+  <nav class="toc" aria-label="Sections">
+    <a href="#problem">1 Problem</a><a href="#compare">2 Current vs proposed</a><a href="#model">3 Proposed model</a><a href="#flow">4 Main flow</a><a href="#states">5 States</a><a href="#edge">6 Edge cases</a><a href="#data">7 Data</a><a href="#questions">8 Open questions</a>
+  </nav>
+
+  <!-- ============================== 1 PROBLEM ============================== -->
+  <section class="sec" id="problem">
+    <div class="sec-head"><span class="sec-num">1</span><h2>Problem</h2></div>
+    <div class="prose">
+      <p><span class="k k-confirmed">Newly confirmed</span> The meeting asked for Credit outcomes to be <b>historical intelligence</b>: what we learned from past disputes. It should not be another financial dashboard (plan B1). Today's tab mostly repeats the money.</p>
+    </div>
+    <div class="grid2">
+      <div class="problem">
+        <b>It repeats the tracker (L7)</b>
+        <p class="small">Six money tiles, then a donut that shows the same numbers again. The tracker's "Where your money is" strip already has the same five buckets ($49,513.43 identified · $19,075.62 left to dispute · $9,410.11 waiting · $11,700.00 recovered · $2,800.00 not recovered · $6,527.70 not disputed). <span class="k k-existing">Existing</span></p>
+      </div>
+      <div class="problem">
+        <b>The rate counts waiting as failure (L5, C5)</b>
+        <p class="small">"Collection rate" = collected ÷ disputed (n348). ShipBob shows <b>0%</b> on three rows although none of its disputes has been answered yet. QuickBox remote-area shows 0% because it mixes a $1,200 denial with $2,700 that is still waiting. The tracker's "Recovery rate" uses a different definition. <span class="cx cx-conflict">Potential conflict · C5</span></p>
+      </div>
+      <div class="problem">
+        <b>The learning part is buried and technical</b>
+        <p class="small">"Biller credit outcomes" sits at the bottom, under a 12-column ledger. It uses category names like "DAS Classification Discrepancy" and "Packages with base freight as the primary variance driver". The Biller's reason is hidden behind "View reason" in one expandable row. A trainee can't tell what worked.</p>
+      </div>
+      <div class="problem">
+        <b>The data can't answer "how fast" or "do they answer"</b>
+        <p class="small">An answer's date is the day someone recorded it (L3). No result closes a dispute the Biller never answers (L2). Reasons are optional and asked for only after saving (L4). Any speed or response metric today would measure how late your team logged it, not the Biller.</p>
+      </div>
+    </div>
+
+    <div class="sub">
+      <h3>Today's "Biller credit outcomes" table, real demo data <span class="k k-existing">Existing</span></h3>
+      <div class="scroll-x">
+        <table class="ptable">
+          <thead><tr><th>Biller</th><th>Variance group</th><th class="num">Amount disputed</th><th class="num">Amount recovered</th><th class="num">Fully / partly</th><th class="num">Denied</th><th class="num">Collection rate</th><th>What's really going on</th></tr></thead>
+          <tbody>
+            <tr><td>ShipBob</td><td>Base Freight Discrepancy</td><td class="num">$3,410.11</td><td class="num">$0.00</td><td class="num">0</td><td class="num">0</td><td class="num"><b>0%</b></td><td>Sent Sep 12, 2026. Waiting 5 days, no answer yet</td></tr>
+            <tr><td>ShipBob</td><td>Residential Surcharge Discrepancy</td><td class="num">$1,500.00</td><td class="num">$0.00</td><td class="num">0</td><td class="num">0</td><td class="num"><b>0%</b></td><td>Same dispute, still waiting</td></tr>
+            <tr><td>QuickBox</td><td>Base Freight Discrepancy</td><td class="num">$9,200.00</td><td class="num">$9,200.00</td><td class="num">1</td><td class="num">0</td><td class="num">100%</td><td>One answer, fully collected</td></tr>
+            <tr><td>QuickBox</td><td>Fuel Surcharge Discrepancy</td><td class="num">$4,100.00</td><td class="num">$2,500.00</td><td class="num">1</td><td class="num">0</td><td class="num">61%</td><td>One answer, partly collected</td></tr>
+            <tr><td>QuickBox</td><td>DAS Classification Discrepancy</td><td class="num">$3,900.00</td><td class="num">$0.00</td><td class="num">0</td><td class="num">1</td><td class="num"><b>0%</b></td><td>$1,200 denied plus $2,700 still waiting since Aug 22</td></tr>
+            <tr><td>ShipBob</td><td>Oversize Discrepancy</td><td class="num">$1,800.00</td><td class="num">$0.00</td><td class="num">0</td><td class="num">0</td><td class="num"><b>0%</b></td><td>Sent Aug 22, 2026. Waiting 26 days</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted">Four of six rows say 0%, and three of those have had no answer at all. Every row is one answer or none, so no rate here means anything yet. Thin data is the normal case (plan F5): today there are 3 answers, all from QuickBox.</p>
+    </div>
+
+    <div class="sub">
+      <h3>What the page should answer</h3>
+      <div class="scroll-x">
+        <table class="ptable">
+          <thead><tr><th>A customer asks</th><th>Today</th><th>Proposed</th></tr></thead>
+          <tbody>
+            <tr><td>"Which charges does QuickBox pay back?"</td><td>Bottom table with technical names and a rate that counts waiting as failure</td><td><b>By variance type</b> and <b>By Biller</b>, with counts and a recovery rate that leaves waiting out <span class="k k-proposed">Proposed</span></td></tr>
+            <tr><td>"Why do they say no?"</td><td>One "View reason" per ledger row</td><td><b>Denial reasons</b> tab, plus quotes in every detail panel <span class="k k-proposed">Proposed</span></td></tr>
+            <tr><td>"How long do they take?" · "Do they answer at all?"</td><td>Not shown. The data can't answer it</td><td>Time to answer, shown only once 04 stores the Biller's answer date; until then the page says "Not measured yet". Answered % is left out of v1: it would measure whether your team closes stale disputes, not the Biller (Q-D2) <span class="k k-unresolved">Unresolved</span></td></tr>
+            <tr><td>"What happened last time?"</td><td>Scroll the 12-column ledger</td><td><b>Recent answers</b>, plus the recent cases inside each detail <span class="k k-proposed">Proposed</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== 2 COMPARE ============================== -->
+  <section class="sec" id="compare">
+    <div class="sec-head"><span class="sec-num">2</span><h2>Current vs proposed</h2></div>
+    <p class="prose muted small">Wireframes, top to bottom in page order. Tags say what happens to each part: <span class="fate rm">Removed</span> <span class="fate mv">Moved</span> <span class="fate kp">Kept</span> <span class="fate nw">New</span></p>
+    <div class="compare">
+      <div class="col">
+        <div class="col-head">Today <span class="k k-existing">Existing</span></div>
+        <div class="wf" aria-label="Wireframe of today's Credit outcomes tab">
+          <div class="wf-b gone"><span class="wf-t">Six money tiles: Total identified · Left to dispute · Waiting · Recovered · Not recovered · Not disputed</span><span class="fate rm">Removed</span><div class="wf-tiles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="wf-b gone"><span class="wf-t">"Status breakdown" donut, the same five buckets again</span><span class="fate rm">Removed</span>
+            <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="16" fill="none" stroke="#cccadc" stroke-width="6" stroke-dasharray="60 41"/><circle cx="22" cy="22" r="16" fill="none" stroke="#e0dfec" stroke-width="6" stroke-dasharray="30 71" stroke-dashoffset="-62"/></svg></div>
+          <div class="wf-b"><span class="wf-t">Filters card: Credit memo · Biller · Variance group · Pursuit status · Collection outcome</span><span class="fate kp">Kept, simplified</span></div>
+          <div class="wf-b"><span class="wf-t">Findings ledger: 12 columns, technical titles, reason in an expandable row</span><span class="fate mv">Moved to "Every finding" tab</span><div class="wf-lines" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="wf-b"><span class="wf-t">"Biller credit outcomes": Biller × technical category, Collection rate</span><span class="fate kp">Kept, rebuilt as two views</span><div class="wf-lines" aria-hidden="true"><i></i><i></i><i></i></div></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">Proposed <span class="k k-proposed">Proposed</span></div>
+        <div class="wf" aria-label="Wireframe of the proposed page">
+          <div class="wf-b new"><span class="wf-t"><b>Credit outcomes</b> · one scope line ("42 disputes answered since Sep 2025 · 4 closed with no answer · 6 still waiting · Recorded by your team · 6 by Implentio") · "See the money on the tracker →" · "How we count"</span><span class="fate nw">New</span></div>
+          <div class="wf-b"><span class="wf-t">One filter row: Biller · Period · Handled by</span><span class="fate kp">Kept, 3 filters</span></div>
+          <div class="wf-b new"><span class="wf-t">Tabs: <b>By variance type</b> · By Biller · Denial reasons · Recent answers · Every finding</span><span class="fate nw">New</span></div>
+          <div class="wf-b new"><span class="wf-t">Rows: plain type name · answered · outcome mix bar · recovered (with counts) · time to answer · top denial reason</span><span class="fate nw">New</span>
+            <div class="wf-lines" aria-hidden="true">
+              <div class="wf-mixrow"><i></i><i></i><div class="mix" style="min-width:0"><span style="flex:5;background:var(--c-good)"></span><span style="flex:1;background:var(--c-part)"></span><span style="flex:2;background:var(--c-bad)"></span></div><i></i></div>
+              <div class="wf-mixrow"><i></i><i></i><div class="mix" style="min-width:0"><span style="flex:6;background:var(--c-good)"></span><span style="flex:1;background:var(--c-part)"></span></div><i></i></div>
+              <div class="wf-mixrow"><i></i><i></i><div class="mix" style="min-width:0"><span style="flex:1;background:var(--c-good)"></span><span style="flex:1;background:var(--c-part)"></span><span style="flex:4;background:var(--c-bad)"></span></div><i></i></div>
+            </div></div>
+          <div class="wf-b new"><span class="wf-t">Detail panel under the row: split by Biller · reasons quoted · recent cases → "Open dispute"</span><span class="fate nw">New</span></div>
+          <div class="wf-b"><span class="wf-t">"Every finding" tab: today's ledger, plain names, fewer columns</span><span class="fate mv">Secondary tab</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th>Part of today's tab</th><th>What happens</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Six tiles + donut</td><td><span class="fate rm">Removed</span> One scope line and a link to the tracker's money strip replace them</td><td>L7: exact duplicate of the tracker. The meeting asked for "not another financial dashboard" <span class="k k-confirmed">Newly confirmed</span></td></tr>
+          <tr><td>Filters (5 fields, in a card)</td><td><span class="fate kp">Kept</span> One row: Biller, Period, Handled by. Pursuit and outcome filters move to the ledger tab</td><td>Filters scope everything below them. Status filters only make sense on the ledger</td></tr>
+          <tr><td>Findings ledger</td><td><span class="fate mv">Moved</span> "Every finding" tab, plain names from finding-copy.ts, 9 columns</td><td>Useful for lookups, but it is a list, not learning (plan F5)</td></tr>
+          <tr><td>Biller credit outcomes</td><td><span class="fate kp">Rebuilt</span> "By variance type" (first tab) and "By Biller"</td><td>This is the only learning-oriented part today. The PM asked for a "Biller performance table" (B1)</td></tr>
+          <tr><td>Collection rate (collected ÷ disputed)</td><td><span class="fate rm">Replaced</span> "Recovered": money back ÷ money in <i>answered</i> disputes, always with its counts</td><td>C5 / Q-D1. Needs sign-off because it changes n348 <span class="k k-unresolved">Unresolved</span></td></tr>
+          <tr><td>Reason behind "View reason"</td><td><span class="fate nw">New</span> Quoted in every detail panel, grouped in "Denial reasons", labelled by who recorded them: customer-entered (n347, n350) or "recorded by Implentio" (C11)</td><td>Reasons are the most reusable thing the customer records</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================== 3 MODEL ============================== -->
+  <section class="sec" id="model">
+    <div class="sec-head"><span class="sec-num">3</span><h2>Proposed model: the page</h2></div>
+    <div class="prose small">
+      <p>A full page mock, working in both directions: switch the data between <b>your real data today</b> (the demo fixtures: 3 answers, 4 waiting) and an <b>18-month mock history</b> (56 disputes from a seeded generator with built-in patterns). Rows open detail panels. Filters and tabs work. Hover a bar segment for its count.</p>
+    </div>
+    <div class="plan-ctl" role="group" aria-label="Data shown in the page mock">
+      <span class="lbl">Data in this mock</span>
+      <div class="seg" id="data-seg">
+        <button type="button" data-data="real" aria-pressed="true">Your real data today</button>
+        <button type="button" data-data="mock" aria-pressed="false">Mock: 18 months</button>
+      </div>
+      <span class="tiny muted" id="data-note">Demo fixtures: CM-2026-0517 (QuickBox) has the only answers; ShipBob's disputes are all waiting; nothing was sent to Flowspace.</span>
+    </div>
+    <div class="frame" id="mock-model"></div>
+
+    <div class="box">
+      <div class="row between"><h3>Metric definitions</h3><span><span class="k k-proposed">Proposed</span> <span class="k k-unresolved">Needs sign-off · C5 · Q-D1</span></span></div>
+      <p class="small muted">The page's "How we count" link shows the plain version of these. They are shared with 06 (guidance), which reads the same numbers.</p>
+      <div class="defs">
+        <div class="def">
+          <h4>Recovered (recovery rate)</h4>
+          <div class="formula">recovered $ ÷ $ disputed and answered</div>
+          <p>Answered = the Biller said fully collected, partly collected or denied. <b>Waiting</b> is left out and shown apart. <b>Closed, no answer</b> is its own grey segment and is <b>not</b> counted as not recovered until Q-S3 decides.</p>
+          <p>Always shown with its counts: "3 of 7 paid · 19% of the money". The rate is by money; 06 speaks in counts. Each finding's amount counts once, however many times it was disputed.</p>
+          <p class="muted">Today (n348): collected ÷ pursued, which includes waiting. <span class="cx cx-conflict">Potential conflict · C5</span></p>
+        </div>
+        <div class="def">
+          <h4>Worked example: ShipBob's 0%</h4>
+          <p><b>n348 today:</b> ShipBob shipping price = $0 ÷ $3,410.11 = <b>0%</b>. The dispute was sent Sep 12 and hasn't been answered.</p>
+          <p><b>Proposed:</b> nothing answered → "No answers yet · 1 waiting". No rate, never 0%.</p>
+          <p><b>QuickBox remote-area:</b> n348 = $0 ÷ $3,900 = 0%. Proposed = $0 ÷ $1,200 answered, but that's 1 answer → "Not enough answers yet (1)", with $2,700 shown as waiting.</p>
+          <p><b>QuickBox overall:</b> $11,700 ÷ $14,500 answered = 81% of the money. But with 3 answers the page shows "2 of 3 paid · $11,700.00 of $14,500.00". Percentages start at 6 answers.</p>
+        </div>
+        <div class="def">
+          <h4>What counts as one "dispute" <span class="k k-proposed">Proposed</span></h4>
+          <p>One <b>finding</b> sent to a Biller. One email to QuickBox with 3 findings counts as 3. Money is counted <b>once per finding</b>.</p>
+          <p><b>If a finding can be disputed again (only if Q-S4 = yes):</b> its result combines its attempts. Example: the fuel finding ($35.10) got $20.00 on the first attempt; the rest was disputed again and denied. The finding shows Partly collected, $20.00 of $35.10, "the rest was disputed again and denied". Its $35.10 enters the recovery rate's base once.</p>
+          <p>Attempts still count for <b>history</b> (Recent answers, the Biller timeline) and for <b>time to answer</b>, one measurement per attempt. A changed answer replaces the earlier one; the earlier one stays in the history (n345).</p>
+          <p class="muted">The customer-facing word for this is Q-05a.</p>
+        </div>
+        <div class="def">
+          <h4>Time to answer <span class="k k-unresolved">Not measured yet</span></h4>
+          <div class="formula">median(Biller's answer date − sent date)</div>
+          <p>Needs 04's <code>answeredOn</code>. Today only the recording date exists (L3), so the real-data view says "Not measured yet" and, at most, "recorded 13 days after sending". The mock view assumes 04 captures the answer date.</p>
+        </div>
+        <div class="def">
+          <h4>Answered % <span class="k k-unresolved">Not in v1 · Q-D2</span></h4>
+          <p>Left out of the page. "Closed, no answer" is tucked away in 04's ⋯ menu, so a no-answer rate would measure whether your team closes stale disputes, not how often a Biller answers.</p>
+          <p>If Q-D2 wants it: count disputes waiting longer than N days as unanswered <b>for this metric only</b>, without changing any status.</p>
+        </div>
+        <div class="def">
+          <h4>Sample-size tiers (one rule, shared with 06)</h4>
+          <ul>
+            <li><b>None, under 3 answers:</b> "Not enough answers yet (2)". No rate.</li>
+            <li><b>Early signal, 3–5:</b> counts and money, no percentage.</li>
+            <li><b>Mixed, 6+:</b> under 75% got the same answer. Percentage of money plus counts.</li>
+            <li><b>Pattern, 6+:</b> at least 75% got the same answer (fully collected, partly collected or denied). Only this tier appears in By Biller's "Patterns" column, as counts with the months covered: "Fuel charge: 6 of 7 paid in full · Sep 2025–Sep 2026".</li>
+          </ul>
+          <p>Counted over the selected period: <b>last 12 months by default</b>, the same window as 06.</p>
+          <p class="muted">Thresholds are Q-G1. The pattern column is Q-05g. One function in this file (<code>tierOf</code>) drives the marker, the rate display and the patterns.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid3">
+      <div class="note"><span class="note-label">Why no tiles</span>The money lives on the tracker. The scope line says how much history the page is built on, which tells the reader how far to trust it. <span class="k k-proposed">Proposed</span></div>
+      <div class="note"><span class="note-label">Why counts in the bar</span>The mix bar is by <b>count</b>, so each dispute weighs the same. The recovery rate is by <b>money</b>. Both appear side by side, so one large denial can't hide (see edge cases). Weighting is Q-05b. <span class="k k-proposed">Proposed</span></div>
+      <div class="note"><span class="note-label">Reasons</span>Quotes are shown word for word, labelled by who recorded them: "Customer-entered" (n347), or "QuickBox's reason, recorded by Implentio" when Implentio handled the dispute (C11). Group names describe what the text <i>mentions</i> ("Mentions a contract addendum"). They never state the Biller's reason as a fact (n350). <span class="k k-existing">Existing rule</span></div>
+    </div>
+  </section>
+
+  <!-- ============================== 4 FLOW ============================== -->
+  <section class="sec" id="flow">
+    <div class="sec-head"><span class="sec-num">4</span><h2>Main flow: "I'm about to dispute remote-area fees with QuickBox. What happened before?"</h2></div>
+    <p class="prose small muted">Tori Matthews is on CM-2026-0630 and wants to know what happened before. The walkthrough uses the 18-month mock history (the real demo has a single remote-area answer). Click the steps, use Next, or click inside the mock: the Remote-area fee row and "Open dispute" both move the walkthrough on.</p>
+    <div class="flowx">
+      <ol class="fsteps" id="flow-steps" aria-label="Walkthrough steps"></ol>
+      <div class="fstage">
+        <div class="fcap" aria-live="polite"><div class="h5" id="flow-kicker"></div><h3 id="flow-title"></h3><p class="small muted" id="flow-desc"></p></div>
+        <div id="flow-static"></div>
+        <div class="frame" id="mock-flow"></div>
+        <div class="row between"><button type="button" class="btn sm" id="flow-prev">← Back</button><button type="button" class="btn sm primary" id="flow-next">Next →</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== 5 STATES ============================== -->
+  <section class="sec" id="states">
+    <div class="sec-head"><span class="sec-num">5</span><h2>States</h2></div>
+    <div class="state-row">
+      <div class="seg" id="state-seg" role="group" aria-label="Page state">
+        <button type="button" data-state="empty" aria-pressed="true">Nothing answered yet</button>
+        <button type="button" data-state="thin" aria-pressed="false">Thin data (real demo)</button>
+        <button type="button" data-state="rich" aria-pressed="false">Rich (mock 18 months)</button>
+        <button type="button" data-state="implentio" aria-pressed="false">Handled by Implentio</button>
+        <button type="button" data-state="waiting" aria-pressed="false">Biller with only waiting</button>
+        <button type="button" data-state="changed" aria-pressed="false">After an answer changed</button>
+      </div>
+      <div class="note" id="state-note" aria-live="polite"></div>
+      <div class="frame" id="mock-states"></div>
+    </div>
+  </section>
+
+  <!-- ============================== 6 EDGE CASES ============================== -->
+  <section class="sec" id="edge">
+    <div class="sec-head"><span class="sec-num">6</span><h2>Edge cases</h2></div>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th>Case</th><th>Example</th><th>Proposed handling</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Fewer than 3 answers</td><td>Real data: every type row has 1 answer</td><td>"Not enough answers yet (1)" instead of a rate. The mix bar, cases and quotes still show, so the page still says what happened</td><td><span class="k k-proposed">Proposed</span> Q-G1</td></tr>
+          <tr><td>3–5 answers</td><td>Mock: Oversize fee, 3 answers</td><td>Counts and money, no percentage: "1 of 3 paid · $565.03 of $1,762.50 recovered", marked "Early signal"</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td>Biller with only waiting disputes</td><td>Real: ShipBob, 3 waiting since Aug 22 / Sep 12</td><td>"No answers yet · 3 waiting". Detail lists the waiting disputes with their age. Never 0%</td><td><span class="k k-proposed">Proposed</span> C5</td></tr>
+          <tr><td>A type or Biller never disputed</td><td>Real: "Shipping price and fuel" (expired, never sent); Flowspace (nothing sent)</td><td>No row of zeros. A muted line under the table: "Not disputed yet: …"</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td>Whole-memo dispute (no type)</td><td>Fixture rows titled "Complete credit memo"</td><td>A: its own row, "Complete credit memo". B: left out of By variance type, counted in By Biller and Recent answers. A is simpler; B keeps type rows clean</td><td><span class="k k-unresolved">Unresolved</span> Q-05e</td></tr>
+          <tr><td>Partly collected</td><td>Real: Fuel charge, $2,500.00 of $4,100.00</td><td>Counts as "paid" in counts. Its money splits: $2,500 recovered, $1,600 not recovered. Amber in the bar</td><td><span class="k k-proposed">Proposed</span> (money split is <span class="k k-existing">Existing</span>, D5)</td></tr>
+          <tr><td>Superseded memo version</td><td>A memo republished as Version 2</td><td>Only the current version's findings count (n346). Unclear: does an answer recorded on Version 1 carry over to Version 2?</td><td><span class="k k-existing">Existing</span> n346 · <span class="cx cx-verify">Needs verification</span></td></tr>
+          <tr><td>Answer changed later</td><td>Real: QuickBox shipping price, Partly $6,000 (Aug 28) → Fully $9,200 (Sep 1)</td><td>Only the latest answer counts in every number. Recent answers shows "Changed · was Partly collected". Which date counts for time to answer (first or latest) is open</td><td><span class="k k-proposed">Proposed</span> · Q-05f</td></tr>
+          <tr><td>Very old history</td><td>Mock: answers from Jun 2025</td><td>Period filter (Last 12 months · Last 6 months · All time). Default: last 12 months, the same window as 06. Older answers appear only with "All time"</td><td><span class="k k-proposed">Proposed</span> Q-05c</td></tr>
+          <tr><td>Mixed owners</td><td>Mock: 6 answers recorded by Implentio, one with a reason</td><td>"Handled by" filter. The scope line splits the source ("· 6 by Implentio"), every case says who recorded it, and a reason Implentio recorded reads "Flowspace's reason, recorded by Implentio", never "Customer-entered". Never blended silently</td><td><span class="k k-proposed">Proposed</span> <span class="cx cx-conflict">Potential conflict · C11</span></td></tr>
+          <tr><td>One large denial dominates money</td><td>Mock: Flowspace $18,400.00 shipping-price denial (below)</td><td>Rate by money always sits next to counts ("3 of 7 paid · 19% of the money")</td><td><span class="k k-proposed">Proposed</span> Q-05b</td></tr>
+          <tr><td>Closed, no answer</td><td>Mock: 4 ShipBob disputes</td><td>Its own grey segment and a count in the scope line. Not in the recovery rate until Q-S3. No answered % in v1 (Q-D2)</td><td><span class="k k-proposed">Proposed</span> C9 · Q-S3</td></tr>
+          <tr><td>Same finding disputed twice</td><td>Fuel charge $35.10: $20.00 on the first attempt, the rest disputed again and denied</td><td>If allowed: the finding counts once. Its result combines the attempts (Partly collected, $20.00 of $35.10, "the rest was disputed again and denied"), and its amount enters the rate once. Each attempt shows in history and gives its own time to answer</td><td><span class="k k-proposed">Proposed rule</span> <span class="k k-unresolved">Q-S4</span></td></tr>
+          <tr><td>Title and charge mix disagree</td><td>"Shipping price and fuel", 154 packages, $3.08. A "Home-delivery fee" finding whose home-delivery charges were $48.36 <i>below</i> contract. $1,322.77 of "Shipping price" is really fuel</td><td>This mock types a finding by its title, and "Shipping price and fuel" is its own row. It could instead split by charge, or count under the larger charge</td><td><span class="k k-unresolved">Unresolved</span> Q-D5 · Q-E7</td></tr>
+          <tr><td>Denied with no reason</td><td>Mock: 2 denials</td><td>Grouped as "No reason recorded", never as "Other". 04 asks for the reason at the moment of denial</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td>Sent after the deadline</td><td>Findings sent late (flag exists)</td><td>Counted like any other attempt. A later "late vs on time" split feeds 06's past-deadline flag</td><td><span class="k k-proposed">Proposed</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid2">
+      <div class="box">
+        <h3>Count vs money: Flowspace shipping price (mock, all time)</h3>
+        <div class="cvb" id="cvb"></div>
+        <p class="small muted">By count, Flowspace paid almost half of these disputes. By money it paid under a fifth, because one $18,400.00 denial ("no rate agreement on file") dominates. Showing only one of these misleads. The page shows the money rate with the counts next to it. Whether one of them should lead is Q-05b.</p>
+      </div>
+      <div class="box">
+        <h3>Whole-memo disputes: two options <span class="k k-unresolved">Unresolved</span></h3>
+        <div class="scroll-x">
+          <table class="tbl mini">
+            <thead><tr><th>Option</th><th>By variance type</th><th>By Biller · Recent answers</th></tr></thead>
+            <tbody>
+              <tr><td class="semi">A · own row</td><td>Extra row "Complete credit memo" (no industry term)</td><td>Counted</td></tr>
+              <tr><td class="semi">B · left out</td><td>Not shown. Footnote: "1 whole-memo dispute isn't split by type"</td><td>Counted</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small muted">A whole-memo dispute has no type, so it can't teach "which charges get paid". B keeps the type view honest. A keeps totals equal across tabs.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== 7 DATA ============================== -->
+  <section class="sec" id="data">
+    <div class="sec-head"><span class="sec-num">7</span><h2>Data</h2></div>
+    <p class="prose small muted">Plan G, row 05. Badges: <span class="d d-have">Have</span> in the domain or fixtures today · <span class="d d-verify">Verify</span> probably in Implentio's pipeline · <span class="d d-missing">Missing</span> not available · <span class="d d-new">New field</span> needed in production. The page itself adds only derived numbers.</p>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th>UI element</th><th>Needs</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Scope line, answered and waiting counts</td><td><code>collection.status</code> per finding; one record per sent dispute (<code>pursuedAt</code> / <code>sentAt</code>)</td><td><span class="d d-have">Have</span></td><td>Counts and money are per finding. History and time to answer are per attempt, from 04's <code>DisputeRecord.items[]</code> <span class="d d-new">New field</span></td></tr>
+          <tr><td>Outcome mix: fully, partly, denied</td><td><code>collection.status</code></td><td><span class="d d-have">Have</span></td><td></td></tr>
+          <tr><td>"Closed, no answer" segment</td><td><code>status += 'no_answer'</code></td><td><span class="d d-missing">Missing</span> <span class="d d-new">New field</span></td><td>01/04, C9, Q-S3</td></tr>
+          <tr><td>Recovered (rate and money)</td><td><code>amountN</code>, <code>collection.amountN</code></td><td><span class="d d-have">Have</span></td><td>The rate is derived. Its definition needs sign-off (C5, Q-D1)</td></tr>
+          <tr><td>Time to answer</td><td>The Biller's answer date, <code>answeredOn</code></td><td><span class="d d-missing">Missing</span> <span class="d d-new">New field</span></td><td>Today only <code>collection.date</code> / <code>changedAt</code>: the <b>recording</b> date. It can be used as a labelled proxy only ("recorded after N days") <span class="d d-have">Have (proxy only)</span></td></tr>
+          <tr><td>Answered % (not in v1)</td><td>A waiting-longer-than-N-days rule, for this metric only</td><td><span class="d d-missing">Missing</span></td><td>Left out of the page. Q-D2: is it wanted at all?</td></tr>
+          <tr><td>Variance type (plain name)</td><td><code>chargeKey</code> (golden memo); <code>category</code> text on other memos ("Base Freight Discrepancy", "Multi-Driver Discrepancy", "Oversize Discrepancy")</td><td><span class="d d-have">Have</span> <span class="d d-verify">Verify</span></td><td>The mapping from category text to type is a guess. "Oversize" has no plain name in finding-copy.ts (it falls into "Other charges"). This page proposes "Oversize fee". Mixed-charge rule is Q-D5</td></tr>
+          <tr><td>Denial reasons (quotes)</td><td><code>collection.reason</code> free text</td><td><span class="d d-have">Have</span></td><td>Optional and asked for after saving (L4). None on partial answers</td></tr>
+          <tr><td>Reason groups</td><td>A grouping method</td><td><span class="d d-missing">Missing</span></td><td>Keyword matching in this mock only. Optional <code>reasonTag</code> later <span class="d d-new">New field</span> (Q-05d)</td></tr>
+          <tr><td>Handled by filter</td><td><code>DisputeRecord.handledBy</code></td><td><span class="d d-missing">Missing</span> <span class="d d-new">New field</span></td><td>From 03</td></tr>
+          <tr><td>"Recorded by your team / Implentio"</td><td><code>answer.recordedBy {type}</code></td><td><span class="d d-new">New field</span></td><td>Names exist today (<code>changedBy</code>), types don't. C11: n344, n350, D8 <span class="cx cx-conflict">Potential conflict</span></td></tr>
+          <tr><td>Answer history ("Changed · was …")</td><td><code>collection.history</code>, <code>changedBy/At</code></td><td><span class="d d-have">Have</span></td><td>n345</td></tr>
+          <tr><td>Superseded versions left out</td><td><code>memoVersion</code></td><td><span class="d d-have">Have</span> <span class="d d-verify">Verify</span></td><td>n346. Verify whether answers carry across versions</td></tr>
+          <tr><td>"Rate sheet attached" on cases</td><td>Dispute attachments</td><td><span class="d d-verify">Verify</span></td><td>Records keep attachments. Naming them reliably is unclear. Mainly for 06's tips</td></tr>
+          <tr><td>Enough history to learn from</td><td>Answered disputes per account, Biller and type</td><td><span class="d d-verify">Verify</span></td><td>Q-D4. The pattern tier may be months away for most accounts</td></tr>
+          <tr><td>Cross-customer benchmarks</td><td>Pooled outcome rates per Biller</td><td><span class="d d-missing">Missing</span></td><td>C4. Reasons: forbidden (n347, Q-D3a). Rates: undecided (Q-D3b) <span class="cx cx-conflict">Potential conflict</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid2">
+      <div class="stack s8">
+        <h3>How a benchmark would appear, if Q-D3b says yes <span class="k k-unresolved">Unresolved</span></h3>
+        <div class="bench" aria-label="Greyed-out example of a cross-customer benchmark, not designed in">
+          <div class="row between"><span class="semi">Across Implentio customers (anonymised)</span><span class="tag">Implentio data, not yours</span></div>
+          <p>ShipBob: shipping-price disputes were paid in 31 of 52 cases across 14 accounts in the last 12 months.</p>
+          <p class="tiny">Separate source, below your own history in a Biller's detail. Outcome counts only, never reasons (n347).</p>
+        </div>
+      </div>
+      <div class="note"><span class="note-label">Why it stays greyed out</span>Plan C4 says to design everything as your account's history. Pooled <b>reasons</b> are forbidden (n347). Pooled <b>outcome rates</b> aren't covered by n347 and need a business decision. They could also help the thin-data problem (Q-D4). Until then the page shows no pooled number, and the mock above only shows where one would go. <span class="cx cx-conflict">Potential conflict · C4</span></div>
+    </div>
+  </section>
+
+  <!-- ============================== 8 QUESTIONS ============================== -->
+  <section class="sec" id="questions">
+    <div class="sec-head"><span class="sec-num">8</span><h2>Open questions</h2></div>
+    <div class="grid2">
+      <div class="q"><b>Q-D1 · Recovery rate definition</b><span>Recovered ÷ disputed-and-answered (proposed, C5) or n348's collected ÷ pursued? The proposal changes n348 and the tracker's rate must match whichever wins.</span></div>
+      <div class="q"><b>Q-D2 · Response metrics</b><span>Time to answer needs the Biller's answer date (04); until then it says "Not measured yet". Answered % is left out of v1: "Closed, no answer" sits in a ⋯ menu, so it would measure your team's tidiness. If wanted, count disputes waiting longer than N days as unanswered for this metric only, without changing any status. Is measuring responsiveness wanted?</span></div>
+      <div class="q"><b>Q-D3a · Pooled denial reasons</b><span>Forbidden by n347. Confirm that still holds, including anonymised themes.</span></div>
+      <div class="q"><b>Q-D3b · Pooled outcome rates</b><span>Are anonymised, Implentio-wide outcome rates per Biller allowed as a separate, labelled source? Not covered by n347.</span></div>
+      <div class="q"><b>Q-D4 · How much history is typical?</b><span>How many answered disputes does a typical account have per Biller × type per year? If it's a handful, most rows will say "Not enough answers yet" for months, and By Biller may matter more than By variance type.</span></div>
+      <div class="q"><b>Q-D5 · How are findings typed for history?</b><span>What happens when the title and the charge mix disagree? Examples: "Shipping price and fuel" (154 packages); a "Home-delivery fee" finding whose home-delivery charges were $48.36 below contract; $1,322.77 of "Shipping price" that is really fuel. Options: by title (this mock), split by charge, or the larger charge. Linked to Q-E7 (02).</span></div>
+      <div class="q"><b>Q-T1 · Naming</b><span>This page says <b>"variance type"</b> for what the app calls a variance group (D7, still open). Also: <i>collected</i> vs <i>recovered</i> ("Recovered" here is the money word), <i>Closed, no answer</i>, <i>Handled by Implentio</i>, and the proposed plain name <i>Oversize fee</i>.</span></div>
+      <div class="q"><b>Q-S3 · "Closed, no answer" in the rate</b><span>From 01. This page keeps it out of the recovery rate and shows it apart. After how many days can it be chosen?</span></div>
+      <div class="q"><b>Q-G1 · Sample thresholds</b><span>Shared with 06: under 3 = no rate, 3–5 = counts only, 6+ = percentage. Same thresholds on this page as in guidance?</span></div>
+      <div class="q"><b>Q-05a · The word "dispute"</b><span>The page counts findings sent to a Biller, each finding once. A customer thinks of one email as one dispute. Is "42 disputes answered" right when one email carried 4 findings? Alternatives: "42 findings answered", "42 answers".</span></div>
+      <div class="q"><b>Q-05b · Count or money?</b><span>The outcome mix is by count, the rate by money, and both are shown. Should one lead? One $18,400 denial can pull a money rate far from the count (Flowspace example).</span></div>
+      <div class="q"><b>Q-05c · Default period</b><span>Proposed: last 12 months, the same window as 06, so the page and the guidance agree. Should it be "All time" while history is thin? Should the window use the answer date (as in this mock) or the sent date?</span></div>
+      <div class="q"><b>Q-05d · How are denial reasons grouped?</b><span>Keyword matching (this mock), a tag the customer picks when recording (04), or Implentio staff tagging? Under n350, group names must describe the customer's text, not state the Biller's reason. Who writes them?</span></div>
+      <div class="q"><b>Q-05e · Whole-memo disputes</b><span>A "Complete credit memo" row in By variance type, or left out of that view and counted elsewhere?</span></div>
+      <div class="q"><b>Q-05f · Changed answers and time</b><span>When an answer is changed (Partly → Fully), which date counts for time to answer: the first answer or the latest?</span></div>
+      <div class="q"><b>Q-05g · A "Patterns" column in By Biller?</b><span>Proposed: only Pattern-tier types, as counts with the months covered ("Fuel charge: 6 of 7 paid in full · Sep 2025–Sep 2026"), otherwise —. With account-only history most Billers will show —. Is the column worth it, or should patterns appear only inside detail panels?</span></div>
+      <div class="q"><b>Q-05h · Implentio-recorded answers in the same numbers</b><span>If Implentio records answers (C11, Q-O4), do they count in the same rates as your team's answers, or only once the customer confirms them?</span></div>
+    </div>
+  </section>
+</main>
+<div id="tip" role="tooltip"></div>
+<script id="kit">
+/* Planning kit behaviour — inlined into each file's script block with
+   id="kit" by sync-kit.mjs (never write a closing script tag in this file).
+
+   [data-tabs]          container; its [data-tab="x"] buttons show the matching
+                        [data-panel="x"] inside the same container (nearest).
+   [data-toggle="grp"]  buttons with data-value; sets data-<grp>="value" on the
+                        element named by data-target (default: <body>) and
+                        aria-pressed on the buttons. CSS/JS react to it.
+   window.kit.money(n)  "$1,234.56"
+*/
+(function () {
+  const money = (n) =>
+    (n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  function initTabs(root) {
+    root.querySelectorAll('[data-tabs]').forEach((box) => {
+      const own = (el) => el.closest('[data-tabs]') === box
+      const tabs = [...box.querySelectorAll('[data-tab]')].filter(own)
+      const panels = [...box.querySelectorAll('[data-panel]')].filter(own)
+      const show = (key) => {
+        tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === key)))
+        panels.forEach((p) => (p.hidden = p.dataset.panel !== key))
+        box.dispatchEvent(new CustomEvent('tabchange', { detail: key }))
+      }
+      tabs.forEach((t) => {
+        t.setAttribute('role', 'tab')
+        t.addEventListener('click', () => show(t.dataset.tab))
+      })
+      const first = tabs.find((t) => t.getAttribute('aria-selected') === 'true') ?? tabs[0]
+      if (first) show(first.dataset.tab)
+    })
+  }
+
+  function initToggles(root) {
+    const groups = new Map()
+    root.querySelectorAll('[data-toggle]').forEach((b) => {
+      const g = b.dataset.toggle
+      if (!groups.has(g)) groups.set(g, [])
+      groups.get(g).push(b)
+    })
+    groups.forEach((btns, g) => {
+      const set = (v) => {
+        btns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === v)))
+        const targetSel = btns[0].dataset.target
+        const target = targetSel ? document.querySelector(targetSel) : document.body
+        if (target) target.dataset[g] = v
+        document.dispatchEvent(new CustomEvent('toggle:' + g, { detail: v }))
+      }
+      btns.forEach((b) => b.addEventListener('click', () => set(b.dataset.value)))
+      const first = btns.find((b) => b.getAttribute('aria-pressed') === 'true') ?? btns[0]
+      set(first.dataset.value)
+    })
+  }
+
+  window.kit = { money, initTabs, initToggles }
+  document.addEventListener('DOMContentLoaded', () => {
+    initTabs(document)
+    initToggles(document)
+  })
+})()
+</script>
+<script>
+/* page-specific behaviour (vanilla JS, no libraries) */
+(function () {
+  'use strict'
+  // ---------- helpers ----------
+  const NOW = '2026-09-17'
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const ts = (s) => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10))
+  const dd = (a, b) => Math.round((ts(b) - ts(a)) / 864e5)
+  const add = (s, n) => new Date(ts(s) + n * 864e5).toISOString().slice(0, 10)
+  const fd = (s) => (s ? MON[+s.slice(5, 7) - 1] + ' ' + +s.slice(8, 10) + ', ' + s.slice(0, 4) : '—')
+  const fm = (s) => MON[+s.slice(5, 7) - 1] + ' ' + s.slice(0, 4)
+  const money = (n) => window.kit.money(n)
+  const r2 = (n) => Math.round(n * 100) / 100
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+  const plural = (n, w, p) => n + ' ' + (n === 1 ? w : p || w + 's')
+  const median = (a) => {
+    if (!a.length) return null
+    const s = [...a].sort((x, y) => x - y)
+    const m = s.length >> 1
+    return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2)
+  }
+  const pct = (x) => Math.round(x * 100) + '%'
+
+  // ---------- vocabulary ----------
+  const TYPES = [
+    { key: 'base', name: 'Shipping price', term: 'Base freight', problem: 'Shipping price higher than your contract rate' },
+    { key: 'fuel', name: 'Fuel charge', term: 'Fuel surcharge', problem: 'Fuel charge higher than your contract allows' },
+    { key: 'res', name: 'Home-delivery fee', term: 'Residential surcharge', problem: 'Home-delivery fee charged incorrectly' },
+    { key: 'das', name: 'Remote-area fee', term: 'Delivery area surcharge (DAS)', problem: 'Remote-area fee charged incorrectly' },
+    { key: 'multi', name: 'Shipping price and fuel', term: 'Base freight + fuel', problem: 'Shipping price and fuel charge both too high' },
+    { key: 'oversize', name: 'Oversize fee', term: 'Oversize surcharge', problem: 'Oversize fee charged incorrectly' },
+  ]
+  const TYPE = Object.fromEntries(TYPES.map((t) => [t.key, t]))
+  const BILLERS = ['QuickBox', 'ShipBob', 'Flowspace']
+  const RES = {
+    F: { label: 'Fully collected', short: 'fully', chip: 'success', color: 'var(--c-good)' },
+    P: { label: 'Partly collected', short: 'partly', chip: 'attention', color: 'var(--c-part)' },
+    D: { label: 'Denied', short: 'denied', chip: 'danger', color: 'var(--c-bad)' },
+    N: { label: 'Closed, no answer', short: 'no answer', chip: 'muted', color: 'var(--c-none)' },
+    W: { label: 'Waiting on Biller', short: 'waiting', chip: 'info', color: 'var(--c-wait)' },
+  }
+  const ANSWERED = (r) => r.result === 'F' || r.result === 'P' || r.result === 'D'
+  const whenOf = (r) => r.answered || r.recorded || r.closed || r.sent
+
+  // Denial themes: keyword grouping in this mock only (method Unresolved, Q-05d).
+  const THEMES = [
+    { key: 'addendum', label: 'Mentions a contract addendum', mention: 'a contract addendum', re: /addendum/i },
+    { key: 'ratesheet', label: 'Mentions the rate sheet', mention: 'the rate sheet', re: /rate (sheet|agreement)/i },
+    { key: 'warehouse', label: 'Mentions warehouse measurements', mention: 'warehouse measurements', re: /warehouse|dimension|measured/i },
+    { key: 'carrier', label: "Mentions the carrier's own data", mention: "the carrier's own data", re: /carrier/i },
+  ]
+  const NONE_THEME = { key: 'none', label: 'No reason recorded', mention: null }
+  const OTHER_THEME = { key: 'other', label: 'Other reasons', mention: null }
+  const themeOf = (reason) => (!reason ? NONE_THEME : THEMES.find((t) => t.re.test(reason)) || OTHER_THEME)
+
+  // ---------- real demo data (src/demo/fixtures/memos.ts, default state) ----------
+  const REAL = [
+    { id: 'r1', memo: 'CM-2026-0517', biller: 'QuickBox', type: 'base', amount: 9200, sent: '2026-08-20', result: 'F', recovered: 9200, recorded: '2026-09-01', mockAnswered: '2026-08-27', by: 'you', recBy: 'Tori Matthews', reason: '', history: [{ result: 'P', recovered: 6000, recorded: '2026-08-28' }] },
+    { id: 'r2', memo: 'CM-2026-0517', biller: 'QuickBox', type: 'fuel', amount: 4100, sent: '2026-08-20', result: 'P', recovered: 2500, recorded: '2026-09-03', mockAnswered: '2026-09-01', by: 'you', recBy: 'Tori Matthews', reason: '' },
+    { id: 'r3', memo: 'CM-2026-0517', biller: 'QuickBox', type: 'das', amount: 1200, sent: '2026-08-20', result: 'D', recovered: 0, recorded: '2026-09-02', mockAnswered: '2026-08-28', by: 'you', recBy: 'Tori Matthews', reason: 'Biller said the surcharge was applied per contract addendum and declined the request.' },
+    { id: 'r4', memo: 'CM-2026-0517', biller: 'QuickBox', type: 'das', amount: 2700, sent: '2026-08-22', result: 'W', recovered: 0, by: 'you', recBy: 'Tori Matthews', reason: '' },
+    { id: 'r5', memo: 'CM-2026-0430', biller: 'ShipBob', type: 'base', amount: 3410.11, sent: '2026-09-12', result: 'W', recovered: 0, by: 'you', recBy: 'Tori Matthews', reason: '' },
+    { id: 'r6', memo: 'CM-2026-0430', biller: 'ShipBob', type: 'res', amount: 1500, sent: '2026-09-12', result: 'W', recovered: 0, by: 'you', recBy: 'Tori Matthews', reason: '' },
+    { id: 'r7', memo: 'CM-2026-0328', biller: 'ShipBob', type: 'oversize', amount: 1800, sent: '2026-08-22', result: 'W', recovered: 0, by: 'you', recBy: 'Tori Matthews', reason: '' },
+  ]
+
+  // ---------- mock 18-month history: deterministic, seeded ----------
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6d2b79f5) | 0
+      let t = Math.imul(a ^ (a >>> 15), 1 | a)
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    }
+  }
+  const REASONS = {
+    qbResAdd: 'They pointed to the 2025 contract addendum for residential fees.',
+    qbDasAdd: 'QuickBox says remote-area fees are covered by Addendum B to our contract.',
+    sbOs1: 'ShipBob says the box was measured at their warehouse and the oversize fee stands.',
+    sbOs2: "Dimensions came from their warehouse scan, so they won't change it.",
+    sbRes: 'ShipBob says the carrier flagged the address as residential.',
+    fsRs1: "Flowspace asked for the signed rate sheet. We hadn't attached it.",
+    fsRs2: 'Denied: no rate agreement on file. Need to send the signed rate sheet.',
+    fsRs3: 'Rate sheet missing from the dispute; they said resubmit next cycle.',
+    fsRs4: 'Flowspace will not review shipping-price disputes without the signed rate sheet.',
+    fsDas: "ZIP is on the carrier's remote-area list, they said.",
+  }
+  // [biller, type, attempts oldest → newest]. Letters: F fully · P partly · D denied · N closed, no answer · W waiting.
+  const SPEC = [
+    ['QuickBox', 'base', ['F', 'F', 'P', 'F', 'P', { real: 'r1' }]],
+    ['QuickBox', 'fuel', ['F', 'F', 'F', 'F', 'F', 'F', { real: 'r2' }]],
+    ['QuickBox', 'res', ['F', { r: 'D', why: 'qbResAdd' }, { r: 'P', by: 'implentio' }]],
+    ['QuickBox', 'das', [{ r: 'F', pin: '2025-11-03' }, { r: 'P', pin: '2026-02-09' }, { r: 'D', why: '', pin: '2026-05-12' }, { r: 'D', why: 'qbDasAdd', pin: '2025-10-06' }, { real: 'r3' }, { real: 'r4' }]],
+    ['QuickBox', 'multi', ['F', 'F']],
+    ['ShipBob', 'base', ['F', 'N', 'P', { r: 'D', why: '' }, { r: 'F', by: 'implentio' }, { real: 'r5' }]],
+    ['ShipBob', 'oversize', [{ r: 'D', why: 'sbOs1' }, 'F', 'N', { r: 'D', why: 'sbOs2' }, { real: 'r7' }]],
+    ['ShipBob', 'res', ['F', 'N', { r: 'D', why: 'sbRes' }, { real: 'r6' }]],
+    ['ShipBob', 'fuel', ['N', { r: 'F', by: 'implentio' }]],
+    ['Flowspace', 'base', [{ r: 'D', why: 'fsRs1', att: false }, { r: 'D', why: 'fsRs2', att: false, amount: 18400 }, { r: 'F', att: true }, { r: 'F', att: true }, { r: 'D', why: 'fsRs3', att: false }, { r: 'F', att: true }, { r: 'D', why: 'fsRs4', att: false, by: 'implentio' }, { r: 'W', amount: 2150, sent: '2026-09-05', by: 'implentio', att: true }]],
+    ['Flowspace', 'fuel', ['F', { r: 'F', by: 'implentio' }, { r: 'F', by: 'implentio' }, { r: 'W', amount: 640.4, sent: '2026-09-10', by: 'implentio' }]],
+    ['Flowspace', 'res', ['P', 'F']],
+    ['Flowspace', 'das', [{ r: 'D', why: 'fsDas' }]],
+  ]
+  function genMock() {
+    const rnd = mulberry32(517)
+    const between = (a, b) => add(a, Math.floor(rnd() * (dd(a, b) + 1)))
+    // Skewed toward recent months: the account ramps up, so most history is in the last 12 months.
+    const recent = (a, b) => add(a, Math.floor(Math.pow(rnd(), 0.5) * (dd(a, b) + 1)))
+    const lag = { QuickBox: [5, 11], ShipBob: [15, 36], Flowspace: [8, 17] }
+    const range = { base: [420, 6200], fuel: [35, 980], res: [22, 1650], das: [4.68, 1250], multi: [3.08, 1850], oversize: [310, 1900] }
+    const team = ['Tori Matthews', 'Renee Alvarez', 'Sam Okafor']
+    const memoFor = (s) => {
+      const y = +s.slice(0, 4), m = +s.slice(5, 7), d = +s.slice(8, 10)
+      return 'CM-' + y + '-' + String(m).padStart(2, '0') + (d <= 15 ? '09' : '24')
+    }
+    const out = []
+    let seq = 1
+    for (const [biller, type, items] of SPEC) {
+      for (const raw of items) {
+        const it = typeof raw === 'string' ? { r: raw } : raw
+        if (it.real) {
+          const rr = REAL.find((x) => x.id === it.real)
+          out.push({ ...rr, answered: rr.mockAnswered || null })
+          continue
+        }
+        const by = it.by || 'you'
+        const res = it.r
+        const hi = res === 'N' ? '2026-06-30' : '2026-07-31'
+        const sent = it.sent || ((d) => it.pin || d)(by === 'implentio' ? between('2026-04-06', hi) : recent('2025-03-03', hi))
+        const [lo, top] = range[type]
+        const amount = it.amount != null ? it.amount : r2(lo + (top - lo) * Math.pow(rnd(), 1.7))
+        let answered = null, recorded = null, closed = null
+        if (res === 'F' || res === 'P' || res === 'D') {
+          answered = add(sent, lag[biller][0] + Math.floor(rnd() * (lag[biller][1] - lag[biller][0] + 1)))
+          recorded = add(answered, Math.floor(rnd() * 4))
+        }
+        if (res === 'N') { closed = add(sent, 60); recorded = closed }
+        const recovered = res === 'F' ? amount : res === 'P' ? r2(amount * (0.4 + 0.35 * rnd())) : 0
+        out.push({
+          id: 'm' + seq++, memo: memoFor(add(sent, -(12 + Math.floor(rnd() * 20)))), biller, type, amount, sent,
+          result: res, answered, recorded, closed, recovered, reason: it.why ? REASONS[it.why] : '',
+          by, recBy: by === 'implentio' ? 'Implentio' : team[Math.floor(rnd() * 3)], att: it.att,
+        })
+      }
+    }
+    return out
+  }
+  const DATA = {
+    real: REAL.map((r) => ({ ...r, answered: null })),
+    mock: genMock(),
+    empty: REAL.filter((r) => r.result === 'W').map((r) => ({ ...r, answered: null })),
+  }
+
+  // "Every finding" rows from the real fixtures (subset of 22).
+  const LEDGER_REAL = [
+    { type: 'base', memo: 'CM-2026-0630', biller: 'QuickBox', amount: 9322.2, status: ['Ready to dispute', ''], date: 'Dispute by Sep 20, 2026' },
+    { type: 'fuel', memo: 'CM-2026-0630', biller: 'QuickBox', amount: 35.1, status: ['Ready to dispute', ''], date: 'Dispute by Sep 20, 2026' },
+    { type: 'base', memo: 'CM-2026-0517', biller: 'QuickBox', amount: 9200, disputed: 9200, rec: 9200, status: ['Fully collected', 'success'], date: 'Sep 1, 2026' },
+    { type: 'fuel', memo: 'CM-2026-0517', biller: 'QuickBox', amount: 4100, disputed: 4100, rec: 2500, status: ['Partly collected', 'attention'], date: 'Sep 3, 2026' },
+    { type: 'das', memo: 'CM-2026-0517', biller: 'QuickBox', amount: 1200, disputed: 1200, rec: 0, status: ['Denied', 'danger'], date: 'Sep 2, 2026', reason: true },
+    { type: 'das', memo: 'CM-2026-0517', biller: 'QuickBox', amount: 2700, disputed: 2700, status: ['Waiting on Biller', 'info'] },
+    { type: 'res', memo: 'CM-2026-0517', biller: 'QuickBox', amount: 3200, status: ['Expired', 'muted'], date: 'Window closed May 15, 2026' },
+    { type: 'base', memo: 'CM-2026-0430', biller: 'ShipBob', amount: 3410.11, disputed: 3410.11, status: ['Waiting on Biller', 'info'] },
+    { type: 'oversize', memo: 'CM-2026-0328', biller: 'ShipBob', amount: 1800, disputed: 1800, status: ['Waiting on Biller', 'info'] },
+  ]
+
+  // ---------- aggregation ----------
+  function groupThemes(den) {
+    const m = new Map()
+    for (const r of den) {
+      const t = themeOf(r.reason)
+      if (!m.has(t.key)) m.set(t.key, { theme: t, recs: [] })
+      m.get(t.key).recs.push(r)
+    }
+    const arr = [...m.values()]
+    arr.forEach((x) => x.recs.sort((p, q) => whenOf(q).localeCompare(whenOf(p))))
+    arr.sort((x, y) => (x.theme.key === 'none') - (y.theme.key === 'none') || y.recs.length - x.recs.length || whenOf(y.recs[0]).localeCompare(whenOf(x.recs[0])))
+    return arr
+  }
+  function agg(recs) {
+    const a = { F: 0, P: 0, D: 0, N: 0, W: 0, amt: { F: 0, P: 0, D: 0, N: 0, W: 0 }, amtAns: 0, rec: 0, days: [], recDays: [], last: null, oldestWait: null }
+    for (const r of recs) {
+      a[r.result]++
+      a.amt[r.result] = r2(a.amt[r.result] + r.amount)
+      if (ANSWERED(r)) {
+        a.amtAns = r2(a.amtAns + r.amount)
+        a.rec = r2(a.rec + r.recovered)
+        if (r.answered) a.days.push(dd(r.sent, r.answered))
+        if (r.recorded) a.recDays.push(dd(r.sent, r.recorded))
+        if (!a.last || whenOf(r) > whenOf(a.last)) a.last = r
+      }
+      if (r.result === 'W' && (!a.oldestWait || r.sent < a.oldestWait)) a.oldestWait = r.sent
+    }
+    a.n = a.F + a.P + a.D
+    a.paid = a.F + a.P
+    a.closed = a.n + a.N
+    a.sent = a.closed + a.W
+    a.rate = a.amtAns ? a.rec / a.amtAns : null
+    a.med = median(a.days)
+    a.recMed = median(a.recDays)
+    a.themes = groupThemes(recs.filter((r) => r.result === 'D'))
+    a.tier = tierOf(a)
+    a.dom = ['F', 'P', 'D'].reduce((k, x) => (a[x] > a[k] ? x : k), 'F')
+    return a
+  }
+  const TIER = ['Not enough answers', 'Early signal', 'Mixed', 'Pattern']
+  // The one tier rule, shared with 06: None <3 · Early 3–5 · Mixed 6+ under 75% · Pattern 6+ with 75%+ the same answer.
+  function tierOf(a) {
+    if (a.n < 3) return 0
+    if (a.n < 6) return 1
+    return Math.max(a.F, a.P, a.D) / a.n >= 0.75 ? 3 : 2
+  }
+  const DOM_WORD = { F: 'paid in full', P: 'partly collected', D: 'denied' }
+
+  // ---------- small renderers ----------
+  function mixText(a) {
+    return ['F', 'P', 'D', 'N'].filter((k) => a[k]).map((k) => a[k] + ' ' + RES[k].short).join(' · ')
+  }
+  function mixBar(a, name) {
+    const tot = a.closed
+    if (!tot) return '<div class="mix nil" aria-hidden="true"></div><div class="mix-cap">No answers yet</div>'
+    const segs = ['F', 'P', 'D', 'N'].filter((k) => a[k])
+      .map((k) => '<span style="flex:' + a[k] + ' 1 0;background:' + RES[k].color + '" data-tip="' + esc(a[k] + ' of ' + tot + '|' + RES[k].label + ' · ' + money(a.amt[k]) + ' disputed') + '"></span>')
+      .join('')
+    return '<div class="mix" role="img" aria-label="' + esc(name + ' outcome mix: ' + mixText(a)) + '">' + segs + '</div><div class="mix-cap" aria-hidden="true">' + mixText(a) + '</div>'
+  }
+  const waitTag = (n, since) => '<div class="wt">' + n + ' waiting' + (since ? ' since ' + fd(since).replace(/, \d{4}$/, '') : '') + '</div>'
+  function samp(a) {
+    return '<div class="samp t' + a.tier + '"><span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>' + TIER[a.tier] + ' · ' + plural(a.n, 'answer') + '</div>'
+  }
+  function rateCell(a) {
+    if (a.n === 0) return '<span class="muted">' + (a.W || a.N ? 'No answers yet' : '—') + '</span>'
+    if (a.tier === 0) return '<span class="muted">Not enough answers yet (' + a.n + ')</span>'
+    const cnt = a.paid + ' of ' + a.n + ' paid'
+    if (a.tier === 1) return '<div class="medium">' + cnt + '</div><div class="tiny muted">' + money(a.rec) + ' of ' + money(a.amtAns) + ' recovered</div>' + samp(a)
+    return '<div class="medium">' + pct(a.rate) + ' of the money</div><div class="tiny muted">' + cnt + '</div>' + samp(a)
+  }
+  function timeCell(a, st) {
+    if (st.data !== 'mock') {
+      if (!a.recDays.length) return '<span class="muted">—</span>'
+      return '<div class="muted">Not measured yet</div><div class="tiny muted">recorded ' + a.recMed + ' days after sending</div>'
+    }
+    if (a.med == null) return '<span class="muted">—</span>'
+    return '<div class="nowrap">' + a.med + ' days</div><div class="tiny muted">median</div>'
+  }
+  function reasonCell(a) {
+    if (!a.D) return '<span class="muted">No denials</span>'
+    const top = a.themes[0]
+    if (top.theme.key === 'none') return '<span class="muted">No reason recorded (' + top.recs.length + ')</span>'
+    const lead = top.recs.length + ' of ' + plural(a.D, 'denial') + (top.theme.mention ? ' mention' + (top.recs.length === 1 ? 's ' : ' ') + top.theme.mention : '')
+    return '<q class="rq">' + esc(top.recs[0].reason) + '</q><div class="tiny muted">' + lead + '</div>'
+  }
+  function chip(r) {
+    let t = '<span class="chip ' + RES[r.result].chip + '">' + RES[r.result].label + '</span>'
+    if (r.result === 'N') t += ' <span class="k k-proposed">Proposed</span>'
+    return t
+  }
+  function srcLine(r, st) {
+    const parts = []
+    parts.push('Sent ' + fd(r.sent))
+    if (r.result === 'W') parts.push('waiting ' + dd(r.sent, NOW) + ' days')
+    else if (r.result === 'N') parts.push('closed ' + fd(r.closed) + ', no answer')
+    else if (st.data === 'mock' && r.answered) parts.push('answered ' + fd(r.answered))
+    else parts.push('recorded ' + fd(r.recorded))
+    return parts.join(' · ')
+  }
+  function whoLine(r) {
+    if (r.result === 'W') return r.by === 'implentio' ? 'Handled by Implentio' : 'Sent by your team'
+    return r.by === 'implentio' ? 'Recorded by Implentio <span class="cx cx-conflict">C11</span>' : 'Recorded by ' + esc(r.recBy)
+  }
+  const reasonSrc = (r) => (r.by === 'implentio' ? esc(r.biller) + '\'s reason, recorded by Implentio <span class="cx cx-conflict">C11</span>' : 'Customer-entered')
+  const reasonMeta = (r) => (!r.reason ? whoLine(r) : r.by === 'implentio' ? reasonSrc(r) : 'Customer-entered · ' + whoLine(r))
+  function caseItem(r, st, opts) {
+    const o = opts || {}
+    const amt = r.result === 'P' ? money(r.recovered) + ' of ' + money(r.amount) : money(r.amount)
+    let h = '<li class="' + (o.hl ? 'flow-hl' : '') + '"><div class="case-top"><span><span class="semi">' + esc(r.biller) + '</span> · ' + TYPE[r.type].name + ' · <span class="muted">' + r.memo + '</span></span><span class="row" style="gap:6px"><span class="money">' + amt + '</span>' + chip(r) + '</span></div>'
+    h += '<div class="srcl"><span>' + srcLine(r, st) + '</span><span>·</span><span>' + whoLine(r) + '</span>'
+    if (r.att != null && r.type === 'base' && r.biller === 'Flowspace') h += '<span class="tag">' + (r.att ? 'Rate sheet attached' : 'No rate sheet attached') + '</span>'
+    h += '</div>'
+    if (r.result === 'D') h += r.reason ? '<p class="qt">' + esc(r.reason) + '</p><div class="srcl">' + reasonSrc(r) + '</div>' : '<div class="srcl">No reason recorded</div>'
+    if (r.history && r.history.length) {
+      const hh = r.history[r.history.length - 1]
+      h += '<div class="srcl">Changed ' + fd(r.recorded) + ' · was ' + RES[hh.result].label + ' (' + money(hh.recovered) + ') on ' + fd(hh.recorded) + '</div>'
+    }
+    h += '<div><button type="button" class="lnk sm" data-act="dispute" data-v="' + r.id + '">Open dispute</button></div></li>'
+    return h
+  }
+  function reasonBlock(den, st, hl) {
+    if (!den.length) return '<p class="small muted">No denials.</p>'
+    const groups = groupThemes(den)
+    return '<div class="themes' + (hl ? ' flow-hl' : '') + '" style="' + (hl ? 'padding:8px' : '') + '">' + groups.map((g) => {
+      let h = '<div class="theme"><div class="theme-h"><span class="semi small">' + g.theme.label + '</span><span class="tiny muted">' + plural(g.recs.length, 'denial') + '</span></div>'
+      g.recs.slice(0, 3).forEach((r) => {
+        if (r.reason) h += '<p class="qt">' + esc(r.reason) + '</p>'
+        h += '<div class="srcl"><span>' + esc(r.biller) + ' · ' + r.memo + ' · ' + fd(whenOf(r)) + '</span><span>·</span><span>' + reasonMeta(r) + '</span><button type="button" class="lnk sm" data-act="dispute" data-v="' + r.id + '">Open dispute</button></div>'
+      })
+      return h + '</div>'
+    }).join('') + '</div>'
+  }
+  const legend = () =>
+    '<div class="oc-legend" aria-label="Legend">' +
+    ['F', 'P', 'D', 'N'].map((k) => '<span><span class="sw" style="background:' + RES[k].color + '"></span>' + RES[k].label + (k === 'N' ? ' <span class="k k-proposed">Proposed</span>' : '') + '</span>').join('') +
+    '<span class="wt">Waiting (counted apart, not in the bar)</span><span>· Bar = share of closed disputes, by count</span></div>'
+
+  // ---------- filtering ----------
+  const PERIOD_START = { all: null, 12: '2025-09-17', 6: '2026-03-17' }
+  function filtered(st) {
+    const start = PERIOD_START[st.period]
+    return DATA[st.data].filter((r) =>
+      (st.biller === 'all' || r.biller === st.biller) &&
+      (st.handled === 'all' || r.by === st.handled) &&
+      (r.result === 'W' || !start || whenOf(r) >= start))
+  }
+
+  // ---------- panels ----------
+  function typePanel(st, list) {
+    const rows = TYPES.map((T) => ({ T, recs: list.filter((r) => r.type === T.key) }))
+    const shown = rows.filter((x) => x.recs.length)
+    const never = rows.filter((x) => !x.recs.length)
+    let h = '<div class="oc-card">' + legend() + '<table class="tbl oct"><thead><tr><th>Variance type <span class="k k-unresolved">Name: Q-T1</span></th><th>Disputes</th><th>Outcome mix</th><th>Recovered</th><th>Time to answer' + (st.data === 'mock' ? ' *' : '') + '</th><th>Most common denial reason</th></tr></thead><tbody>'
+    for (const { T, recs } of shown) {
+      const a = agg(recs)
+      const open = st.openType === T.key
+      const hl = st.hl === 'row:' + T.key ? ' flow-hl' : ''
+      h += '<tr class="orow' + (open ? ' open' : '') + hl + '" data-act="type" data-v="' + T.key + '">' +
+        '<td class="c-name"><button type="button" class="lnk bold rowbtn" data-act="type" data-v="' + T.key + '" data-fk="type-' + T.key + '" aria-expanded="' + open + '"><span class="chev" aria-hidden="true">▸</span>' + T.name + '</button><div class="tiny muted">' + T.term + (T.key === 'oversize' ? ' · <span class="k k-proposed">name proposed</span>' : '') + (T.key === 'multi' ? ' · <span class="k k-unresolved">Q-D5</span>' : '') + '</div></td>' +
+        '<td data-l="Disputes"><div class="nowrap">' + a.n + ' answered</div>' + (a.N ? '<div class="tiny muted nowrap">' + a.N + ' no answer</div>' : '') + (a.W ? waitTag(a.W) : '') + '</td>' +
+        '<td data-l="Outcome mix">' + mixBar(a, T.name) + '</td>' +
+        '<td data-l="Recovered">' + rateCell(a) + '</td>' +
+        '<td data-l="Time to answer">' + timeCell(a, st) + '</td>' +
+        '<td class="c-wide" data-l="Most common denial reason">' + reasonCell(a) + '</td></tr>'
+      if (open) h += '<tr class="det-row"><td colspan="6">' + typeDetail(T, recs, st) + '</td></tr>'
+    }
+    h += '</tbody></table><div class="oc-foot">'
+    if (never.length) h += '<span>Not disputed yet: ' + never.map((x) => x.T.name).join(', ') + '</span>'
+    if (st.data === 'mock') h += '<span>* Assumes 04 captures the Biller\'s answer date. Today\'s data only has the date your team recorded it.</span>'
+    else h += '<span>Time to answer isn\'t measured yet: only the date your team recorded each answer is stored.</span>'
+    return h + '</div></div>'
+  }
+  function typeDetail(T, recs, st) {
+    const a = agg(recs)
+    const byB = BILLERS.map((b) => ({ b, recs: recs.filter((r) => r.biller === b) })).filter((x) => x.recs.length)
+    let split = '<div class="scroll-x"><table class="tbl mini mcards"><thead><tr><th>Biller</th><th>Disputes</th><th>Outcome mix</th><th>Recovered</th><th>Time to answer</th></tr></thead><tbody>'
+    for (const x of byB) {
+      const b = agg(x.recs)
+      const hl = st.hl === 'split:' + x.b ? ' class="flow-hl"' : ''
+      split += '<tr' + hl + '><td class="semi c-name">' + x.b + '</td><td data-l="Disputes"><div class="nowrap">' + b.n + ' answered</div>' + (b.N ? '<div class="tiny muted">' + b.N + ' no answer</div>' : '') + (b.W ? waitTag(b.W) : '') + '</td><td data-l="Outcome mix">' + mixBar(b, x.b) + '</td><td data-l="Recovered">' + rateCell(b) + '</td><td data-l="Time to answer">' + timeCell(b, st) + '</td></tr>'
+    }
+    split += '</tbody></table></div>'
+    const recent = [...recs].sort((p, q) => whenOf(q).localeCompare(whenOf(p))).slice(0, 5)
+    const denials = recs.filter((r) => r.result === 'D')
+    return '<div class="det"><div class="det-h"><h4>' + T.name + ' <span class="muted medium">· ' + T.term + '</span></h4><span class="tiny muted">' + plural(a.n, 'answer') + ' from ' + plural(byB.filter((x) => x.recs.some(ANSWERED)).length, 'Biller') + (a.W ? ' · ' + a.W + ' waiting' : '') + '</span></div>' +
+      '<section><h5>Split by Biller</h5>' + split + '</section>' +
+      '<div class="det-grid"><section><h5>What Billers said when they denied</h5>' + reasonBlock(denials, st, st.hl === 'reasons') + '</section>' +
+      '<section><h5>Recent cases</h5><ul class="cases">' + recent.map((r) => caseItem(r, st)).join('') + '</ul>' + (recs.length > 5 ? '<button type="button" class="lnk sm">See all ' + recs.length + ' in Every finding</button>' : '') + '</section></div></div>'
+  }
+
+  // Patterns only at the Pattern tier, as counts with the months they cover. Never a verdict label.
+  function patternList(recs) {
+    const out = []
+    for (const T of TYPES) {
+      const rs = recs.filter((r) => r.type === T.key)
+      const a = agg(rs)
+      if (a.tier !== 3) continue
+      const months = rs.filter(ANSWERED).map(whenOf).sort()
+      const from = fm(months[0]), to = fm(months[months.length - 1])
+      const span = from.slice(-4) === to.slice(-4) ? from.slice(0, 3) + '–' + to : from + '–' + to
+      out.push('<div class="small">' + T.name + ': ' + a[a.dom] + ' of ' + a.n + ' ' + DOM_WORD[a.dom] + ' <span class="tiny muted">· ' + span + '</span></div>')
+    }
+    return out.length ? '<div class="plist">' + out.join('') + '</div>' : '<span class="muted">—</span>'
+  }
+  function billerPanel(st, list) {
+    const rows = BILLERS.map((b) => ({ b, recs: list.filter((r) => r.biller === b) }))
+    const shown = rows.filter((x) => x.recs.length)
+    const never = rows.filter((x) => !x.recs.length)
+    const real = st.data !== 'mock'
+    let h = '<div class="oc-card">' + legend() + '<table class="tbl oct"><thead><tr><th>Biller</th><th>Disputes sent</th><th>Time to answer' + (real ? '' : ' *') + '</th><th>Outcome mix</th><th>Recovered</th><th>Patterns</th><th>Last answer</th></tr></thead><tbody>'
+    for (const { b, recs } of shown) {
+      const a = agg(recs)
+      const open = st.openBiller === b
+      h += '<tr class="orow' + (open ? ' open' : '') + '" data-act="biller" data-v="' + b + '">' +
+        '<td class="c-name"><button type="button" class="lnk bold rowbtn" data-act="biller" data-v="' + b + '" data-fk="biller-' + b + '" aria-expanded="' + open + '"><span class="chev" aria-hidden="true">▸</span>' + b + '</button></td>' +
+        '<td data-l="Disputes sent"><div>' + a.sent + '</div>' + (a.W ? waitTag(a.W) : '') + '</td>' +
+        '<td data-l="Time to answer">' + timeCell(a, st) + '</td>' +
+        '<td data-l="Outcome mix">' + mixBar(a, b) + '</td>' +
+        '<td data-l="Recovered">' + rateCell(a) + '</td>' +
+        '<td data-l="Patterns">' + patternList(recs) + '</td>' +
+        '<td data-l="Last answer">' + (a.last ? '<div>' + fd(whenOf(a.last)) + '</div><div class="tiny muted">' + RES[a.last.result].label + (real ? ' · recorded' : '') + '</div>' : '<div class="muted">None yet</div>' + (a.W ? waitTag(a.W, a.oldestWait) : '')) + '</td></tr>'
+      if (open) h += '<tr class="det-row"><td colspan="7">' + billerDetail(b, recs, st) + '</td></tr>'
+    }
+    h += '</tbody></table><div class="oc-foot">'
+    if (never.length) h += '<span>Not disputed yet: ' + never.map((x) => x.b).join(', ') + '</span>'
+    h += '<span>Patterns: only variance types with 6 or more answers where at least 75% got the same answer, counted in the selected period (last 12 months by default, as in 06). Otherwise —. <span class="k k-proposed">Proposed · Q-G1 · Q-05g</span></span>'
+    if (!real) h += '<span>* Assumes 04 captures the Biller\'s answer date.</span>'
+    return h + '</div></div>'
+  }
+  function billerDetail(b, recs, st) {
+    const a = agg(recs)
+    const waiting = recs.filter((r) => r.result === 'W').sort((p, q) => p.sent.localeCompare(q.sent))
+    if (!a.closed) {
+      return '<div class="det"><div class="det-h"><h4>' + b + '</h4><span class="tiny muted">No answers yet</span></div>' +
+        '<p class="small">No answers from ' + b + ' yet. ' + plural(waiting.length, 'dispute is', 'disputes are') + ' waiting. The oldest was sent ' + fd(a.oldestWait) + ' (' + dd(a.oldestWait, NOW) + ' days ago). Waiting never counts against a Biller.</p>' +
+        '<ul class="cases">' + waiting.map((r) => caseItem(r, st)).join('') + '</ul></div>'
+    }
+    const types = TYPES.filter((T) => recs.some((r) => r.type === T.key))
+    let grid = '<div class="scroll-x"><table class="tbl mini"><thead><tr><th>Variance type</th><th class="num">Fully</th><th class="num">Partly</th><th class="num">Denied</th><th class="num">No answer</th><th class="num">Waiting</th><th class="num">Recovered</th></tr></thead><tbody>'
+    for (const T of types) {
+      const t = agg(recs.filter((r) => r.type === T.key))
+      const c = (k) => '<td class="num' + (t[k] ? '' : ' z') + '">' + (t[k] || '·') + '</td>'
+      grid += '<tr><td>' + T.name + '</td>' + c('F') + c('P') + c('D') + c('N') + c('W') + '<td class="num">' + (t.n ? money(t.rec) + '<div class="tiny muted">of ' + money(t.amtAns) + '</div>' : '<span class="muted">—</span>') + '</td></tr>'
+    }
+    grid += '</tbody></table></div>'
+    const hist = [...recs].sort((p, q) => whenOf(q).localeCompare(whenOf(p))).slice(0, 6)
+    const tl = '<ol class="tl">' + hist.map((r, i) => '<li class="' + (r.result === 'W' ? 'now' : 'done') + '"><div class="small"><b>' + fd(r.result === 'W' ? r.sent : whenOf(r)) + '</b> · ' + TYPE[r.type].name + ' · ' + (r.result === 'W' ? 'sent, waiting' : RES[r.result].label) + '</div><div class="tiny muted">' + (r.result === 'P' ? money(r.recovered) + ' of ' + money(r.amount) : money(r.amount)) + ' · ' + r.memo + ' · ' + whoLine(r) + '</div></li>').join('') + '</ol>'
+    return '<div class="det"><div class="det-h"><h4>' + b + '</h4><span class="tiny muted">' + plural(a.n, 'answer') + (a.N ? ' · ' + a.N + ' closed, no answer' : '') + (a.W ? ' · ' + a.W + ' waiting' : '') + '</span></div>' +
+      '<div class="det-grid"><section><h5>What ' + b + ' did, by variance type</h5>' + grid + '<h5 style="margin-top:8px">What ' + b + ' said when it denied</h5>' + reasonBlock(recs.filter((r) => r.result === 'D'), st) + '</section>' +
+      '<section><h5>Recent history</h5>' + tl + '</section></div></div>'
+  }
+
+  function reasonsPanel(st, list) {
+    const den = list.filter((r) => r.result === 'D')
+    let h = '<div class="oc-card"><div class="oc-legend"><span class="k k-unresolved">Unresolved</span><span>Grouped by keyword in this mock. The real grouping method is Unresolved (Q-05d). Quotes are shown as recorded, with who recorded them.</span></div>'
+    if (!den.length) return h + '<div class="oc-empty"><p class="small muted">No denials in this selection.</p></div></div>'
+    const groups = groupThemes(den)
+    h += '<div class="rgrid">'
+    for (const g of groups) {
+      const billers = [...new Set(g.recs.map((r) => r.biller))]
+      const types = TYPES.map((T) => ({ T, n: g.recs.filter((r) => r.type === T.key).length })).filter((x) => x.n)
+      h += '<div class="rcard"><div class="row between"><h4>' + g.theme.label + '</h4><span class="chip ' + (g.theme.key === 'none' ? 'muted' : 'danger') + '">' + plural(g.recs.length, 'denial') + '</span></div>' +
+        '<div class="small muted">' + billers.join(', ') + ' · ' + types.map((x) => x.T.name + (x.n > 1 ? ' (' + x.n + ')' : '')).join(', ') + '</div>'
+      if (g.theme.key === 'none') h += '<p class="small">Nobody wrote down why. 04 proposes asking "What did the Biller say?" when a denial is recorded.</p>'
+      g.recs.slice(0, 2).forEach((r) => {
+        if (r.reason) h += '<p class="qt">' + esc(r.reason) + '</p>'
+        h += '<div class="srcl"><span>' + esc(r.biller) + ' · ' + TYPE[r.type].name + ' · ' + r.memo + ' · ' + money(r.amount) + '</span><span>·</span><span>' + reasonMeta(r) + '</span><button type="button" class="lnk sm" data-act="dispute" data-v="' + r.id + '">Open dispute</button></div>'
+      })
+      if (g.recs.length > 2) h += '<button type="button" class="lnk sm" style="align-self:flex-start">Show all ' + g.recs.length + '</button>'
+      h += '</div>'
+    }
+    return h + '</div><div class="oc-foot"><span>Group names describe what the recorded reasons mention. They are not Implentio\'s judgement of the Biller\'s decision (n350).</span></div></div>'
+  }
+
+  function recentPanel(st, list) {
+    const ans = list.filter((r) => r.result !== 'W').sort((p, q) => whenOf(q).localeCompare(whenOf(p)))
+    const waits = list.filter((r) => r.result === 'W')
+    const real = st.data !== 'mock'
+    const rows = st.recentAll ? ans : ans.slice(0, 8)
+    let h = '<div class="oc-card">'
+    if (waits.length) {
+      const oldest = waits.map((r) => r.sent).sort()[0]
+      h += '<div class="oc-legend"><span class="wt">' + plural(waits.length, 'dispute') + ' still waiting</span><span>· oldest sent ' + fd(oldest) + ' (' + dd(oldest, NOW) + ' days)</span><button type="button" class="lnk sm">See them on the tracker</button></div>'
+    }
+    h += '<table class="tbl oct"><thead><tr><th>' + (real ? 'Recorded' : 'Answered') + '</th><th>Finding</th><th>Biller · credit memo</th><th class="num">Disputed</th><th>Answer</th><th class="num">Recovered</th><th>What they said</th><th>Recorded by</th><th></th></tr></thead><tbody>'
+    for (const r of rows) {
+      const hl = st.hl === 'changed' && r.history ? ' flow-hl' : ''
+      const ch = r.history && r.history.length ? r.history[r.history.length - 1] : null
+      h += '<tr class="orow static' + hl + '"><td data-l="' + (real ? 'Recorded' : 'Answered') + '" class="nowrap">' + fd(whenOf(r)) + '</td>' +
+        '<td class="c-name"><div class="semi">' + TYPE[r.type].name + '</div><div class="tiny muted">' + TYPE[r.type].term + '</div></td>' +
+        '<td data-l="Biller · credit memo">' + esc(r.biller) + '<div class="tiny muted nowrap">' + r.memo + '</div></td>' +
+        '<td class="num" data-l="Disputed">' + money(r.amount) + '</td>' +
+        '<td data-l="Answer">' + chip(r) + (ch ? '<div class="tiny muted" style="margin-top:3px">Changed ' + fd(r.recorded) + ' · was ' + RES[ch.result].label + ' (' + money(ch.recovered) + ')</div>' : '') + '</td>' +
+        '<td class="num" data-l="Recovered">' + (r.result === 'N' ? '<span class="muted">—</span>' : money(r.recovered)) + '</td>' +
+        '<td class="c-wide" data-l="What they said">' + (r.result === 'D' ? (r.reason ? '<q class="rq">' + esc(r.reason) + '</q>' : '<span class="muted">No reason recorded</span>') : '<span class="muted">—</span>') + '</td>' +
+        '<td data-l="Recorded by">' + (r.by === 'implentio' ? 'Implentio <span class="cx cx-conflict">C11</span>' : esc(r.recBy)) + '</td>' +
+        '<td><button type="button" class="lnk sm nowrap" data-act="dispute" data-v="' + r.id + '">Open dispute</button></td></tr>'
+    }
+    h += '</tbody></table><div class="oc-foot">'
+    if (ans.length > 8) h += '<span>Showing ' + rows.length + ' of ' + ans.length + ' answers · <button type="button" class="lnk sm" data-act="more" data-fk="more">' + (st.recentAll ? 'Show fewer' : 'Show all') + '</button></span>'
+    if (real) h += '<span>The Biller\'s answer date isn\'t stored yet (L3). Dates here are when your team recorded each answer.</span>'
+    else h += '<span>Only the latest answer to each dispute counts in the numbers. Earlier answers stay in its history (n345).</span>'
+    return h + '</div></div>'
+  }
+
+  function ledgerPanel(st, list) {
+    let rows
+    const real = st.data !== 'mock'
+    if (real) {
+      rows = LEDGER_REAL.filter((r) => (st.biller === 'all' || r.biller === st.biller) && (st.handled !== 'implentio'))
+      if (st.data === 'empty') rows = rows.filter((r) => !r.rec && r.rec !== 0)
+    } else {
+      rows = [...list].sort((p, q) => whenOf(q).localeCompare(whenOf(p))).slice(0, 10).map((r) => ({
+        type: r.type, memo: r.memo, biller: r.biller, amount: r.amount, disputed: r.amount,
+        rec: ANSWERED(r) ? r.recovered : undefined, status: [RES[r.result].label, RES[r.result].chip],
+        date: r.result === 'W' ? '' : fd(whenOf(r)), reason: r.result === 'D' && !!r.reason,
+      }))
+    }
+    let h = '<div class="oc-card"><div class="oc-legend"><span class="k k-existing">Existing ledger</span><span>kept as a secondary tab · plain finding names · 9 of today\'s 12 columns</span></div>' +
+      '<div class="scroll-x"><table class="tbl"><thead><tr><th>Finding</th><th>Credit memo</th><th>Biller</th><th class="num">Identified</th><th class="num">Disputed</th><th class="num">Recovered</th><th>Status</th><th>Date</th><th>Reason</th></tr></thead><tbody>'
+    for (const r of rows) {
+      h += '<tr><td><div class="semi">' + TYPE[r.type].problem + '</div><span class="tag">' + TYPE[r.type].term + '</span></td><td class="muted nowrap">' + r.memo + '</td><td class="muted">' + r.biller + '</td>' +
+        '<td class="num">' + money(r.amount) + '</td><td class="num">' + (r.disputed != null ? money(r.disputed) : '—') + '</td><td class="num">' + (r.rec != null ? money(r.rec) : '—') + '</td>' +
+        '<td><span class="chip ' + r.status[1] + '">' + r.status[0] + '</span></td><td class="muted nowrap">' + (r.date || '—') + '</td>' +
+        '<td>' + (r.reason ? '<button type="button" class="lnk sm">View reason</button>' : '<span class="muted">—</span>') + '</td></tr>'
+    }
+    const total = real ? 22 : list.length
+    return h + '</tbody></table></div><div class="oc-foot"><span>Showing ' + rows.length + ' of ' + total + (real ? ' findings (the mock trims the list)' : ' disputes') + ' · Filter by status and outcome here, as today</span></div></div>'
+  }
+
+  function emptyCard(st, tot, hasFilters) {
+    if (hasFilters) {
+      return '<div class="oc-card oc-empty"><h4>No answers match these filters</h4><p class="small muted">Try another Biller, a longer period, or everyone\'s disputes.</p><button type="button" class="btn sm" data-act="clear" data-fk="clear">Clear filters</button></div>'
+    }
+    return '<div class="oc-card oc-empty"><h4>No answers from your Billers yet</h4>' +
+      '<p class="small">When a Biller answers one of your disputes and your team records it, this page shows what you\'ve learned:</p>' +
+      '<ul><li><b>Which charges get paid back</b>, by variance type and by Biller</li><li><b>Why disputes are denied</b>, in your team\'s own words</li><li><b>How long Billers take to answer</b>, once answer dates are recorded</li></ul>' +
+      (tot.W ? '<p class="small muted"><span class="wt">' + plural(tot.W, 'dispute') + ' waiting on Billers now</span> · oldest sent ' + fd(tot.oldestWait) + '</p>' : '') +
+      '<div class="row"><button type="button" class="btn sm primary">Open the tracker</button><button type="button" class="btn sm" data-act="tab" data-v="all" data-fk="tab-all">See every finding</button></div></div>'
+  }
+
+  // ---------- page ----------
+  const PAGE_DEFAULT = { data: 'real', tab: 'type', biller: 'all', period: '12', handled: 'all', openType: null, openBiller: null, how: false, hl: null, recentAll: false }
+  const TABS = [['type', 'By variance type'], ['biller', 'By Biller'], ['reasons', 'Denial reasons'], ['recent', 'Recent answers'], ['all', 'Every finding']]
+
+  function scopeLine(st, list, tot) {
+    if (!tot.closed) return 'No answers yet' + (tot.W ? ' · ' + plural(tot.W, 'dispute') + ' waiting on Billers' : '')
+    const firstAns = list.filter((r) => r.result !== 'W').map(whenOf).sort()[0]
+    const since = fm([PERIOD_START[st.period], firstAns].filter(Boolean).sort().pop())
+    const parts = [plural(tot.n, 'dispute') + ' answered since ' + since]
+    if (tot.N) parts.push(tot.N + ' closed with no answer')
+    if (tot.W) parts.push(tot.W + ' still waiting')
+    const imp = list.filter((r) => r.result !== 'W' && r.by === 'implentio').length
+    const team = tot.closed - imp
+    parts.push(imp === 0 ? 'Recorded by your team' : team === 0 ? 'Recorded by Implentio <span class="cx cx-conflict">C11</span>' : 'Recorded by your team · ' + imp + ' by Implentio <span class="cx cx-conflict">C11</span>')
+    return parts.join(' · ')
+  }
+  function howBox(st) {
+    const real = st.data !== 'mock'
+    return '<div class="oc-how" id="how-' + st.uid + '"><div class="semi">How we count</div><ul>' +
+      '<li><b>Recovered</b> is the money you got back, out of the money in disputes the Biller has answered. Disputes still waiting never count against a Biller.</li>' +
+      '<li><b>Paid</b> means fully or partly collected. <b>Closed, no answer</b> is shown apart and isn\'t counted as a loss.</li>' +
+      '<li>Under 3 answers we don\'t show a rate. With 3 to 5 we show counts. From 6 answers we show a percentage too. Everything covers the period you pick (last 12 months unless you change it).</li>' +
+      '<li><b>Time to answer</b> is the days from sending to the Biller\'s answer.' + (real ? ' We can\'t measure it yet: we only know when your team recorded each answer.' : '') + '</li>' +
+      '<li><b>Reasons</b> are what your team wrote down when a Biller said no, unless Implentio handles the dispute (then they are the Biller\'s reason as Implentio recorded it, see C11). Implentio never changes your team\'s reasons.</li>' +
+      '<li>A finding disputed more than once counts once: its money and result combine its attempts.</li></ul></div>'
+  }
+  function filtersRow(st) {
+    const sel = (f, opts) => opts.map(([v, l]) => '<option value="' + v + '"' + (String(st[f]) === String(v) ? ' selected' : '') + '>' + l + '</option>').join('')
+    const active = st.biller !== 'all' || st.period !== '12' || st.handled !== 'all'
+    return '<div class="oc-filters">' +
+      '<div class="field"><label class="flabel" for="f-b-' + st.uid + '">Biller</label><select class="select" id="f-b-' + st.uid + '" data-f="biller" data-fk="f-biller">' + sel('biller', [['all', 'All Billers'], ...BILLERS.map((b) => [b, b])]) + '</select></div>' +
+      '<div class="field"><label class="flabel" for="f-p-' + st.uid + '">Period</label><select class="select" id="f-p-' + st.uid + '" data-f="period" data-fk="f-period">' + sel('period', [['12', 'Last 12 months'], ['6', 'Last 6 months'], ['all', 'All time']]) + '</select></div>' +
+      '<div class="field"><span class="flabel"><label for="f-h-' + st.uid + '">Handled by</label><span class="k k-proposed">Proposed · 03</span></span><select class="select" id="f-h-' + st.uid + '" data-f="handled" data-fk="f-handled">' + sel('handled', [['all', 'Everyone'], ['you', 'Your team'], ['implentio', 'Implentio']]) + '</select></div>' +
+      (active ? '<button type="button" class="lnk sm" data-act="clear" data-fk="clear2" style="margin-bottom:9px">Clear filters</button>' : '') + '</div>'
+  }
+  function pageHTML(st) {
+    const list = filtered(st)
+    const tot = agg(list)
+    const hasFilters = st.biller !== 'all' || st.period !== '12' || st.handled !== 'all'
+    const badge = st.data === 'mock' ? '<span class="k k-proposed">Mock history · synthetic, seeded</span>'
+      : st.data === 'empty' ? '<span class="k k-proposed">Mock state · nothing answered yet</span>'
+        : '<span class="k k-existing">Your real data today · demo fixtures</span>'
+    let body
+    if (st.tab === 'all') body = ledgerPanel(st, list)
+    else if (!tot.closed) body = emptyCard(st, tot, hasFilters)
+    else body = { type: typePanel, biller: billerPanel, reasons: reasonsPanel, recent: recentPanel }[st.tab](st, list)
+    return '<div class="frame-bar"><span>app.implentio.com/tracker/outcomes</span><span class="fb-right">' + badge + '</span></div>' +
+      '<div class="frame-body"><div class="oc">' +
+      '<div class="oc-app"><div class="oc-h1">Parcel Credit Tracker</div><div class="oc-apptabs" aria-hidden="true"><span>Credit memos</span><span class="on">Credit outcomes</span></div></div>' +
+      '<div class="oc-head"><div><h3>Credit outcomes</h3><p class="oc-scope">' + scopeLine(st, list, tot) + '</p></div>' +
+      '<div class="oc-links"><button type="button" class="lnk sm" data-act="how" data-fk="how" aria-expanded="' + st.how + '" aria-controls="how-' + st.uid + '">How we count</button><button type="button" class="lnk sm">See the money on the tracker →</button></div></div>' +
+      (st.how ? howBox(st) : '') +
+      filtersRow(st) +
+      '<div class="tabs oc-tabs" role="tablist" aria-label="Credit outcomes views">' + TABS.map(([k, l]) => '<button type="button" role="tab" aria-selected="' + (st.tab === k) + '" data-act="tab" data-v="' + k + '" data-fk="tab-' + k + '">' + l + '</button>').join('') + '</div>' +
+      '<div role="tabpanel">' + body + '</div></div></div>'
+  }
+
+  let uidSeq = 0
+  function mountPage(root, init, hooks) {
+    const hk = hooks || {}
+    const st = { ...PAGE_DEFAULT, ...init, uid: ++uidSeq }
+    const render = () => {
+      const ae = document.activeElement
+      const fk = ae && root.contains(ae) ? ae.dataset.fk : null
+      root.innerHTML = pageHTML(st)
+      if (fk) { const el = root.querySelector('[data-fk="' + fk + '"]'); if (el) el.focus() }
+    }
+    root.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-act]')
+      if (!b || !root.contains(b)) return
+      const act = b.dataset.act, v = b.dataset.v
+      if (act === 'tab') { st.tab = v; st.hl = null }
+      else if (act === 'type') { st.openType = st.openType === v ? null : v; if (hk.onType) { hk.onType(v, st); return } }
+      else if (act === 'biller') st.openBiller = st.openBiller === v ? null : v
+      else if (act === 'how') st.how = !st.how
+      else if (act === 'clear') Object.assign(st, { biller: 'all', period: '12', handled: 'all' })
+      else if (act === 'more') st.recentAll = !st.recentAll
+      else if (act === 'dispute') { if (hk.onDispute) hk.onDispute(v); return }
+      else return
+      render()
+    })
+    root.addEventListener('change', (e) => {
+      const s = e.target.closest('[data-f]')
+      if (!s) return
+      st[s.dataset.f] = s.value
+      render()
+    })
+    render()
+    return {
+      st,
+      set(p, reset) { if (reset) Object.assign(st, PAGE_DEFAULT, { uid: st.uid }); Object.assign(st, p); render() },
+    }
+  }
+
+  // ---------- tooltip (values lead, labels follow; same content in captions) ----------
+  const tip = document.getElementById('tip')
+  document.addEventListener('pointerover', (e) => {
+    const el = e.target.closest && e.target.closest('[data-tip]')
+    if (!el) { tip.style.display = 'none'; return }
+    const [v, l] = el.dataset.tip.split('|')
+    tip.textContent = ''
+    const b = document.createElement('b'); b.textContent = v
+    tip.appendChild(b); tip.appendChild(document.createTextNode(l || ''))
+    tip.style.display = 'block'
+  })
+  document.addEventListener('pointermove', (e) => {
+    if (tip.style.display !== 'block') return
+    const x = Math.min(e.clientX + 12, window.innerWidth - tip.offsetWidth - 8)
+    tip.style.left = x + 'px'
+    tip.style.top = e.clientY + 16 + 'px'
+  })
+  document.addEventListener('pointerout', (e) => {
+    if (e.target.closest && e.target.closest('[data-tip]') && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('[data-tip]'))) tip.style.display = 'none'
+  })
+
+  // ---------- 3 · model ----------
+  const model = mountPage(document.getElementById('mock-model'), { data: 'real' })
+  const DATA_NOTES = {
+    real: "Demo fixtures: CM-2026-0517 (QuickBox) has the only answers; ShipBob's disputes are all waiting; nothing was sent to Flowspace.",
+    mock: 'Synthetic, seeded (same numbers every load). QuickBox pays fuel and denies remote-area fees citing an addendum; ShipBob is slow and sometimes never answers; Flowspace denies shipping price without the rate sheet. Includes the real answers.',
+  }
+  document.querySelectorAll('#data-seg button').forEach((btn) => btn.addEventListener('click', () => {
+    document.querySelectorAll('#data-seg button').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)))
+    document.getElementById('data-note').textContent = DATA_NOTES[btn.dataset.data]
+    model.set({ data: btn.dataset.data, openType: null, openBiller: null })
+  }))
+
+  // ---------- 4 · flow ----------
+  const r3 = REAL.find((r) => r.id === 'r3')
+  const MOCK12 = filtered({ ...PAGE_DEFAULT, data: 'mock' })
+  const qbDas = agg(MOCK12.filter((r) => r.biller === 'QuickBox' && r.type === 'das'))
+  const allDas = agg(MOCK12.filter((r) => r.type === 'das'))
+  const qbDasAdd = qbDas.themes.find((g) => g.theme.key === 'addendum')
+  const FLOW = [
+    { k: 'Before disputing', t: 'A remote-area fee on CM-2026-0630', d: 'Tori is about to dispute a $4.68 remote-area fee with QuickBox. The finding card offers "Past disputes like this" (06, Proposed). The tracker\'s Credit outcomes tab works too.', view: 'finding' },
+    { k: 'By variance type', t: 'Find "Remote-area fee"', d: 'Credit outcomes opens on By variance type, all Billers, last 12 months. Remote-area fee: ' + allDas.n + ' answered, ' + allDas.D + ' denied. Click the row (or Next).', state: { tab: 'type', openType: null, hl: 'row:das' } },
+    { k: 'Split by Biller', t: 'QuickBox: ' + qbDas.n + ' answered, ' + qbDas.D + ' denied', d: 'The detail panel splits the type by Biller. QuickBox paid ' + qbDas.paid + ' of ' + qbDas.n + ' (' + qbDas.F + ' fully, ' + qbDas.P + ' partly) and denied ' + qbDas.D + '. ' + TIER[qbDas.tier] + ': ' + (qbDas.tier === 1 ? 'counts and money, no percentage.' : 'a percentage of the money, with counts.'), state: { tab: 'type', openType: 'das', hl: 'split:QuickBox' } },
+    { k: 'Read the reasons', t: (qbDasAdd ? qbDasAdd.recs.length : 0) + ' of ' + qbDas.D + ' QuickBox denials mention a contract addendum', d: 'Quoted as your team entered them, with who recorded them and when. One denial has no reason recorded. That gap is what 04 fixes.', state: { tab: 'type', openType: 'das', hl: 'reasons' } },
+    { k: 'Open dispute', t: 'The dispute QuickBox denied on ' + fd(r3.recorded).replace(/, \d{4}$/, ''), d: 'She opens the latest denial to see exactly what was sent and what came back. She still decides what to dispute: nothing is pre-selected or hidden (D6).', view: 'dispute' },
+  ]
+  const flowPage = mountPage(document.getElementById('mock-flow'), { data: 'mock' }, {
+    onType: (v) => { if (v === 'das' && step < 2) go(2); else flowPage.set({ hl: null }) },
+    onDispute: () => go(4),
+  })
+  const flowStatic = document.getElementById('flow-static')
+  const FINDING_HTML =
+    '<div class="frame"><div class="frame-bar"><span>app.implentio.com/memos/CM-2026-0630</span></div><div class="frame-body">' +
+    '<div class="card"><div class="row between top"><div class="stack s4"><div class="semi">Remote-area fee charged incorrectly</div><div class="row small muted" style="gap:8px"><span class="tag">Delivery area surcharge (DAS)</span><span>OSM · 3 packages · 1 invoice</span></div></div>' +
+    '<div class="stack s4" style="align-items:flex-end"><span class="money">$4.68</span><span class="chip">Ready to dispute</span></div></div>' +
+    '<div class="small muted">Dispute by Sep 20, 2026 · 3 days remaining</div>' +
+    '<div class="banner brand small"><div class="stack s4"><div><b>Past disputes like this</b> <span class="k k-proposed">Proposed · 06</span></div><div>' + qbDas.D + ' of your ' + qbDas.n + ' remote-area disputes with QuickBox were denied.</div><div><button type="button" class="lnk sm" id="flow-go2">See them in Credit outcomes →</button></div></div></div></div>' +
+    '<p class="tiny muted">Mock: counts come from the 18-month mock history. 06 decides the wording and where it appears.</p></div></div>'
+  const DISPUTE_HTML =
+    '<div class="frame"><div class="frame-bar"><span>app.implentio.com/memos/CM-2026-0517?dispute=aug-20</span></div><div class="frame-body">' +
+    '<div class="card"><div class="row between top"><div class="stack s4"><div class="semi">Dispute sent to QuickBox · Aug 20, 2026</div><div class="small muted">CM-2026-0517 · 3 findings · $14,500.00 · Sent by Tori Matthews from a connected mailbox</div></div><span class="chip success">Done</span></div>' +
+    '<table class="tbl"><tbody>' +
+    '<tr><td><div class="semi">Shipping price higher than your contract rate</div><div class="tiny muted">Base freight</div></td><td class="num">$9,200.00</td><td><span class="chip success">Fully collected</span><div class="tiny muted">Recorded Sep 1 · changed from Partly collected</div></td></tr>' +
+    '<tr><td><div class="semi">Fuel charge higher than your contract allows</div><div class="tiny muted">Fuel surcharge</div></td><td class="num">$4,100.00</td><td><span class="chip attention">Partly collected</span><div class="tiny muted">$2,500.00 collected · $1,600.00 not recovered</div></td></tr>' +
+    '<tr class="hl"><td><div class="semi">Remote-area fee charged incorrectly</div><div class="tiny muted">Delivery area surcharge (DAS)</div></td><td class="num">$1,200.00</td><td><span class="chip danger">Denied</span><div class="tiny muted">Recorded Sep 2 by Tori Matthews</div></td></tr>' +
+    '</tbody></table>' +
+    '<div class="stack s4"><span class="small semi">Why QuickBox declined</span><p class="qt">' + esc(r3.reason) + '</p><span class="srcl">Customer-entered · Tori Matthews · Sep 2, 2026</span></div>' +
+    '<div class="row"><button type="button" class="btn sm" id="flow-back">← Back to CM-2026-0630</button></div></div>' +
+    '<div class="note"><span class="note-label">What she does next</span>She goes back to CM-2026-0630 and decides. She can dispute anyway and attach the addendum page, or mark it Won\'t pursue. Credit outcomes informs; it never ticks, unticks or hides a finding (D6).</div></div></div>'
+  let step = 0
+  const stepsEl = document.getElementById('flow-steps')
+  stepsEl.innerHTML = FLOW.map((s, i) => '<li><button type="button" data-step="' + i + '"><b>' + (i + 1) + '</b><span><span class="semi">' + s.k + '</span><br><span class="muted">' + esc(s.t) + '</span></span></button></li>').join('')
+  stepsEl.addEventListener('click', (e) => { const b = e.target.closest('[data-step]'); if (b) go(+b.dataset.step) })
+  function go(i) {
+    step = Math.max(0, Math.min(FLOW.length - 1, i))
+    const s = FLOW[step]
+    stepsEl.querySelectorAll('button').forEach((b, j) => {
+      if (j === step) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current')
+      b.classList.toggle('done', j < step)
+    })
+    document.getElementById('flow-kicker').textContent = 'Step ' + (step + 1) + ' of ' + FLOW.length + ' · ' + s.k
+    document.getElementById('flow-title').textContent = s.t
+    document.getElementById('flow-desc').textContent = s.d
+    const pageEl = document.getElementById('mock-flow')
+    if (s.view) {
+      pageEl.hidden = true
+      flowStatic.hidden = false
+      flowStatic.innerHTML = s.view === 'finding' ? FINDING_HTML : DISPUTE_HTML
+      const g2 = document.getElementById('flow-go2'); if (g2) g2.addEventListener('click', () => go(1))
+      const bk = document.getElementById('flow-back'); if (bk) bk.addEventListener('click', () => go(0))
+    } else {
+      pageEl.hidden = false
+      flowStatic.hidden = true
+      flowStatic.innerHTML = ''
+      flowPage.set(Object.assign({ data: 'mock' }, s.state), true)
+    }
+    document.getElementById('flow-prev').disabled = step === 0
+    document.getElementById('flow-next').disabled = step === FLOW.length - 1
+  }
+  document.getElementById('flow-prev').addEventListener('click', () => go(step - 1))
+  document.getElementById('flow-next').addEventListener('click', () => go(step + 1))
+  go(0)
+
+  // ---------- 5 · states ----------
+  const sb = agg(DATA.real.filter((r) => r.biller === 'ShipBob'))
+  const impl = agg(filtered({ ...PAGE_DEFAULT, data: 'mock', handled: 'implentio' }))
+  const STATES = {
+    empty: { s: { data: 'empty', tab: 'type' }, note: '<b>Nothing answered yet.</b> A new account, or answers not recorded. The page says what will appear and points to the tracker, where the waiting disputes are. "Every finding" still works. <span class="k k-proposed">Proposed</span>' },
+    thin: { s: { data: 'real', tab: 'type' }, note: '<b>Thin data, today\'s real demo.</b> 3 answers, all QuickBox, one per type. Each type row says "Not enough answers yet (1)". Nothing is a percentage. Time to answer says "Not measured yet". The page still answers "what happened" through the mix, the cases and the one quoted reason. <span class="k k-existing">Real data</span>' },
+    rich: { s: { data: 'mock', tab: 'type' }, note: '<b>Rich history, mock.</b> 56 disputes over 18 months, shown for the last 12 months by default. Rows with 6+ answers show a money percentage with counts. Only Fuel charge reaches the Pattern tier. "Shipping price and fuel" still says "Not enough answers yet (1)". Time to answer assumes 04 captures the answer date. <span class="k k-proposed">Mock</span>' },
+    implentio: { s: { data: 'mock', tab: 'type', handled: 'implentio' }, note: '<b>Filtered to disputes Implentio handled.</b> ' + impl.n + ' answers, ' + impl.W + ' waiting. The scope line says "Recorded by Implentio", and so does every case. <span class="cx cx-conflict">Potential conflict · C11</span> n344, n350 and D8 say answers are customer-entered. Who may record them is Q-O4. The filter itself depends on 03 (<code>handledBy</code>).' },
+    waiting: { s: { data: 'real', tab: 'biller', openBiller: 'ShipBob' }, note: '<b>A Biller with only waiting disputes.</b> ShipBob has ' + sb.W + ' disputes and no answers. The row says "No answers yet" and the detail lists what\'s waiting and for how long. Today\'s tab shows 0% for the same data (L5). Flowspace, never disputed, is listed as "Not disputed yet". <span class="k k-proposed">Proposed</span>' },
+    changed: { s: { data: 'real', tab: 'recent', hl: 'changed' }, note: '<b>After an answer changed.</b> Real fixture: QuickBox shipping price was recorded as Partly collected ($6,000.00) on Aug 28, then changed to Fully collected on Sep 1. Only the latest answer counts in every number. The change stays visible here and on the dispute card (n345). <span class="k k-existing">Real data</span>' },
+  }
+  const statesPage = mountPage(document.getElementById('mock-states'), STATES.empty.s)
+  const stateNote = document.getElementById('state-note')
+  function setState(k) {
+    document.querySelectorAll('#state-seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.state === k)))
+    stateNote.innerHTML = '<span class="note-label">What this state shows</span><span>' + STATES[k].note + '</span>'
+    statesPage.set(STATES[k].s, true)
+  }
+  document.querySelectorAll('#state-seg button').forEach((b) => b.addEventListener('click', () => setState(b.dataset.state)))
+  setState('empty')
+
+  // ---------- 6 · count vs money ----------
+  const fsb = agg(DATA.mock.filter((r) => r.biller === 'Flowspace' && r.type === 'base' && ANSWERED(r)))
+  const notRec = r2(fsb.amtAns - fsb.rec)
+  document.getElementById('cvb').innerHTML =
+    '<span class="small semi">By count</span><div><div class="mix" role="img" aria-label="By count: ' + fsb.paid + ' paid, ' + fsb.D + ' denied, of ' + fsb.n + '"><span style="flex:' + fsb.paid + ' 1 0;background:var(--c-good)" data-tip="' + fsb.paid + ' of ' + fsb.n + '|Paid (fully collected)"></span><span style="flex:' + fsb.D + ' 1 0;background:var(--c-bad)" data-tip="' + fsb.D + ' of ' + fsb.n + '|Denied"></span></div><div class="mix-cap">' + fsb.paid + ' paid · ' + fsb.D + ' denied (of ' + fsb.n + ' answers) = ' + pct(fsb.paid / fsb.n) + ' of disputes</div></div>' +
+    '<span class="small semi">By money</span><div><div class="mix" role="img" aria-label="By money: ' + money(fsb.rec) + ' recovered, ' + money(notRec) + ' not recovered"><span style="flex:' + fsb.rec + ' 1 0;background:var(--c-good)" data-tip="' + money(fsb.rec) + '|Recovered"></span><span style="flex:' + notRec + ' 1 0;background:var(--c-bad)" data-tip="' + money(notRec) + '|Not recovered"></span></div><div class="mix-cap">' + money(fsb.rec) + ' recovered · ' + money(notRec) + ' not recovered = ' + pct(fsb.rate) + ' of the money</div></div>' +
+    '<span></span><div class="small"><span class="sw" style="background:var(--c-good)"></span>Paid / Recovered <span class="sw" style="background:var(--c-bad);margin-left:10px"></span>Denied / Not recovered</div>'
+
+  // expose for checks
+  window.__oc = { DATA, agg }
+})()
+</script>
+</body>
+</html>

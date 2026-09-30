@@ -1,0 +1,1868 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 · Showing why a charge is wrong — Implentio planning</title>
+<style id="kit">
+/* Planning kit — shared by every prototype-planning/*.html file.
+   Inlined into each file's style block with id="kit" by sync-kit.mjs, so
+   every file stays self-contained (never write a closing style tag here). Edit here, then run:
+     node prototype-planning/_kit/sync-kit.mjs
+   Token values are copied from src/styles/tokens.css (--ds-*). */
+
+:root {
+  --ds-purple-700: #34287c; --ds-purple-600: #4535a5; --ds-purple-500: #5642ce;
+  --ds-purple-300: #bbb3eb; --ds-purple-100: #eeecfa;
+  --ds-orange-700: #913806; --ds-orange-500: #f25e0a; --ds-orange-100: #feefe6;
+  --ds-neutral-900: #10103e; --ds-neutral-800: #393863; --ds-neutral-700: #61608b;
+  --ds-neutral-600: #9a98b7; --ds-neutral-500: #bab8d1; --ds-neutral-400: #cccadc;
+  --ds-neutral-300: #e0dfec; --ds-neutral-200: #eceafa; --ds-neutral-100: #f6f4fe;
+  --ds-neutral-50: #f7f6f9; --ds-neutral-0: #ffffff;
+  --ds-red-500: #aa261b; --ds-red-100: #fbd8d6; --ds-green-500: #3a802f; --ds-green-100: #d3edce;
+  --ds-yellow-500: #9c6d11; --ds-yellow-100: #ffeac2;
+  --ds-blue-800: #1f4366; --ds-blue-500: #477db2; --ds-blue-300: #9dcaf5; --ds-blue-100: #d9ecff;
+
+  --fg: var(--ds-neutral-900); --muted: var(--ds-neutral-700); --faint: var(--ds-neutral-600);
+  --bg: var(--ds-neutral-50); --surface: var(--ds-neutral-0);
+  --line: rgba(16, 16, 62, 0.1); --line-2: rgba(16, 16, 62, 0.16); --line-3: rgba(16, 16, 62, 0.24);
+  --brand: var(--ds-purple-500); --brand-dark: var(--ds-purple-600); --brand-soft: var(--ds-purple-100);
+  --money: var(--ds-orange-700); --accent-soft: var(--ds-orange-100);
+  --focus: var(--ds-blue-300);
+
+  --t-neutral-fg: var(--ds-purple-500); --t-neutral-bg: var(--ds-purple-100);
+  --t-info-fg: var(--ds-blue-800); --t-info-bg: var(--ds-blue-100);
+  --t-success-fg: #2e6a28; --t-success-bg: var(--ds-green-100);
+  --t-attention-fg: #7f5a14; --t-attention-bg: var(--ds-yellow-100);
+  --t-danger-fg: var(--ds-red-500); --t-danger-bg: var(--ds-red-100);
+  --t-muted-fg: var(--ds-neutral-700); --t-muted-bg: var(--ds-neutral-50);
+
+  /* chart colours = the app's TONE_CHART_COLOR */
+  --c-open: var(--ds-purple-500); --c-wait: var(--ds-blue-500); --c-good: var(--ds-green-500);
+  --c-part: var(--ds-yellow-500); --c-bad: var(--ds-red-500); --c-none: var(--ds-neutral-500);
+
+  --r-s: 4px; --r-m: 6px; --r-l: 8px; --r-xl: 12px;
+  --shadow: 0 1px 0 rgba(27, 31, 35, 0.04);
+  --shadow-pop: 0 1px 0 rgba(27, 31, 35, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+  --font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* planning-layer colours (annotations, never product UI) */
+  --k-existing: #5d5c78; --k-existing-bg: #eceaf3;
+  --k-confirmed: #1f4366; --k-confirmed-bg: #d9ecff;
+  --k-proposed: #913806; --k-proposed-bg: #feefe6;
+  --k-unresolved: #7f5a14; --k-unresolved-bg: #ffeac2;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 400 14px/1.5 var(--font); letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums;
+}
+h1, h2, h3, h4 { margin: 0; letter-spacing: -0.02em; font-weight: 600; line-height: 1.25; }
+h1 { font-size: 28px; letter-spacing: -0.03em; }
+h2 { font-size: 21px; }
+h3 { font-size: 16px; }
+h4 { font-size: 14px; }
+p { margin: 0; }
+a { color: var(--brand); text-decoration: none; font-weight: 500; }
+a:hover { text-decoration: underline; }
+button { font: inherit; letter-spacing: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+ul, ol { margin: 0; padding-inline-start: 20px; }
+li + li { margin-top: 4px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
+
+/* ---------- document shell ---------- */
+.doc { max-width: 1200px; margin: 0 auto; padding: 28px 24px 96px; display: flex; flex-direction: column; gap: 40px; }
+.doc-head { display: flex; flex-direction: column; gap: 10px; }
+.crumbs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 13px; }
+.crumbs a { font-weight: 500; }
+.eyebrow { font: 600 12px/1.3 var(--font); letter-spacing: 0.05em; text-transform: uppercase; color: var(--brand); }
+.lede { font-size: 16px; color: var(--muted); max-width: 80ch; }
+.toc {
+  position: sticky; top: 0; z-index: 50; display: flex; gap: 6px; flex-wrap: wrap;
+  padding: 10px 0; margin: -10px 0 0; background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(6px); border-bottom: 1px solid var(--line);
+}
+.toc a { padding: 4px 10px; border-radius: 99px; font-size: 13px; color: var(--muted); border: 1px solid var(--line); background: var(--surface); }
+.toc a:hover { color: var(--brand); border-color: var(--ds-purple-300); text-decoration: none; }
+.sec { display: flex; flex-direction: column; gap: 16px; scroll-margin-top: 64px; }
+.sec-head { display: flex; flex-direction: column; gap: 6px; }
+.sec-num { font: 600 12px/1 var(--font); color: var(--faint); letter-spacing: 0.05em; text-transform: uppercase; }
+.sub { display: flex; flex-direction: column; gap: 12px; }
+.prose { max-width: 78ch; }
+.prose > * + * { margin-top: 8px; }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+.small { font-size: 13px; }
+.tiny { font-size: 12px; }
+.semi { font-weight: 600; }
+.medium { font-weight: 500; }
+.nowrap { white-space: nowrap; }
+.money { color: var(--money); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* layout helpers */
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.row.top { align-items: flex-start; }
+.between { justify-content: space-between; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.stack.s4 { gap: 4px; } .stack.s8 { gap: 8px; } .stack.s16 { gap: 16px; } .stack.s24 { gap: 24px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+.grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+
+/* ---------- planning layer (annotations) ---------- */
+.k { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 99px; font: 600 11px/18px var(--font); letter-spacing: 0.02em; white-space: nowrap; vertical-align: middle; }
+.k::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.k-existing { color: var(--k-existing); background: var(--k-existing-bg); }
+.k-confirmed { color: var(--k-confirmed); background: var(--k-confirmed-bg); }
+.k-proposed { color: var(--k-proposed); background: var(--k-proposed-bg); }
+.k-unresolved { color: var(--k-unresolved); background: var(--k-unresolved-bg); }
+.cx { display: inline-block; padding: 1px 7px; border-radius: var(--r-s); font: 600 11px/18px var(--font); border: 1px solid currentColor; white-space: nowrap; }
+.cx-change { color: var(--k-confirmed); }
+.cx-compat { color: var(--ds-green-500); }
+.cx-conflict { color: var(--ds-red-500); }
+.cx-verify { color: var(--k-unresolved); }
+.legend { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); }
+
+/* .note and .q are block containers: inline text inside them flows normally. */
+.note {
+  border: 1px dashed var(--line-3); border-radius: var(--r-l); background: #fffdf7;
+  padding: 12px 14px; font-size: 13px; color: var(--ds-neutral-800);
+}
+.note > .note-label { display: block; margin-bottom: 6px; font: 600 11px/1 var(--font); letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+.note > * + *:not(.note-label) { margin-top: 6px; }
+.q {
+  border-inline-start: 3px solid var(--ds-yellow-500); background: var(--k-unresolved-bg);
+  border-radius: 0 var(--r-m) var(--r-m) 0; padding: 10px 12px; font-size: 13px;
+}
+.q > b:first-child { display: block; margin-bottom: 4px; color: var(--k-unresolved); }
+.q > * + * { margin-top: 4px; }
+.problem { border-inline-start: 3px solid var(--ds-red-500); background: #fff6f5; border-radius: 0 var(--r-m) var(--r-m) 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.box.tint { background: var(--ds-neutral-100); }
+
+/* planning tables */
+.ptable { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); overflow: hidden; }
+.ptable th { text-align: start; font-weight: 600; color: var(--muted); background: var(--ds-neutral-50); padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+.ptable td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ptable tr:last-child td { border-bottom: 0; }
+.scroll-x { overflow-x: auto; border-radius: var(--r-l); }
+.d { display: inline-block; padding: 0 6px; border-radius: var(--r-s); font: 600 11px/18px var(--font); white-space: nowrap; }
+.d-have { background: var(--ds-green-100); color: #2e6a28; }
+.d-verify { background: var(--ds-yellow-100); color: #7f5a14; }
+.d-missing { background: var(--ds-red-100); color: var(--ds-red-500); }
+.d-new { background: var(--ds-blue-100); color: var(--ds-blue-800); }
+
+details.more { border: 1px solid var(--line); border-radius: var(--r-l); background: var(--surface); }
+details.more > summary { cursor: pointer; padding: 10px 14px; font-weight: 600; list-style: none; display: flex; gap: 8px; align-items: center; }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::before { content: '▸'; color: var(--faint); transition: transform 120ms; }
+details.more[open] > summary::before { transform: rotate(90deg); }
+details.more > .more-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+/* compare columns */
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; align-items: start; }
+.compare > .col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.col-head { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+
+/* segmented control & tabs (planning + app) */
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--r-l); background: var(--ds-neutral-200); flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; padding: 5px 12px; border-radius: var(--r-m); cursor: pointer; font-weight: 500; color: var(--muted); font-size: 13px; }
+.seg button[aria-pressed='true'], .seg button[aria-selected='true'] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow-pop); }
+.tabs { display: flex; gap: 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { border: 0; background: none; padding: 8px 2px 10px; cursor: pointer; color: var(--muted); font-weight: 500; font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button[aria-selected='true'] { color: var(--brand); border-bottom-color: var(--brand); }
+[data-panel][hidden] { display: none !important; }
+
+/* ---------- product UI mock (looks like the app) ---------- */
+/* Inline labels never stretch when they sit in a flex column. */
+.chip, .tag, .k, .cx, .d, .owner, .flag { width: fit-content; max-width: 100%; }
+.frame { border: 1px solid var(--line-2); border-radius: var(--r-xl); background: var(--bg); overflow: hidden; box-shadow: var(--shadow-pop); }
+.frame-bar { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--surface); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--faint); }
+.frame-bar::before { content: ''; width: 34px; height: 8px; background: radial-gradient(circle, var(--ds-neutral-400) 3.5px, transparent 4px) 0 0 / 12px 8px repeat-x; }
+.frame-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.frame.narrow { max-width: 420px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow); padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+.card.flat { box-shadow: none; }
+.card.accent { border-inline-start: 3px solid var(--brand); }
+.card.waiting { background: #f3f8fe; border-color: #d4e4f5; border-inline-start: 3px solid var(--ds-blue-500); }
+.card.warn { background: #fffaf0; border-color: #f1ddb2; border-inline-start: 3px solid var(--ds-yellow-500); }
+.card.implentio { background: #f7f5fe; border-color: #ddd8f6; border-inline-start: 3px solid var(--brand); }
+
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--r-m); font: 500 12px/20px var(--font); white-space: nowrap; background: var(--t-neutral-bg); color: var(--t-neutral-fg); vertical-align: middle; }
+.chip.lg { font-size: 14px; line-height: 24px; padding: 2px 10px; }
+.chip.info { background: var(--t-info-bg); color: var(--t-info-fg); }
+.chip.success { background: var(--t-success-bg); color: var(--t-success-fg); }
+.chip.attention { background: var(--t-attention-bg); color: var(--t-attention-fg); }
+.chip.danger { background: var(--t-danger-bg); color: var(--t-danger-fg); }
+.chip.muted { background: var(--t-muted-bg); color: var(--t-muted-fg); box-shadow: inset 0 0 0 1px var(--line); }
+.tag { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 99px; font: 500 12px/20px var(--font); border: 1px solid var(--line-2); color: var(--fg); background: var(--surface); white-space: nowrap; }
+.owner { display: inline-flex; align-items: center; gap: 5px; font: 500 12px/20px var(--font); color: var(--brand-dark); }
+.owner .dot { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--brand); color: #fff; font: 700 10px/1 var(--font); }
+.owner.you .dot { background: var(--ds-neutral-700); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 7px 12px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); color: var(--fg); font: 500 14px/1.46 var(--font); cursor: pointer; box-shadow: var(--shadow); white-space: nowrap; }
+.btn:hover { box-shadow: 0 1px 0 rgba(27, 31, 35, 0.12); }
+.btn.primary { background: var(--brand); border-color: var(--line); color: #fff; }
+.btn.primary:hover { background: var(--brand-dark); }
+.btn.sm { min-height: 32px; padding: 5px 11px; font-size: 13px; }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.lnk { border: 0; background: none; padding: 0; color: var(--brand); font-weight: 500; cursor: pointer; font-size: inherit; text-align: start; }
+.lnk:hover { text-decoration: underline; }
+.lnk.sm { font-size: 13px; }
+.lnk.bold { font-weight: 600; }
+
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat .lbl { font-size: 12px; color: var(--muted); }
+.stat .val { font-size: 18px; font-weight: 600; }
+.stat .val.big { font-size: 28px; letter-spacing: -0.03em; }
+.hero-amt { font: 600 34px/1.05 var(--font); letter-spacing: -0.03em; color: var(--money); }
+
+.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tbl th { text-align: start; color: var(--muted); font-weight: 400; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: bottom; }
+.tbl td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.tbl tbody tr:hover td { background: var(--ds-neutral-50); }
+.tbl .num, .tbl th.num { text-align: end; }
+.tbl tr.total td { font-weight: 600; background: var(--ds-neutral-50); }
+.tbl td.diff { color: var(--money); font-weight: 600; }
+.tbl tr.hl td { background: #fff8e8; }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label, .field .flabel { font-size: 13px; font-weight: 500; }
+.input, .textarea, .select { width: 100%; border: 1px solid var(--line-2); border-radius: var(--r-m); padding: 7px 10px; font: 400 14px/1.4 var(--font); background: var(--surface); color: var(--fg); }
+.textarea { min-height: 72px; resize: vertical; }
+.hint { font-size: 12px; color: var(--muted); }
+.radios { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.radios label { display: inline-flex; align-items: center; gap: 8px; padding: 5px 11px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); cursor: pointer; font-size: 14px; }
+.radios input { accent-color: var(--brand); margin: 0; }
+.radios label:has(input:checked) { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+.choice { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-l); background: var(--surface); cursor: pointer; }
+.choice input { accent-color: var(--brand); margin-top: 3px; }
+.choice:has(input:checked) { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); background: #fbfaff; }
+.check { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
+.check input { accent-color: var(--brand); width: 16px; height: 16px; margin: 0; }
+
+.banner { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--r-l); border: 1px solid var(--line); font-size: 13.5px; }
+.banner.info { background: var(--ds-blue-100); border-color: #bcd8f5; }
+.banner.warn { background: var(--ds-yellow-100); border-color: #f1d9a4; }
+.banner.good { background: var(--ds-green-100); border-color: #b9dcb2; }
+.banner.brand { background: var(--brand-soft); border-color: var(--ds-purple-300); }
+
+.stepper { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.stepper .step { display: inline-flex; align-items: center; gap: 6px; }
+.stepper .step b { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--ds-neutral-200); color: var(--muted); font-size: 11px; }
+.stepper .step.on { color: var(--fg); font-weight: 600; }
+.stepper .step.on b { background: var(--brand); color: #fff; }
+.stepper .step.done b { background: var(--ds-green-500); color: #fff; }
+.stepper .sep { width: 24px; height: 1px; background: var(--line-2); }
+
+.modal { border: 1px solid var(--line-2); border-radius: var(--r-xl); background: var(--surface); box-shadow: 0 12px 40px rgba(16, 16, 62, 0.18); display: flex; flex-direction: column; overflow: hidden; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.modal-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--line); background: var(--ds-neutral-50); flex-wrap: wrap; }
+.overlay-hint { background: rgba(16, 16, 62, 0.28); padding: 20px; border-radius: var(--r-xl); }
+
+/* bars */
+.bar { display: flex; height: 10px; border-radius: 99px; overflow: hidden; background: var(--ds-neutral-200); gap: 2px; }
+.bar > span { display: block; height: 100%; }
+.bar.thin { height: 8px; }
+.bar.tall { height: 14px; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; vertical-align: middle; margin-inline-end: 4px; }
+
+/* timeline */
+.tl { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; }
+.tl li { position: relative; padding: 0 0 14px 22px; margin: 0; }
+.tl li::before { content: ''; position: absolute; left: 4px; top: 5px; width: 9px; height: 9px; border-radius: 50%; background: var(--surface); border: 2px solid var(--line-3); }
+.tl li::after { content: ''; position: absolute; left: 8px; top: 16px; bottom: 0; width: 1px; background: var(--line-2); }
+.tl li:last-child::after { display: none; }
+.tl li.done::before { background: var(--ds-green-500); border-color: var(--ds-green-500); }
+.tl li.now::before { background: var(--brand); border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+.tl li.todo { color: var(--faint); }
+
+/* ---------- diagrams ---------- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; row-gap: 12px; }
+.flow .node { padding: 8px 12px; border-radius: var(--r-l); border: 1px solid var(--line-2); background: var(--surface); font-weight: 500; font-size: 13px; display: flex; flex-direction: column; gap: 2px; justify-content: center; min-width: 96px; }
+.flow .node small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.flow .arrow { align-self: center; color: var(--faint); padding: 0 6px; font-size: 16px; }
+.node.n-open { border-color: var(--ds-purple-300); background: var(--ds-purple-100); }
+.node.n-wait { border-color: #bcd8f5; background: var(--ds-blue-100); }
+.node.n-good { border-color: #b9dcb2; background: var(--ds-green-100); }
+.node.n-bad { border-color: #f0b8b3; background: var(--ds-red-100); }
+.node.n-part { border-color: #f1d9a4; background: var(--ds-yellow-100); }
+.node.n-muted { border-color: var(--line-2); background: var(--ds-neutral-50); color: var(--muted); }
+.node.n-new { border-style: dashed; border-color: var(--ds-orange-500); background: #fff8f3; }
+.node.n-gone { border-style: dashed; color: var(--faint); background: repeating-linear-gradient(135deg, #fff, #fff 6px, #f6f5f9 6px, #f6f5f9 12px); text-decoration: line-through; }
+
+/* print-ish */
+@media print { .toc { position: static; } body { background: #fff; } }
+@media (max-width: 640px) { .doc { padding: 16px 16px 64px; gap: 28px; } h1 { font-size: 23px; } .frame-body { padding: 14px; } }
+</style>
+<style>
+.fx { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .fx { grid-template-columns: 1fr; } }
+.flist { display: flex; flex-direction: column; gap: 4px; }
+.flist button { text-align: start; border: 1px solid transparent; background: none; border-radius: var(--r-m); padding: 8px 10px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.flist button[aria-pressed='true'] { background: var(--surface); border-color: var(--brand); }
+.flist .fl-t { font-weight: 500; font-size: 13px; }
+.flist .fl-s { font-size: 12px; color: var(--muted); }
+@media (max-width: 900px) { .flist { flex-direction: row; overflow-x: auto; } .flist button { min-width: 180px; } }
+.why-panel { border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 16px; }
+.pkg-detail .scroll-x { max-width: 560px; }
+.l2-block { display: flex; flex-direction: column; gap: 8px; max-width: 760px; }
+.l2-block h4 { font-size: 14px; }
+.src { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 8px; align-items: start; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.src:first-child { border-top: 0; }
+.src-ic { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font: 700 11px/1 var(--font); }
+.src-ok { background: var(--ds-green-100); color: #2e6a28; }
+.src-named { background: var(--ds-yellow-100); color: #7f5a14; }
+.src-none { background: var(--ds-neutral-200); color: var(--muted); }
+.ex-tbl td, .ex-tbl th { padding: 5px 8px; }
+.callout { border-inline-start: 3px solid var(--ds-orange-500); background: var(--ds-orange-100); padding: 8px 12px; border-radius: 0 var(--r-m) var(--r-m) 0; font-size: 13px; }
+/* level-3 containers */
+.l3-wrap { position: relative; }
+.memo-mock { display: grid; gap: 12px; }
+.memo-mock.side { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr); align-items: start; }
+.memo-mock.side .fc-top { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'main' 'amt' 'bar'; }
+.memo-mock.side .fc-amount { align-items: flex-start; text-align: start; }
+@media (max-width: 900px) { .memo-mock.side { grid-template-columns: 1fr; } }
+.ghost-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 12px 14px; opacity: .6; font-size: 13px; display: flex; justify-content: space-between; gap: 12px; }
+.ghost-card .num { white-space: nowrap; }
+.dim-wrap { background: rgba(16, 16, 62, 0.28); border-radius: var(--r-l); padding: 18px; }
+.url { font-family: var(--mono); font-size: 12px; background: var(--ds-neutral-100); border: 1px solid var(--line); border-radius: var(--r-m); padding: 3px 8px; color: var(--muted); overflow-wrap: anywhere; }
+.rec-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.rec-controls .input, .rec-controls .select { width: auto; min-width: 160px; }
+.pkg-detail td { background: var(--ds-neutral-50) !important; }
+.tbl.recs td, .tbl.recs th { font-size: 13px; padding: 6px 9px; white-space: nowrap; }
+.tbl.recs tr.pkg-detail td { white-space: normal; }
+.tbl.recs td.diffs { white-space: normal; min-width: 220px; }
+.diffs { color: var(--money); font-size: 12.5px; }
+.diffs span { white-space: nowrap; }
+/* Phone: the compact list keeps Difference in view; search and filters take full rows. */
+@media (max-width: 480px) {
+  .tbl.recs td, .tbl.recs th { padding: 6px 5px; font-size: 12.5px; }
+  .tbl.recs td .mono { font-size: 11.5px; }
+  .rec-controls .input, .rec-controls .select { flex: 1 1 100%; min-width: 0; }
+}
+.fav { color: var(--ds-green-500); }
+.persona { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 12px; }
+.lvl { border-radius: var(--r-l); border: 1px solid var(--line); background: var(--surface); padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+.lvl .n { font: 600 12px/1 var(--font); color: var(--brand); letter-spacing: .05em; text-transform: uppercase; }
+.dens td:first-child { white-space: nowrap; font-weight: 500; }
+/* plain-language helpers */
+.story { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 12px; }
+.story .n { font: 600 12px/1 var(--font); color: var(--brand); letter-spacing: .05em; text-transform: uppercase; }
+.gloss { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
+.gloss > div { border: 1px solid var(--line); border-radius: var(--r-l); background: var(--surface); padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.gloss dt { font-weight: 600; font-size: 14px; margin-top: 6px; }
+.gloss dd { margin: 0; font-size: 13px; color: var(--muted); }
+.gloss svg { display: block; width: 100%; height: auto; background: var(--ds-neutral-50); border-radius: var(--r-m); }
+:is(.gloss, .explain) svg text { font-family: var(--font); font-size: 10.5px; fill: var(--muted); letter-spacing: 0; }
+:is(.gloss, .explain) svg .tb { font-weight: 600; fill: var(--fg); }
+:is(.gloss, .explain) svg .tm { font-weight: 600; fill: var(--money); }
+:is(.gloss, .explain) svg .tg { font-weight: 600; fill: var(--ds-green-500); }
+:is(.gloss, .explain) svg .tr { font-weight: 600; fill: var(--ds-red-500); }
+:is(.gloss, .explain) svg .ln { stroke: var(--line-3); stroke-width: 1.2; fill: none; }
+:is(.gloss, .explain) svg .dash { stroke-dasharray: 3 3; }
+:is(.gloss, .explain) svg .arrow { stroke: var(--faint); stroke-width: 1.5; fill: none; marker-end: url(#g-ah); }
+:is(.gloss, .explain) svg .box { fill: var(--surface); stroke: var(--line-2); }
+:is(.gloss, .explain) svg .soft { fill: var(--ds-purple-100); stroke: var(--ds-purple-300); }
+:is(.gloss, .explain) svg .hl { fill: var(--ds-orange-100); stroke: var(--ds-orange-500); }
+:is(.gloss, .explain) svg .hlb { fill: var(--ds-orange-500); opacity: .75; }
+:is(.gloss, .explain) svg .or { fill: var(--ds-orange-500); }
+:is(.gloss, .explain) svg .gr { fill: var(--ds-green-500); }
+:is(.gloss, .explain) svg .br { fill: var(--brand); }
+:is(.gloss, .explain) svg .brf { fill: var(--ds-purple-300); }
+:is(.gloss, .explain) svg .mut { fill: var(--ds-neutral-300); }
+:is(.gloss, .explain) svg .spark { stroke: var(--brand); stroke-width: 2; fill: none; stroke-linejoin: round; }
+.aka { font-weight: 400; font-size: 12px; color: var(--faint); margin-inline-start: 4px; }
+.refs { font-size: 12px; color: var(--faint); margin-top: 6px; }
+.q .why { display: block; margin-top: 4px; color: var(--muted); }
+/* "Real UI only": hide planning annotations inside the demos (switch sets body[data-pn]). */
+body[data-pn='hide'] .pn { display: none !important; }
+.disc { align-self: flex-start; }
+.pn-switch button { white-space: nowrap; }
+/* Before / after: only the explanations are live; the rest is a picture. */
+#compare-proposed [aria-disabled='true'], #compare-proposed .fc-pick { pointer-events: none; opacity: .55; }
+/* explain in place: tappable words and charges inside "Show me why" */
+.term { border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: start; text-decoration: underline dotted var(--ds-purple-300); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.term:hover, .term[aria-expanded='true'] { color: var(--brand); text-decoration-color: var(--brand); }
+.term:not(.fact)::after { content: '?' / ''; display: inline-grid; place-items: center; width: 14px; height: 14px; margin-inline-start: 5px; border-radius: 50%; background: var(--ds-purple-100); color: var(--brand); font: 700 9.5px/1 var(--font); vertical-align: 1px; text-decoration: none; }
+.term.fact { font-weight: 500; }
+.explain { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; background: #fbfaff; border: 1px solid var(--ds-purple-100); border-radius: var(--r-m); padding: 10px 12px; margin: 2px 0 4px; }
+.explain svg { flex: 0 1 300px; min-width: 0; width: 100%; max-width: 300px; height: auto; background: var(--surface); border-radius: var(--r-m); }
+.explain .ex-text { flex: 1 1 220px; margin: 0; font-size: 13px; line-height: 1.5; }
+.explain .ex-k { font-weight: 600; }
+.explain svg .dim { opacity: .35; }
+.explain .inv { display: block; margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.term.fact { padding: 3px 1px; }
+.l2-block p.small:has(.fact) { line-height: 2; }
+.mismatch { color: var(--t-attention-fg); font-weight: 500; }
+.reviewed { color: var(--t-success-fg); font-weight: 500; }
+/* Phone: the example table becomes stacked rows, so Difference is never off-screen. */
+@container (max-width: 460px) {
+  .tbl.ex-tbl, .tbl.ex-tbl tbody { display: block; }
+  .tbl.ex-tbl thead { display: none; }
+  .tbl.ex-tbl tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'name diff' 'billed contract'; column-gap: 12px; border-bottom: 1px solid var(--line); padding: 6px 0; }
+  .tbl.ex-tbl td { border: 0; padding: 1px 8px; }
+  .tbl.ex-tbl td:nth-child(1) { grid-area: name; }
+  .tbl.ex-tbl td:nth-child(2) { grid-area: billed; text-align: start; font-size: 12.5px; }
+  .tbl.ex-tbl td:nth-child(3) { grid-area: contract; text-align: end; font-size: 12.5px; }
+  .tbl.ex-tbl td:nth-child(4) { grid-area: diff; text-align: end; }
+  .tbl.ex-tbl td:nth-child(4) .tiny { display: block; white-space: nowrap; }
+  .tbl.ex-tbl tr.total td { background: transparent; }
+  .tbl.ex-tbl td[data-l]::before { content: attr(data-l) ' '; color: var(--muted); }
+  .tbl.ex-tbl tr.explain-row { display: block; border: 0; padding: 0; }
+  .tbl.ex-tbl tr.explain-row td { display: block; padding: 0 0 8px; }
+}
+/* A package's pricing inside the compact (phone / side panel) list stacks the same way. */
+.tbl.ex-tbl.stacked, .tbl.ex-tbl.stacked tbody { display: block; }
+.tbl.ex-tbl.stacked thead { display: none; }
+.tbl.ex-tbl.stacked tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'name diff' 'billed contract'; column-gap: 12px; border-bottom: 1px solid var(--line); padding: 6px 0; }
+.tbl.ex-tbl.stacked td { border: 0; padding: 1px 8px; }
+.tbl.ex-tbl.stacked td:nth-child(1) { grid-area: name; }
+.tbl.ex-tbl.stacked td:nth-child(2) { grid-area: billed; text-align: start; font-size: 12.5px; }
+.tbl.ex-tbl.stacked td:nth-child(3) { grid-area: contract; text-align: end; font-size: 12.5px; }
+.tbl.ex-tbl.stacked td:nth-child(4) { grid-area: diff; text-align: end; }
+.tbl.ex-tbl.stacked td:nth-child(4) .tiny { display: block; white-space: nowrap; }
+.tbl.ex-tbl.stacked tr.total td { background: transparent; }
+.tbl.ex-tbl.stacked td[data-l]::before { content: attr(data-l) ' '; color: var(--muted); }
+.tbl.ex-tbl.stacked tr.explain-row { display: block; border: 0; padding: 0; }
+.tbl.ex-tbl.stacked tr.explain-row td { display: block; padding: 0 0 8px; }
+.tbl.ex-tbl tr.explain-row td { background: transparent !important; padding: 0 0 8px; white-space: normal; }
+/* Grid items shrink to the frame; a wide table scrolls inside its own box. */
+.memo-mock > *, .frame-body > *, .fx > * { min-width: 0; }
+.l2-block .scroll-x { container-type: inline-size; }
+/* An explanation inside a scrolling table stays in view at the visible width. */
+.explain-row .explain { position: sticky; left: 0; box-sizing: border-box; max-width: 100cqw; }
+
+/* ---------- finding card (proposed layout) ---------- */
+/* The demo frame clips its corners without becoming a scroll box, so the card's summary bar can stick to the page. */
+#flow .frame { overflow: clip; }
+.fc { padding: 0; gap: 0; transition: border-color 150ms; }
+/* The facts line stacks when the card itself is narrow, so no "·" starts a line. */
+.fc { container-type: inline-size; }
+@container (max-width: 620px) { .fc-meta { flex-direction: column; } .fc-meta > div + div::before { content: none; } }
+.fc:has(.fc-cb:checked) { border-color: var(--brand); }
+/* Header: what (left), how much (right), then one action row */
+.fc-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'main amt' 'bar bar'; column-gap: 24px; row-gap: 16px; padding: 18px 24px; }
+.fc-main { grid-area: main; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.fc-main h3 { font-size: 18px; line-height: 1.3; text-wrap: balance; }
+.fc-meta { margin: 0; display: flex; flex-wrap: wrap; gap: 2px 0; font-size: 13px; color: var(--muted); }
+.fc-meta > div { display: flex; gap: 5px; align-items: baseline; }
+.fc-meta > div + div::before { content: '·'; margin: 0 10px; color: var(--ds-neutral-500); }
+.fc-meta dd { margin: 0; font-weight: 500; color: var(--ds-neutral-800); }
+.fc-meta dd .muted { font-weight: 400; }
+.fc-amount { grid-area: amt; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: end; }
+.fc-money { font: 600 26px/1.1 var(--font); letter-spacing: -0.03em; color: var(--money); }
+.fc-bar { grid-area: bar; display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; }
+.fc-bar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fc-due { margin-inline-start: auto; }
+/* The checkbox is a bordered control: box + label, the whole thing clickable */
+.fc-pick { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px 0 10px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); box-shadow: var(--shadow); cursor: pointer; font: 500 13.5px/1 var(--font); color: var(--fg); white-space: nowrap; user-select: none; transition: border-color 120ms, background-color 120ms, transform 100ms; }
+.fc-pick:hover { border-color: var(--ds-purple-300); background: #fbfaff; }
+.fc-pick:active { transform: scale(0.98); }
+.fc-cb { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.fc-box { width: 16px; height: 16px; flex: none; border-radius: 4px; border: 1.5px solid var(--line-3); background: var(--surface); display: grid; place-items: center; color: transparent; transition: background-color 120ms, border-color 120ms; }
+.fc-pick:has(.fc-cb:checked) { border-color: var(--ds-purple-300); background: var(--brand-soft); }
+.fc-cb:checked + .fc-box { background: var(--brand); border-color: var(--brand); color: #fff; }
+.fc-pick:has(.fc-cb:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.fc-toggle { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 1px solid transparent; background: none; border-radius: var(--r-m); cursor: pointer; font: 500 13.5px/1 var(--font); color: var(--brand); }
+.fc-toggle:hover { background: var(--brand-soft); }
+.fc-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; }
+.fc-toggle .chev { transition: transform 240ms cubic-bezier(.2, .8, .2, 1); }
+.fc-toggle[aria-expanded='true'] .chev { transform: rotate(180deg); }
+/* Press feedback on pointer-down, not on release */
+.fc .btn, .fc .seg button { transition: transform 100ms ease-out, background-color 150ms; }
+.fc .btn:active, .fc .seg button:active { transform: scale(0.97); }
+/* Bigger hit areas for inline controls */
+.fc .lnk.sm { padding: 6px 0; }
+.fc .term:not(.fact)::after { width: 16px; height: 16px; }
+
+/* "Show why": animates height via grid rows, from the current state on every toggle */
+.fc-why { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 320ms cubic-bezier(.2, .8, .2, 1), opacity 240ms; border-top: 1px solid var(--line); background: var(--ds-neutral-50); border-radius: 0 0 var(--r-l) var(--r-l); }
+.fc-why[data-open='false'] { grid-template-rows: 0fr; opacity: 0; border-top-color: transparent; }
+.why-inner { min-height: 0; container-type: inline-size; }
+.fc-why[data-open='false'] .why-inner, .fc-why.is-animating .why-inner { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .fc-why { transition: opacity 180ms; } .fc-toggle .chev { transition: none; } }
+/* Summary bar: shown once the card header has scrolled under the page nav */
+.why-sticky {
+  position: sticky; top: var(--sticky-top, 0px); z-index: 5; display: flex; align-items: center; gap: 12px;
+  padding: 10px 24px; margin-bottom: -44px; height: 44px;
+  background: color-mix(in srgb, var(--surface) 78%, transparent); backdrop-filter: blur(14px) saturate(160%);
+  border-bottom: 1px solid var(--line); opacity: 0; pointer-events: none; transform: translateY(-4px);
+  transition: opacity 180ms, transform 180ms;
+}
+.fc.stuck .why-sticky { opacity: 1; pointer-events: auto; transform: none; }
+.ws-title { flex: 1; min-width: 0; font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (prefers-reduced-transparency: reduce) { .why-sticky { background: var(--surface); backdrop-filter: none; } }
+/* Panel: a tinted well of separate section cards */
+.why-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px; }
+.sc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow); display: flex; flex-direction: column; min-width: 0; }
+.sc-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.sc-ic { width: 28px; height: 28px; flex: none; border-radius: var(--r-m); display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
+.sc-titles { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.sc-eyebrow { font: 600 11px/1.3 var(--font); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.sc-head h4 { font-size: 14.5px; }
+.sc-aside { margin-inline-start: auto; }
+.sc-body { display: flex; flex-direction: column; gap: 12px; padding: 16px; flex: 1; }
+@container (min-width: 720px) {
+  .why-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+  .sc-example, .sc-method { grid-column: 1 / -1; }
+  /* Side by side only when both are charts; a one-sentence spread would leave an empty box. */
+  .why-grid:not(:has(.sc-spread.viz)) > .sc { grid-column: 1 / -1; }
+}
+/* The bar chart thins its axis labels when its own card is narrow. */
+.sc-ledger { container-type: inline-size; }
+@container (max-width: 480px) { .dv-ticks .t2 { display: none; } }
+.why-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 4px 16px 16px; }
+/* Option E: the package list opens inside the card, under "Show why" */
+.fc-list { border-top: 1px solid var(--line); padding: 18px 24px; display: flex; flex-direction: column; gap: 12px; }
+
+/* Charts: thin marks, hairline grid, text in ink, one accent */
+.viz { position: relative; }
+.viz-take { font-size: 13.5px; color: var(--fg); }
+.seg-xs button { font-size: 12px; padding: 3px 10px; }
+.eq { display: flex; align-items: flex-end; gap: 6px 14px; flex-wrap: wrap; padding: 12px 14px; border-radius: var(--r-m); background: var(--ds-neutral-50); }
+.eq .op { font-size: 18px; color: var(--muted); padding-bottom: 1px; }
+.eq .val { font-size: 18px; font-variant-numeric: proportional-nums; letter-spacing: -0.02em; }
+.viz-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.viz-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.viz-legend b { color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; }
+.viz-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.sw-over { background: var(--ds-orange-500); }
+.sw-under { background: var(--ds-blue-500); }
+/* Diverging bars: one zero line; billed above contract goes right, below goes left */
+.dv { display: flex; flex-direction: column; }
+.dv-row, .dv-axis { display: grid; grid-template-columns: 136px minmax(0, 1fr) 92px; column-gap: 12px; align-items: center; }
+.dv-row { min-height: 32px; }
+.dv-lbl { font-size: 13px; color: var(--fg); line-height: 1.25; }
+.dv-val { font-size: 13px; text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--fg); }
+.dv-val.money { color: var(--money); font-weight: 500; }
+.dv-val.fav { color: var(--ds-green-500); }
+.dv-track { position: relative; align-self: stretch; background-image: linear-gradient(to right, var(--ds-neutral-200) 1px, transparent 1px); background-size: var(--grid) 100%; background-repeat: repeat-x; }
+.dv-track::after { content: ''; position: absolute; top: 0; bottom: 0; left: var(--zero); width: 1px; background: var(--ds-neutral-600); }
+.dv-bar { position: absolute; top: 50%; height: 12px; transform: translateY(-50%); min-width: 2px; }
+.dv-bar.over { background: var(--ds-orange-500); border-radius: 0 4px 4px 0; }
+.dv-bar.under { background: var(--ds-blue-500); border-radius: 4px 0 0 4px; }
+.dv-axis { height: 22px; }
+.dv-ticks { position: relative; height: 100%; }
+.dv-ticks span { position: absolute; top: 4px; transform: translateX(-50%); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dv-ticks .t0 { color: var(--fg); font-weight: 600; }
+.bk-tbl tr.grp th { padding: 12px 10px 4px; font-size: 12px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line); }
+.bk-tbl tr.grp:first-child th { padding-top: 6px; }
+.bk-tbl tr.subt td { font-size: 12.5px; font-weight: 500; color: var(--muted); }
+/* Histogram: one accent bucket, the rest gray */
+.hg-wrap { flex: 1; display: flex; flex-direction: column; min-height: 210px; }
+.hg { flex: 1; display: grid; grid-template-columns: 30px minmax(0, 1fr); grid-template-rows: auto minmax(130px, 1fr) auto; column-gap: 6px; }
+.hg-ytitle { grid-column: 1 / -1; font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+.hg-y { position: relative; }
+.hg-y span { position: absolute; right: 0; transform: translateY(50%); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1; }
+.hg-plot { position: relative; }
+.hg-grid i { position: absolute; left: 0; right: 0; height: 1px; background: var(--ds-neutral-300); }
+.hg-grid i:first-child { background: var(--ds-neutral-400); }
+.hg-bars { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 2px; }
+.hg-bar { position: relative; flex: 1; height: var(--h); min-height: 2px; background: var(--ds-neutral-500); border-radius: 4px 4px 0 0; outline-offset: 2px; }
+.hg-bar.hot { background: var(--ds-orange-500); }
+.hg-bar:hover, .hg-bar:focus-visible { filter: brightness(0.92); }
+.hg-bar.hot:hover, .hg-bar.hot:focus-visible { filter: brightness(1.08); }
+.hg-bar::before { content: ''; position: absolute; left: -1px; right: -1px; bottom: 0; height: max(100%, 32px); }
+.hg-cap { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 12px; font-weight: 600; color: var(--fg); }
+.hg-bracket { position: absolute; right: 0; height: 8px; border: 1px solid var(--ds-neutral-600); border-bottom: 0; border-radius: 2px 2px 0 0; }
+.hg-bracket span { position: absolute; bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.hg-x { grid-column: 2; display: flex; gap: 2px; padding-top: 5px; }
+.hg-x span { flex: 1; text-align: center; font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hg-xtitle { font-size: 11.5px; color: var(--muted); text-align: center; padding-left: 36px; margin-top: 4px; }
+.viz-tip { position: absolute; z-index: 6; pointer-events: none; background: var(--ds-neutral-900); color: #fff; border-radius: var(--r-m); padding: 6px 10px; font-size: 12px; line-height: 1.35; box-shadow: var(--shadow-pop); max-width: 240px; opacity: 0; transition: opacity 120ms; }
+.viz-tip.on { opacity: 1; }
+.viz-tip b { display: block; font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.viz-tip span { display: block; color: rgba(255, 255, 255, 0.82); }
+.viz-tip span:last-child { color: rgba(255, 255, 255, 0.62); }
+.viz-tip span:empty { display: none; }
+@media (prefers-reduced-motion: reduce) { .viz-tip { transition: none; } }
+
+/* Example package: the section card is the slip — perforated tear line, paper tint, stamp */
+.cq { container-type: inline-size; }
+.sc-example .seg button { font-size: 12.5px; padding: 4px 12px; }
+.sc-example .sc-head { border-bottom: 0; position: relative; }
+.sc-example .sc-head::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: repeating-linear-gradient(to right, var(--line-3) 0 6px, transparent 6px 11px); }
+.sc-example .sc-body { gap: 0; background: #fcfcfe; border-radius: 0 0 var(--r-l) var(--r-l); }
+.pkg { position: relative; display: flex; flex-direction: column; gap: 14px; container-type: inline-size; }
+.pkg-tab { position: absolute; top: 0; right: 0; padding: 1px 9px; border-radius: 99px; background: var(--ds-neutral-200); color: var(--ds-neutral-800); font: 600 11px/18px var(--font); letter-spacing: 0.04em; text-transform: uppercase; }
+.pkg-head, .pkg-specs { margin: 0; display: grid; gap: 10px 0; }
+.pkg-head { grid-template-columns: repeat(auto-fit, minmax(180px, max-content)); column-gap: 32px; padding-bottom: 12px; padding-right: 150px; border-bottom: 1px dashed var(--line-2); }
+.pkg-specs { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
+.pkg-head > div, .pkg-specs > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pkg-specs > div { padding: 0 12px; border-inline-start: 1px solid var(--line); }
+.pkg-specs > div:first-child { border-inline-start: 0; padding-inline-start: 0; }
+.pkg dt { font-size: 11.5px; color: var(--muted); line-height: 1.3; }
+.pkg dd { margin: 0; font-size: 13.5px; font-weight: 500; line-height: 1.4; color: var(--fg); }
+.pkg-track { font-size: 13px; white-space: nowrap; }
+.pkg dd .term.fact { padding: 0; }
+.pkg .term { white-space: nowrap; }
+.pkg-specs .term { white-space: normal; }
+.pkg .explain { margin: 0; }
+.pkg .tbl { width: 100%; table-layout: fixed; }
+.pkg .tbl th.num { width: 22%; }
+.pkg .tbl th:first-child, .pkg .tbl td:first-child { padding-inline-start: 0; }
+.pkg .tbl th:last-child, .pkg .tbl td:last-child { padding-inline-end: 0; }
+.pkg .tbl tbody tr:hover td { background: transparent; }
+.pkg .tbl tr.total td { background: transparent; border-top: 1px solid var(--line-2); border-bottom: 0; }
+.pkg-hint { font-size: 12px; color: var(--muted); }
+.pkg .pn + .pkg-hint { margin-top: -8px; }
+@container (max-width: 519px) {
+  .pkg-tab { position: static; align-self: flex-start; }
+  .pkg-head { grid-template-columns: max-content minmax(0, 1fr); column-gap: 20px; padding-right: 0; }
+  .pkg-specs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pkg-specs > div:nth-child(3n + 1) { border-inline-start: 0; padding-inline-start: 0; }
+}
+@container (max-width: 400px) {
+  .pkg-specs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pkg-specs > div:nth-child(3n + 1) { border-inline-start: 1px solid var(--line); padding-inline-start: 12px; }
+  .pkg-specs > div:nth-child(2n + 1) { border-inline-start: 0; padding-inline-start: 0; }
+}
+/* Narrow: each charge is two lines — name and difference, then billed and contract */
+@container (max-width: 460px) {
+  .pkg .tbl.ex-tbl tr:not(.explain-row) { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 14px; row-gap: 2px; padding: 9px 0; }
+  .pkg .tbl.ex-tbl tr:not(.explain-row)::before { content: ''; order: 2; flex-basis: 100%; height: 0; }
+  .pkg .tbl.ex-tbl td:nth-child(1) { order: 1; flex: 1 1 0; min-width: 0; }
+  .pkg .tbl.ex-tbl td:nth-child(4) { order: 1; }
+  .pkg .tbl.ex-tbl td:nth-child(2), .pkg .tbl.ex-tbl td:nth-child(3) { order: 3; }
+  .pkg .tbl.ex-tbl td { padding: 0; }
+  .pkg .tbl.ex-tbl td:nth-child(2), .pkg .tbl.ex-tbl td:nth-child(3) { text-align: start; font-size: 12.5px; color: var(--muted); font-weight: 400; }
+  .pkg .tbl.ex-tbl td:nth-child(4)::before { content: none; }
+  .pkg .tbl.ex-tbl td:nth-child(4) { font-weight: 600; }
+  .pkg .tbl.ex-tbl tr.total { border-top: 1px solid var(--line-2); border-bottom: 0; }
+  .pkg .tbl.ex-tbl tr.total td { border-top: 0; }
+}
+/* How we checked: documents as a compact list of tiles */
+.srcs2 { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 8px; }
+.srcs2 li { margin: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; column-gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-m); background: var(--ds-neutral-50); }
+.srcs2 .src-ic { align-self: start; margin-top: 1px; }
+.srcs2-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.srcs2-name { font-size: 13.5px; font-weight: 600; }
+.srcs2-name .muted { font-weight: 400; }
+.srcs2-sub { font-size: 12.5px; color: var(--muted); }
+.sc-method .q { margin: 0; }
+@container (min-width: 720px) { .srcs2 { grid-template-columns: 1fr 1fr; } }
+
+/* Phone */
+@media (max-width: 560px) {
+  .fc-top { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'main' 'amt' 'bar'; row-gap: 12px; padding: 14px 16px 16px; }
+  .fc-main h3 { font-size: 17px; }
+  .fc-meta { flex-direction: column; }
+  .fc-meta > div + div::before { content: none; }
+  .fc-amount { align-items: flex-start; text-align: start; }
+  .fc-money { font-size: 24px; }
+  /* Status first, then the actions full width */
+  .fc-bar { flex-direction: column-reverse; align-items: stretch; }
+  .fc-due { margin-inline-start: 0; align-self: flex-start; }
+  .fc-pick { flex: 1; justify-content: center; }
+  .why-grid { padding: 10px; gap: 10px; }
+  .sc-head { padding: 12px 14px; }
+  .sc-body { padding: 14px; }
+  .why-sticky { padding: 10px 16px; }
+  .why-foot { padding: 2px 14px 14px; }
+  .fc-list { padding: 14px 16px; }
+  .eq { display: grid; grid-template-columns: repeat(3, minmax(0, auto)); justify-content: space-between; gap: 4px 10px; padding: 10px 12px; }
+  .eq .op { display: none; }
+  .eq .val { font-size: 15px; }
+  .dv-row, .dv-axis { grid-template-columns: 92px minmax(0, 1fr) 76px; column-gap: 8px; }
+  .dv-row { min-height: 38px; }
+  .dv-lbl, .dv-val { font-size: 12.5px; }
+  .dv-ticks .t2, .dv-ticks .t4:first-child { display: none; }
+  .hg-x span { font-size: 10px; }
+  .hg-cap { font-size: 11.5px; }
+  .sc-titles { flex: 1 1 calc(100% - 38px); }
+  .sc-aside { margin-inline-start: 38px; }
+}
+@media (max-width: 360px) { .eq .val { font-size: 14px; } }
+
+/* 6a · Worked example: why fuel shows up under "Shipping price" */
+.gx { display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
+.gx-rule { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: var(--r-l); background: var(--brand-soft); border: 1px solid var(--ds-purple-300); }
+.gx-rule strong { color: var(--brand); }
+.gx-step { font: 600 12px/1.3 var(--font); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.gx-pkgs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.gx-pkg { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.gx-pkg h4 { font-size: 13.5px; }
+.gx-pkg table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.gx-pkg td { padding: 3px 0; }
+.gx-pkg td.num { text-align: end; white-space: nowrap; }
+.gx-pkg tr.big td { font-weight: 600; }
+.gx-up { color: var(--money); font-weight: 600; }
+.gx-to { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+.gx-to b { color: var(--fg); }
+.gx-why { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 14px 16px; }
+.gx-bars { display: flex; flex-direction: column; gap: 10px; }
+.gx-bar { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 12.5px; }
+.gx-track { display: flex; gap: 2px; height: 22px; }
+.gx-seg { height: 100%; border-radius: 3px; font-size: 11px; display: flex; align-items: center; padding: 0 6px; white-space: nowrap; overflow: hidden; }
+.gx-ship { background: var(--ds-neutral-200); color: var(--fg); }
+.gx-fuel { background: var(--accent-soft); color: var(--money); border: 1px solid var(--ds-orange-500); }
+.gx-fuel.ok { background: var(--brand-soft); color: var(--brand); border-color: var(--ds-purple-300); }
+.gx-finds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.gx-find { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.gx-find .gx-amt { font: 600 20px/1.2 var(--font); color: var(--money); }
+.gx-sum { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; padding: 12px 14px; border-radius: var(--r-l); background: var(--ds-neutral-50); border: 1px solid var(--line); font-size: 13.5px; }
+.gx-sum b { font-variant-numeric: tabular-nums; }
+@media (max-width: 760px) {
+  .gx-pkgs, .gx-finds, .gx-why { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<main class="doc">
+  <header class="doc-head">
+    <nav class="crumbs" aria-label="Planning files"><a href="00-overview.html">← Overview</a><span>·</span><a href="../docs/client-app-prototype-plan.md">Plan document</a><span>·</span><span>Exploration 02 of 06</span></nav>
+    <div class="eyebrow">Planning exploration · not production UI</div>
+    <h1>Showing why a charge is wrong ("Show me why")</h1>
+    <p class="lede">When Implentio tells a customer "your Biller overcharged you $9,322", the customer's first question is <em>"how do you know?"</em> This page plans how we answer it: a short answer first, the reasoning if they want it, and every single package if they really want to check — without burying anyone in giant tables.</p>
+    <div class="legend"><span class="k k-existing">Already built</span><span class="k k-confirmed">Newly confirmed</span><span class="k k-proposed">Proposed</span><span class="k k-unresolved">Needs a decision</span><span>· Totals and breakdowns come from the real demo memo. Package rows, tracking numbers, document names, versions and dates, and the reviewer badge are made up.</span></div>
+  </header>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#start">Start here</a><a href="#problem">1 What's wrong today</a><a href="#compare">2 Before / after</a><a href="#model">3 The plan</a><a href="#flow">4 Try it</a><a href="#states">5 Different situations</a><a href="#edge">6 Tricky cases</a><a href="#edge-grouping">6a Why fuel is under shipping</a><a href="#data">7 For developers</a><a href="#questions">8 Questions for the client</a>
+  </nav>
+
+  <!-- 0 -->
+  <section class="sec" id="start">
+    <div class="sec-head"><span class="sec-num">Start here</span><h2>The story in one minute</h2></div>
+    <div class="story">
+      <div class="box"><span class="n">Who's involved</span><p class="small">A <strong>brand</strong> (our customer) sells products online. A <strong>Biller</strong> — a warehouse company such as QuickBox — packs and ships its orders and sends it a bill. The packages are driven by a <strong>carrier</strong> such as UPS or DHL. <strong>Implentio</strong> checks every line of that bill against the prices the brand agreed to in its contract.</p></div>
+      <div class="box"><span class="n">What Implentio finds</span><p class="small">Implentio checks every <strong>package</strong> (one box sent to one person) on the Biller's invoices. Each check produces a <strong>credit memo</strong>: a list of <strong>findings</strong>. A finding is a group of packages with the same main mistake, e.g. "Fuel charge higher than your contract allows · 172 packages · $35.10". Each package is in one finding only. The customer can <strong>dispute</strong> a finding: email the Biller and ask for the money back.</p></div>
+      <div class="box"><span class="n">The problem</span><p class="small">Before asking for money back, people want proof. Today the app shows one example package and a general sentence. The client says customers don't fully trust the number, and the full package table is overwhelming.</p></div>
+      <div class="box"><span class="n">What this page proposes</span><p class="small">Three steps of detail, each answering one question: <em>What did you find?</em> → <em>Why do you think so?</em> → <em>Show me every package.</em> Most people stop at step 1 or 2. Where step 3 opens (a pop-up, a page, a side panel…) is still undecided.</p></div>
+    </div>
+
+    <h3>Words used on this page</h3>
+    <p class="small muted prose">The customer never sees this list. Instead, the same explanations live inside "Show me why", right where each word appears, and use that package's own numbers — try tapping a charge in <a href="#flow">section 4</a>. <span class="k k-proposed">Proposed</span></p>
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><marker id="g-ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" style="fill: var(--faint)"/></marker></defs></svg>
+    <dl class="gloss">
+      <div>
+        <svg viewBox="0 0 260 104" role="img" aria-label="A package is one box sent to one person, with its own tracking number and its own charge lines on the bill.">
+          <rect class="soft" x="14" y="26" width="62" height="50" rx="3"/><path class="ln" d="M14 40 H76 M45 26 V40"/>
+          <rect class="box" x="24" y="50" width="42" height="16" rx="2"/><text x="45" y="61" text-anchor="middle" style="font-size:8px">1Z3760…213</text>
+          <text class="tb" x="45" y="92" text-anchor="middle">1 box</text>
+          <path class="arrow" d="M84 52 H104"/>
+          <rect class="box" x="110" y="10" width="142" height="86" rx="4"/>
+          <text class="tb" x="118" y="26">Its bill</text>
+          <text x="118" y="44">Shipping price</text><text x="244" y="44" text-anchor="end">$185.86</text>
+          <text x="118" y="60">Fuel charge</text><text x="244" y="60" text-anchor="end">$37.64</text>
+          <text x="118" y="76">Other fees</text><text x="244" y="76" text-anchor="end">—</text>
+          <path class="ln" d="M118 82 H244"/><text class="tb" x="118" y="93">Total</text><text class="tb" x="244" y="93" text-anchor="end">$223.50</text>
+        </svg>
+        <dt>Package</dt><dd>One box sent to one person: one order, packed at the warehouse, delivered by a carrier. It has its own tracking number and its own lines on the bill.</dd>
+      </div>
+      <div>
+        <svg viewBox="0 0 260 104" role="img" aria-label="An invoice is the Biller's bill: a long list of packages, each with its charges.">
+          <rect class="box" x="10" y="6" width="150" height="92" rx="4"/>
+          <text class="tb" x="18" y="22">Invoice Q3098513</text>
+          <path class="ln" d="M18 28 H152"/>
+          <text x="18" y="42">Box 1Z…213</text><text x="152" y="42" text-anchor="end">$223.50</text>
+          <text x="18" y="57">Box 1Z…829</text><text x="152" y="57" text-anchor="end">$74.42</text>
+          <text x="18" y="72">Box 1Z…503</text><text x="152" y="72" text-anchor="end">$36.51</text>
+          <text x="18" y="88">… 64 more on this invoice</text>
+          <text x="172" y="44">This memo:</text><text x="172" y="58">all packages on</text><text class="tb" x="172" y="76">16 invoices,</text><text class="tb" x="172" y="90">852 overcharged</text>
+        </svg>
+        <dt>Invoice</dt><dd>The Biller's bill: a long list of packages, each with its charges. A credit memo checks all the invoices for a period.</dd>
+      </div>
+      <div>
+        <svg viewBox="0 0 260 104" role="img" aria-label="A finding is a group of packages with the same main mistake, with the money involved. Each package is in one finding only. Example: Remote-area fee charged incorrectly, 3 packages, $4.68.">
+          <rect class="hl" x="8" y="10" width="244" height="84" rx="6"/>
+          <text class="tb" x="18" y="28">Remote-area fee charged incorrectly</text>
+          <text class="tm" x="18" y="44">$4.68 · 3 packages</text>
+          <rect class="soft" x="18" y="52" width="34" height="22" rx="3"/><rect class="soft" x="58" y="52" width="34" height="22" rx="3"/><rect class="soft" x="98" y="52" width="34" height="22" rx="3"/>
+          <text x="140" y="67">$1.56 each</text>
+          <text x="18" y="87">its main mistake · each box in one finding only</text>
+        </svg>
+        <dt>Finding</dt><dd>A group of packages with the same main mistake, e.g. "Fuel charge higher than your contract allows · 172 packages · $35.10". Each package is in one finding only, and the finding's amount includes every charge on its packages. The customer disputes findings.</dd>
+      </div>
+      <div>
+        <svg viewBox="0 0 260 104" role="img" aria-label="A price list is a table. Find the row for the package's weight and the column for its speed: for a 16 lb next-day package to a home in zone 7, the cell says $92.93.">
+          <rect class="box" x="8" y="8" width="164" height="72" rx="4"/>
+          <rect class="hl" x="131" y="55" width="40" height="22" rx="3"/>
+          <text class="tb" x="14" y="23">lb</text><text class="tb" x="70" y="23" text-anchor="middle">Ground</text><text class="tb" x="110" y="23" text-anchor="middle">2-Day</text><text class="tb" x="151" y="23" text-anchor="middle">1-Day</text>
+          <path class="ln" d="M8 29 H172"/>
+          <text x="14" y="46">5 lb</text><text x="70" y="46" text-anchor="middle">…</text><text x="110" y="46" text-anchor="middle">28.70</text><text x="151" y="46" text-anchor="middle">…</text>
+          <text x="14" y="70">16 lb</text><text x="70" y="70" text-anchor="middle">23.00</text><text x="110" y="70" text-anchor="middle">…</text><text class="tm" x="151" y="70" text-anchor="middle">92.93</text>
+          <text x="8" y="97">UPS · zone 7 · to a home · real prices</text>
+          <path class="arrow" d="M175 66 H191"/>
+          <text x="195" y="60">should cost</text><text class="tm" x="195" y="76">$92.93</text>
+        </svg>
+        <dt>Contract price / rate card</dt><dd>The price list the brand and the Biller agreed on. Every "should have cost" number comes from it.</dd>
+      </div>
+      <div>
+        <svg viewBox="0 0 260 104" role="img" aria-label="Speed, distance and weight together decide the shipping price.">
+          <rect class="box" x="8" y="6" width="78" height="24" rx="12"/><text class="tb" x="47" y="22" text-anchor="middle">Speed</text>
+          <rect class="box" x="8" y="40" width="78" height="24" rx="12"/><text class="tb" x="47" y="56" text-anchor="middle">Distance</text>
+          <rect class="box" x="8" y="74" width="78" height="24" rx="12"/><text class="tb" x="47" y="90" text-anchor="middle">Weight</text>
+          <path class="ln" d="M86 18 C118 18 118 52 146 52"/><path class="ln" d="M86 86 C118 86 118 52 146 52"/><path class="arrow" d="M86 52 H150"/>
+          <rect class="soft" x="154" y="34" width="98" height="36" rx="6"/>
+          <text class="tb" x="203" y="49" text-anchor="middle">Shipping price</text><text class="tm" x="203" y="63" text-anchor="middle">$92.93</text>
+        </svg>
+        <dt>Shipping price <span class="aka">industry: base freight</span></dt><dd>The main price for moving a package. Depends on speed, distance and weight.</dd>
+      </div>
+      <div>
+        <svg viewBox="0 0 260 104" role="img" aria-label="The fuel charge is a percentage added on top of the shipping price, and the percentage changes every week.">
+          <rect class="soft" x="8" y="10" width="160" height="28" rx="4"/><text class="tb" x="16" y="28">Shipping price $92.93</text>
+          <rect class="hl" x="170" y="10" width="56" height="28" rx="4"/><text class="tm" x="198" y="28" text-anchor="middle">+$18.74</text>
+          <text x="198" y="51" text-anchor="middle">fuel ≈ 20%</text>
+          <text x="8" y="66">The % changes every week</text>
+          <path class="ln" d="M8 98 H240"/>
+          <polyline class="spark" points="8,94 40,88 72,91 104,82 136,85 168,78 200,80 232,74"/>
+          <circle class="br" cx="232" cy="74" r="3"/>
+        </svg>
+        <dt>Fuel charge <span class="aka">fuel surcharge</span></dt><dd>An extra percentage on top of the shipping price. The percentage changes weekly with a published fuel index.</dd>
+      </div>
+      <div>
+        <svg viewBox="0 0 260 104" role="img" aria-label="Delivering to a home adds a fee, for example $3.72. Delivering to a business doesn't.">
+          <polygon class="brf" points="32,40 62,16 92,40"/>
+          <rect class="box" x="40" y="40" width="44" height="30"/><rect class="mut" x="57" y="54" width="10" height="16"/>
+          <text class="tb" x="62" y="84" text-anchor="middle">Home</text><text class="tm" x="62" y="99" text-anchor="middle">+ $3.72 fee</text>
+          <rect class="box" x="176" y="12" width="44" height="58"/>
+          <rect class="mut" x="182" y="18" width="8" height="8"/><rect class="mut" x="194" y="18" width="8" height="8"/><rect class="mut" x="206" y="18" width="8" height="8"/>
+          <rect class="mut" x="182" y="32" width="8" height="8"/><rect class="mut" x="194" y="32" width="8" height="8"/><rect class="mut" x="206" y="32" width="8" height="8"/>
+          <rect class="mut" x="182" y="46" width="8" height="8"/><rect class="mut" x="194" y="46" width="8" height="8"/><rect class="mut" x="206" y="46" width="8" height="8"/>
+          <rect class="mut" x="193" y="60" width="10" height="10"/>
+          <text class="tb" x="198" y="84" text-anchor="middle">Business</text><text x="198" y="99" text-anchor="middle">no fee</text>
+        </svg>
+        <dt>Home-delivery fee <span class="aka">residential surcharge</span></dt><dd>An extra fee for delivering to a home instead of a business.</dd>
+      </div>
+      <div>
+        <svg viewBox="0 0 260 104" role="img" aria-label="The carrier publishes an official list of remote ZIP codes. A package to a ZIP on the list may carry the fee; the demo's package to ZIP 78101, not on the list, may not.">
+          <rect class="box" x="8" y="6" width="96" height="92" rx="4"/>
+          <text class="tb" x="16" y="22">Official list, e.g.</text>
+          <rect class="hl" x="12" y="45" width="52" height="15" rx="3"/>
+          <text x="16" y="41">59001</text><text class="tb" x="16" y="56">99501</text><text x="16" y="71">82001</text><text x="16" y="86">…</text>
+          <path class="ln dash" d="M66 52 C88 52 92 34 112 34"/>
+          <text class="tb" x="118" y="32">To a ZIP on the list</text><text class="tg" x="118" y="47">✓ fee allowed</text>
+          <text class="tb" x="118" y="74">To ZIP 78101</text><text class="tr" x="118" y="89">✗ fee not allowed</text>
+        </svg>
+        <dt>Remote-area fee <span class="aka">DAS, delivery area surcharge</span></dt><dd>An extra fee for hard-to-reach ZIP codes. Only allowed for ZIPs on the carrier's official list.</dd>
+      </div>
+      <div>
+        <svg viewBox="0 0 260 104" role="img" aria-label="Zones run from 2, near the warehouse, to 8, across the country. The farther the zone, the higher the price.">
+          <polygon class="brf" points="6,44 21,32 36,44"/><rect class="soft" x="8" y="44" width="26" height="22"/>
+          <text x="4" y="98">Warehouse</text>
+          <rect class="hlb" x="53" y="60" width="14" height="10"/><rect class="hlb" x="84" y="55" width="14" height="15"/><rect class="hlb" x="115" y="50" width="14" height="20"/><rect class="hlb" x="146" y="44" width="14" height="26"/><rect class="hlb" x="177" y="38" width="14" height="32"/><rect class="hlb" x="208" y="32" width="14" height="38"/><rect class="hlb" x="239" y="25" width="14" height="45"/>
+          <path class="ln" d="M44 70 H256"/>
+          <text class="tb" x="60" y="84" text-anchor="middle">2</text><text class="tb" x="91" y="84" text-anchor="middle">3</text><text class="tb" x="122" y="84" text-anchor="middle">4</text><text class="tb" x="153" y="84" text-anchor="middle">5</text><text class="tb" x="184" y="84" text-anchor="middle">6</text><text class="tb" x="215" y="84" text-anchor="middle">7</text><text class="tb" x="246" y="84" text-anchor="middle">8</text>
+          <text x="170" y="100" text-anchor="middle">zone: farther away → higher price</text>
+          <text x="60" y="18">price</text>
+        </svg>
+        <dt>Zone</dt><dd>How far the package traveled, as a number: 2 is nearby, 8 is across the country. Farther costs more.</dd>
+      </div>
+      <div>
+        <svg viewBox="0 0 260 104" role="img" aria-label="Ground takes about 5 days and is cheapest; 2nd Day Air takes 2 days; Next Day Air takes 1 day and costs the most.">
+          <text class="tb" x="8" y="22">Ground</text>
+          <rect class="br" x="86" y="10" width="16" height="16" rx="2"/><rect class="br" x="106" y="10" width="16" height="16" rx="2"/><rect class="br" x="126" y="10" width="16" height="16" rx="2"/><rect class="br" x="146" y="10" width="16" height="16" rx="2"/><rect class="br" x="166" y="10" width="16" height="16" rx="2"/>
+          <text x="190" y="22">5 days</text><text class="tm" x="252" y="22" text-anchor="end">$</text>
+          <text class="tb" x="8" y="55">2nd Day Air</text>
+          <rect class="br" x="86" y="43" width="16" height="16" rx="2"/><rect class="br" x="106" y="43" width="16" height="16" rx="2"/><rect class="mut" x="126" y="43" width="16" height="16" rx="2"/><rect class="mut" x="146" y="43" width="16" height="16" rx="2"/><rect class="mut" x="166" y="43" width="16" height="16" rx="2"/>
+          <text x="190" y="55">2 days</text><text class="tm" x="252" y="55" text-anchor="end">$$</text>
+          <text class="tb" x="8" y="88">Next Day Air</text>
+          <rect class="br" x="86" y="76" width="16" height="16" rx="2"/><rect class="mut" x="106" y="76" width="16" height="16" rx="2"/><rect class="mut" x="126" y="76" width="16" height="16" rx="2"/><rect class="mut" x="146" y="76" width="16" height="16" rx="2"/><rect class="mut" x="166" y="76" width="16" height="16" rx="2"/>
+          <text x="190" y="88">1 day</text><text class="tm" x="252" y="88" text-anchor="end">$$$</text>
+        </svg>
+        <dt>Service level</dt><dd>How fast it was sent: Ground, 2nd Day Air, Next Day Air…</dd>
+      </div>
+      <div>
+        <svg viewBox="0 0 260 104" role="img" aria-label="On one real package the shipping price was $8.63 over contract and the fuel charge $1.47 under. Comparing the whole bill with the whole contract price, the package's difference is $7.16.">
+          <path class="ln" d="M150 6 V62"/>
+          <text x="8" y="23">Shipping price</text><rect class="or" x="150" y="11" width="64" height="16" rx="3"/><text class="tm" x="220" y="23">+$8.63</text>
+          <text x="8" y="49">Fuel charge</text><rect class="gr" x="139" y="37" width="11" height="16" rx="3"/><text class="tg" x="156" y="49">−$1.47</text>
+          <path class="ln" d="M8 66 H252"/>
+          <text class="tb" x="8" y="83">This package's difference</text><text class="tm" x="252" y="83" text-anchor="end">$7.16</text>
+          <text x="8" y="99">its whole bill vs its whole contract price</text>
+        </svg>
+        <dt>Below contract</dt><dd>The Biller charged <em>less</em> than the contract on one part of a package. We compare each package's whole bill with its whole contract price, so this already makes that package's difference smaller. It's never a separate credit.</dd>
+      </div>
+    </dl>
+  </section>
+
+  <!-- 1 -->
+  <section class="sec" id="problem">
+    <div class="sec-head"><span class="sec-num">1</span><h2>What's wrong today</h2></div>
+    <div class="grid2">
+      <div class="problem"><strong>The amount is a mix of charges, and we don't say so</strong>
+        <p class="small">The biggest finding is called "Shipping price higher than your contract rate · $9,322.20". But that $9,322 is really <strong>$9,003</strong> extra shipping price + <strong>$1,323</strong> extra fuel + <strong>$5</strong> extra remote-area fees, <strong>minus $1,009</strong> where the Biller charged <em>less</em> than the contract. We have this breakdown in the data; the screen just never shows it (it should be shown charge by charge, never as one sum minus another).</p></div>
+      <div class="problem"><strong>One finding's name says the opposite of its numbers</strong>
+        <p class="small">"Home-delivery fee charged incorrectly · $22.64" — yet the home-delivery fees on those packages were <strong>$48 below</strong> the contract. The extra money actually came from remote-area fees and shipping price. Anyone who looks closely will stop trusting the rest.</p></div>
+      <div class="problem"><strong>We never say where the "correct" price came from</strong>
+        <p class="small">Customers ask "says who?". We answer with one general sentence per finding. We can't yet name the exact price list and its date, which week's fuel percentage we used, or which ZIP list we checked against. <span class="k k-unresolved">Q-E2</span></p></div>
+      <div class="problem"><strong>The hard cases are hidden</strong>
+        <p class="small">5 of the 6 demo memos have no package details at all. On the main memo, 6 bills Implentio <em>couldn't check</em> (a UPS price list was missing) are never shown. And the full package table has 26 columns — the PM called it "a lot".</p></div>
+    </div>
+    <div class="q"><b>Ask the client first (Q-E1)</b>The app has already improved since the prototype the client saw: today a finding card opens "Show me why" in place, and the package list opens in a pop-up showing only the charges that differ. Did the client react to <em>this</em>, or to the old prototype's nested tables? What were they trying to find and couldn't? The answer decides how much of this plan we need.</div>
+    <div class="note"><span class="note-label">Rules we won't break</span>
+      <ul class="small">
+        <li>Plain words first; the industry term only as a small label.</li>
+        <li>An example is always labeled as an example, never passed off as typical.</li>
+        <li>The math always reads the same way: billed − contract = difference.</li>
+        <li>We say <em>what</em> was different, never guess <em>why</em>. The top package's shipping price was exactly double the contract, but we don't write "they used the wrong price list" — we can't prove it.</li>
+        <li>We never show a total of what the Biller undercharged. The customer doesn't owe it back, and showing it invites confusion.</li>
+        <li>If we don't have a document, we say "not attached" — never a made-up link.</li>
+      </ul>
+      <p class="refs">Product notes 3, 27, 29, 66, 105, 108, 115.</p></div>
+  </section>
+
+  <!-- 2 -->
+  <section class="sec" id="compare">
+    <div class="sec-head"><span class="sec-num">2</span><h2>Before / after: "Show me why" on the biggest finding</h2>
+      <p class="muted prose">Left: the biggest finding as the app shows it today. Right: the same finding — same packages, same amount, same grouping — with the proposed "Show me why". The right side is live: tap the underlined words and the charges. (Grayed-out controls are only a picture; section 4 has the full demo.)</p>
+      <div class="row"><div class="seg pn-switch" role="group" aria-label="Planning notes in the demos"><button type="button" data-toggle="pn" data-value="show" aria-pressed="true">Planning notes</button><button type="button" data-toggle="pn" data-value="hide">Real UI only</button></div><span class="small muted">"Real UI only" hides everything that wouldn't be in the product: tags, "made up" labels and notes about the demo.</span></div></div>
+    <div class="compare">
+      <div class="col">
+        <div class="col-head">Today: "Shipping price higher than your contract rate" · 510 packages · $9,322.20 <span class="k k-existing">Already built</span></div>
+        <div class="card">
+          <div class="stack s8">
+            <div class="row" style="gap:8px"><h3>Shipping price higher than your contract rate</h3><span class="tag">Base freight</span></div>
+            <div class="small muted row" style="gap:14px"><span>OSM, UPS</span><span>510 packages</span><span>8 invoices</span></div>
+            <p>e.g. one package was billed $223.50; under your contract it should have been $117.39</p>
+            <button class="lnk bold" type="button">Hide why ▴</button>
+          </div>
+          <div class="why-panel">
+            <div class="row" style="gap:28px"><div class="stat"><span class="lbl">Billed</span><span class="val">$23,650.21</span></div><div class="stat"><span class="lbl">Should have been</span><span class="val">$14,328.01</span></div><div class="stat"><span class="lbl">Difference</span><span class="val money">$9,322.20</span></div></div>
+            <div class="box tint"><span class="eyebrow" style="color:var(--muted)">One example</span><p>One package was billed $223.50; under your contract it should have been $117.39.</p><p class="small muted">A Zone 107, 16 lb, Next Day Air Residential package on invoice Q3098513 was billed $223.50 against $117.39 expected — a $106.11 net variance made up of base freight $92.93 unfavourable, fuel $18.90 unfavourable, residential $3.72 favourable, other $2.00 favourable.</p></div>
+            <div><div class="semi">How we worked it out</div><p class="small muted">Each expected charge was rebuilt from the package's service level, zone and billable weight using the contracted rate table, then compared with every charge billed on that package.</p></div>
+            <button class="btn sm" type="button">See all 510 packages</button>
+          </div>
+        </div>
+        <ul class="small">
+          <li>The name says "shipping price", but $1,322.77 of the amount is fuel on the same packages — and the separate "Fuel charge" finding holds only $33.94 of the memo's fuel.</li>
+          <li>Nothing says the example is the most extreme package (billed at double), not a typical one.</li>
+          <li>"The contracted rate table" — which one? From when?</li>
+          <li>Can't tell if all 510 packages were a bit off, or a few were way off.</li>
+          <li>The grey sentence repeats the example in jargon ("Zone 107", "unfavourable", "net variance") and never says what those words mean.</li>
+        </ul>
+      </div>
+      <div class="col">
+        <div class="col-head">Proposed: the same finding, with the new "Show me why" <span class="k k-proposed">Proposed</span></div>
+        <div id="compare-proposed"></div>
+        <ul class="small">
+          <li><strong>The fuel isn't hidden any more:</strong> one equation (billed − your contract = overcharged), then every charge on one zero line. Shipping price and fuel add to it; the home-delivery and other charges billed below contract come off. A Chart / Table switch gives the exact values.</li>
+          <li><strong>Few or many packages over?</strong> "Most were $15–$20 over; the largest was $106.11", with a histogram that marks the top 10%.</li>
+          <li><strong>A typical package first:</strong> the example is a package slip (tracking, invoice, its details and charges), and the largest package is one tap away, clearly labeled.</li>
+          <li><strong>No jargon to decode:</strong> tap "Shipping price", "Zone 107" or "Home" to see what it means for <em>this</em> package, with a small diagram and the word printed on the invoice.</li>
+          <li><strong>How we checked</strong> replaces the second tab: the price list, the invoices and the reviewer, each saying honestly whether we have the file.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="sec" id="model">
+    <div class="sec-head"><span class="sec-num">3</span><h2>The plan: three steps of detail</h2>
+      <p class="muted prose">Each step answers one question, and people stop at the one that answers theirs. Our earlier research found three kinds of customer; each maps to a step. Everything needed to <em>act</em> (tick and dispute) is in step 1 — steps 2 and 3 are for checking.</p></div>
+    <div class="persona">
+      <div class="lvl"><span class="n">Step 1 · The finding card</span><strong>"What did you find?"</strong><span class="small">The problem in plain words, what it covers (carrier, service level, charge type), the amount with its invoices and packages, and the dispute deadline as a chip. One action row: "Include in dispute package" as a bordered control, and "Show why". When the finding's name doesn't match where the money came from, the card says so. <span class="k k-proposed">Proposed</span></span><span class="small muted">For the "just handle it" customer: enough to tick and dispute.</span></div>
+      <div class="lvl"><span class="n">Step 2 · "Show me why", on the card</span><strong>"Why do you think so?"</strong><span class="small">One panel of section cards, all visible at once. <em>What makes up the overcharge</em>: billed − your contract = overcharged, then every charge as bars on one zero line, with a table twin. <em>Overcharge per package</em>: one sentence and a histogram (just the sentence for 25 packages or fewer). <em>How one package was priced</em>: a typical package as a slip, the largest one tap away; tap any charge or detail to see what it means, in the words printed on the invoice. <em>How we checked</em>: the method, the documents and the invoices, each saying whether we have the file. While you scroll the panel, a bar with the title, amount and "Hide why" stays at the top. <span class="k k-proposed">Proposed</span></span><span class="small muted">For the "let me check, then send" customer.</span></div>
+      <div class="lvl"><span class="n">Step 3 · The package list</span><strong>"Show me every package."</strong><span class="small">Every package, showing only the charges that differ. Search, filter by speed, "only where fuel differs", click a package to see how it was priced, full breakdown and download for experts. Zones show as printed on the invoice (e.g. 107). Doesn't repeat step 2.</span><span class="small muted">For analysts, and whoever answers the Biller's follow-up questions.</span></div>
+    </div>
+
+    <h3>Where should step 3 open? Five options, none picked yet <span class="k k-unresolved">Q-E1</span></h3>
+    <p class="small muted prose">You can try each one in section 4. Step 2 always opens in place on the card, whichever option we pick.</p>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th>Option</th><th>Findings list stays visible?</th><th>Can you send someone a link to it?</th><th>Room for a wide table?</th><th>On a phone</th><th>Fits earlier product rules?</th><th>Effort</th></tr></thead>
+        <tbody>
+          <tr><td><strong>A · Pop-up</strong> <span class="k k-existing">today</span></td><td>No, it covers the page</td><td>No</td><td>Yes</td><td>OK</td><td>Partly: some notes say "never a pop-up", one allows it</td><td>None</td></tr>
+          <tr><td><strong>B · Pop-up with its own link</strong></td><td>No</td><td>Yes</td><td>Yes</td><td>OK</td><td>Same as A</td><td>Low</td></tr>
+          <tr><td><strong>C · Its own page</strong></td><td>No; Back returns to the list</td><td>Yes, a normal page link</td><td>Yes, the most</td><td>Good</td><td>No: a note says "never a separate page"</td><td>Medium</td></tr>
+          <tr><td><strong>D · Side panel</strong></td><td>Yes</td><td>Possible</td><td>No, only ~4 columns</td><td>Becomes full screen</td><td>Yes</td><td>Medium</td></tr>
+          <tr><td><strong>E · Opens under the card</strong></td><td>Yes, but the page gets very long</td><td>Only a jump to that spot</td><td>Card width only</td><td>Poor for tables</td><td>Yes</td><td>Low</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="refs">Product notes 108, 115, 141, 175.</p>
+    <div class="note"><span class="note-label">Why we're not picking one yet</span>The trust problem is mostly <em>missing content</em> in step 2 — the breakdown, the documents, the spread. A new container around a mostly empty "documents" list wouldn't fix that. If the client says "they couldn't find a specific package", B or C wins. If they say "they didn't believe the number", step 2 is the fix and the pop-up can stay.</div>
+  </section>
+
+  <!-- 4 -->
+  <section class="sec" id="flow">
+    <div class="sec-head"><span class="sec-num">4</span><h2>Try it: from the card to every package</h2>
+      <p class="muted">Pick a finding on the left — they differ in size and in how much proof we have. Open "Show why", tap the underlined words and the charges in the example, switch Typical / Largest and Chart / Table, then open the package list. Switch "Where does the package list open?" to feel each option.</p></div>
+    <div class="row">
+      <span class="small semi">Show:</span><div class="seg pn-switch" role="group" aria-label="Planning notes in the demos"><button type="button" data-toggle="pn" data-value="show" aria-pressed="true">Planning notes</button><button type="button" data-toggle="pn" data-value="hide">Real UI only</button></div>
+    </div>
+    <div class="row">
+      <span class="small semi">Where does the package list open?</span>
+      <div class="seg" role="group" aria-label="Where the package list opens">
+        <button type="button" data-toggle="l3" data-value="A" aria-pressed="true">A · Pop-up</button>
+        <button type="button" data-toggle="l3" data-value="B">B · Pop-up + link</button>
+        <button type="button" data-toggle="l3" data-value="C">C · Own page</button>
+        <button type="button" data-toggle="l3" data-value="D">D · Side panel</button>
+        <button type="button" data-toggle="l3" data-value="E">E · Under the card</button>
+      </div>
+    </div>
+    <div class="fx">
+      <div class="flist" id="flist" aria-label="Findings"></div>
+      <div class="frame"><div class="frame-bar" id="frame-bar">Memo CM-2026-0630 · Summary &amp; findings</div><div class="frame-body" id="stage"></div></div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="sec" id="states">
+    <div class="sec-head"><span class="sec-num">5</span><h2>Different situations</h2></div>
+    <div class="sub">
+      <h3>5a · A finding with 1 package vs 500 <span class="k k-proposed">Proposed</span></h3>
+      <div class="scroll-x">
+        <table class="ptable dens">
+          <thead><tr><th>Packages</th><th>Step 1 · Card</th><th>Step 2 · Show me why</th><th>Step 3 · Package list</th><th>Demo example</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>The package itself is the example ("Tracking … was billed $14.87; contract says $9.72")</td><td>That package worked out line by line is the proof; no chart</td><td>None: no "See all 1 package" button</td><td>Made up: home-delivery fee on a business address</td></tr>
+            <tr><td>2 – 25</td><td>As today</td><td>The spread in one sentence ("all 3 were $1.56 over")</td><td>A plain table: no search, no pages</td><td>Remote-area fee (3) · Home-delivery fee (13)</td></tr>
+            <tr><td>26 – 500</td><td>As today</td><td>A small chart of the spread + a sentence</td><td>Search, filters, 25 per page</td><td>Fuel (172) · Shipping price and fuel (154)</td></tr>
+            <tr><td>500 +</td><td>As today</td><td>Same</td><td>Same, and "Download" is prominent <span class="k k-unresolved">Check with developers</span></td><td>Shipping price (510)</td></tr>
+            <tr><td>No package details</td><td>Amount and type only, and says so</td><td>What we know in words; "the full calculation is in the credit memo file"; "Ask Implentio"</td><td>None</td><td>ShipBob memo · remote-area fees $875.14</td></tr>
+            <tr><td>Bills we couldn't check</td><td>Their own card, not counted in the total</td><td>Why we couldn't, what's missing, what the customer can do</td><td>The bills we couldn't check</td><td>6 bills on 4 UPS invoices</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="sub">
+      <div class="row between"><h3>5b · Documents: honest about what we have <span class="k k-proposed">Proposed</span></h3><div class="seg pn-switch" role="group" aria-label="Planning notes in the demos"><button type="button" data-toggle="pn" data-value="show" aria-pressed="true">Planning notes</button><button type="button" data-toggle="pn" data-value="hide">Real UI only</button></div></div>
+      <div class="grid3">
+        <div class="box"><div class="src" style="border:0;padding:0"><span class="src-ic src-ok">✓</span><span><strong>QuickBox price list — UPS services</strong><br><span class="small muted">Version 3 · valid from Mar 1, 2026 · PDF, 4 pages</span></span><button class="btn sm" type="button">Open</button></div><p class="small muted pn"><strong>We have the file.</strong> The customer can open it.</p></div>
+        <div class="box"><div class="src" style="border:0;padding:0"><span class="src-ic src-named">!</span><span><strong>Weekly fuel index</strong><br><span class="small muted">Week of Apr 6, 2026 · 15.25% · file not attached</span></span><span></span></div><p class="small muted pn"><strong>We know which one, but don't have the file.</strong> Offer "Ask Implentio for it".</p></div>
+        <div class="box"><div class="src" style="border:0;padding:0"><span class="src-ic src-none">–</span><span><strong>Your QuickBox agreement</strong><br><span class="small muted">Not attached</span></span><span></span></div><p class="small muted pn"><strong>We don't have it.</strong> Say so — never invent a link or a clause number.</p></div>
+      </div>
+    </div>
+    <div class="sub">
+      <h3>5c · The package list when things don't match</h3>
+      <div class="grid3">
+        <div class="box"><strong class="small">Search finds nothing</strong><p class="small muted">"No packages match 1Z-DEMO-99. Search looks at tracking, order and invoice numbers." · Clear search</p></div>
+        <div class="box"><strong class="small">Filter leaves nothing</strong><p class="small muted">"No Ground Commercial packages in this finding." · Clear filters. Filtering never changes the finding's total.</p></div>
+        <div class="box"><strong class="small">One charge on a package was below contract</strong><p class="small muted">Shown right in the row: "Shipping price +$8.63 · Fuel charge −$1.47 (below contract)" (a real package). We name it, never hide it.</p></div>
+      </div>
+    </div>
+    <div class="sub">
+      <h3>5d · "Checked by Implentio" badge <span class="k k-unresolved">Check with Implentio</span></h3>
+      <div class="row"><span class="chip success">✓ Checked by an Implentio reviewer · Jul 6, 2026</span><span class="small muted pn">The product notes want the reviewer and date shown, but only when the review really happened. Does Implentio's internal tool record who reviewed each finding? (Q-E6)</span></div>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="sec" id="edge">
+    <div class="sec-head"><span class="sec-num">6</span><h2>Tricky cases</h2></div>
+
+    <!-- 6a · worked example -->
+    <div class="gx" id="edge-grouping">
+      <h3>6a · Why fuel shows up under “Shipping price” — a worked example</h3>
+      <div class="gx-rule">
+        <span aria-hidden="true">💡</span>
+        <p><strong>The rule:</strong> each package goes into <strong>one</strong> finding — the one for its <strong>biggest mistake</strong>. Every charge on that package comes with it. <span class="k k-unresolved pn">Q-E8: exact rule to confirm with Implentio</span></p>
+      </div>
+
+      <span class="gx-step">Step 1 · Three packages, each with its biggest mistake</span>
+      <div class="gx-pkgs">
+        <div class="gx-pkg">
+          <h4>Package A</h4>
+          <table>
+            <tr class="big"><td>Shipping price</td><td class="num">$40 vs $20</td><td class="num gx-up">+$20</td></tr>
+            <tr><td>Fuel (25%)</td><td class="num">$10 vs $5</td><td class="num gx-up">+$5</td></tr>
+          </table>
+          <span class="gx-to">Biggest mistake: shipping → <b>“Shipping price” finding</b></span>
+        </div>
+        <div class="gx-pkg">
+          <h4>Package B</h4>
+          <table>
+            <tr><td>Shipping price</td><td class="num">$20 vs $20</td><td class="num">$0</td></tr>
+            <tr class="big"><td>Fuel (30% vs 25%)</td><td class="num">$6 vs $5</td><td class="num gx-up">+$1</td></tr>
+          </table>
+          <span class="gx-to">Biggest mistake: fuel → <b>“Fuel charge” finding</b></span>
+        </div>
+        <div class="gx-pkg">
+          <h4>Package C</h4>
+          <table>
+            <tr class="big"><td>Shipping price</td><td class="num">$30 vs $25</td><td class="num gx-up">+$5</td></tr>
+            <tr><td>Fuel (25%)</td><td class="num">$7.50 vs $6.25</td><td class="num gx-up">+$1.25</td></tr>
+          </table>
+          <span class="gx-to">Biggest mistake: shipping → <b>“Shipping price” finding</b></span>
+        </div>
+      </div>
+      <p class="small muted">“$40 vs $20” = billed vs your contract. Made-up round numbers.</p>
+
+      <span class="gx-step">Step 2 · Why package A’s fuel went up</span>
+      <div class="gx-why">
+        <div class="gx-bars" role="img" aria-label="Your contract: shipping $20 plus 25% fuel, $5. Billed: shipping $40 plus the same 25% fuel, $10.">
+          <div class="gx-bar"><b>Your contract</b><div class="gx-track"><span class="gx-seg gx-ship" style="width:50%">shipping $20</span><span class="gx-seg gx-fuel ok" style="width:12.5%">$5</span></div></div>
+          <div class="gx-bar"><b>Billed</b><div class="gx-track"><span class="gx-seg gx-ship" style="width:100%">shipping $40</span><span class="gx-seg gx-fuel" style="width:25%">$10</span></div></div>
+        </div>
+        <p class="small">Fuel is a <strong>percentage of the shipping price</strong>. The percentage was right (25%), but it was taken from a shipping price that was <strong>doubled</strong>. So the extra $5 of fuel isn’t a separate mistake — it’s caused by the shipping mistake, and it’s disputed together with it.</p>
+      </div>
+
+      <span class="gx-step">Step 3 · The findings the customer sees</span>
+      <div class="gx-finds">
+        <div class="gx-find">
+          <strong>Shipping price higher than your contract rate</strong>
+          <span class="muted">Packages A and C</span>
+          <span class="gx-amt">$31.25</span>
+          <span class="small">made up of shipping <span class="gx-up">+$25</span> and fuel <span class="gx-up">+$6.25</span> — the fuel on <em>these</em> packages</span>
+        </div>
+        <div class="gx-find">
+          <strong>Fuel charge higher than your contract allows</strong>
+          <span class="muted">Package B</span>
+          <span class="gx-amt">$1.00</span>
+          <span class="small">the only package where fuel itself was the main mistake</span>
+        </div>
+      </div>
+      <div class="gx-sum">
+        <span>Nothing counted twice:</span>
+        <b>$31.25</b><span>+</span><b>$1.00</b><span>=</span><b>$32.25</b>
+        <span class="muted">= A $25 + B $1 + C $6.25, every package once.</span>
+      </div>
+      <p class="small">In the real memo it’s the same story at a bigger scale: “Shipping price” (510 packages) shows <span class="gx-up">+$1,322.77</span> of fuel that rose with the overcharged shipping price, while the separate “Fuel charge” finding (172 other packages) is about the fuel percentage itself.</p>
+    </div>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th style="width:30%">Case</th><th>What we'd do</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>The finding's name says one charge, but the money came from others ("Home-delivery fee", $22.64)</td><td>The card itself says so, before anyone ticks it: "Grouped under home-delivery fees, but most of the difference came from remote-area fees and shipping price" (product note 136). "What it's made of" shows where the money came from. Better long-term: Implentio groups these findings differently</td><td><span class="k k-unresolved">Q-E7</span></td></tr>
+          <tr><td>The same charge shows up in two findings ($1,322.77 of fuel inside "Shipping price", and a separate "Fuel charge" finding of $35.10)</td><td>Not double counting — Implentio puts every package in exactly one finding (the exact rule: <span class="k k-unresolved">Q-E8</span>), and the findings add up to the memo. The breakdown says "across these 510 packages" and names the other finding: "The separate 'Fuel charge…' finding covers 172 other packages." (The old prototype said this too.) The other finding's name is a link. Considered and dropped (2026-09-29): one finding per charge — it breaks product notes 129 and 131, and its split amounts can't be checked against the invoice.</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td>Two charges both slightly too high ("Shipping price and fuel", 154 packages, 2¢ each)</td><td>Both named in the title (already) and in the breakdown; the spread says "every package was 2¢ over"</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td>Hundreds of packages, tiny total (fuel: 172 packages, $35.10, most under 10¢)</td><td>Say it plainly: "Most packages were a few cents over; the largest was $0.88." Whether it's worth disputing is file 06's job — we never hide a finding</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td>A package where the Biller undercharged overall</td><td>Already left out of findings; explained once in "How findings are calculated"</td><td><span class="k k-existing">Already built</span></td></tr>
+          <tr><td>The packages add up to a few cents more or less than the card (rounding)</td><td>The card's amount is the real one (billed − contract); a small note if the rows differ by cents</td><td><span class="k k-existing">Already a rule</span></td></tr>
+          <tr><td>"UPS" on the packages but "QuickBox" on the dispute</td><td>Explain once: "billed by QuickBox for UPS shipments" — QuickBox sent the bill, UPS drove the package</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td>Implentio publishes a corrected version of the memo</td><td>The package list follows the version on screen; a banner says what changed (already exists)</td><td><span class="k k-existing">Already built</span></td></tr>
+          <tr><td>10,000+ packages</td><td>The list loads in pages from the server; "Download" is the main way to get everything</td><td><span class="k k-unresolved">Check with developers</span></td></tr>
+          <tr><td>The Biller or a colleague asks "which packages exactly?" after the dispute email</td><td>The customer needs a link to the package list they can send → points to option B or C</td><td><span class="k k-unresolved">Q-E4</span></td></tr>
+          <tr><td>The Biller undercharged $1,072 elsewhere on the same memo</td><td>Never shown as a total; only as named "below contract" parts inside a finding's breakdown</td><td><span class="k k-existing">Already a rule</span></td></tr>
+          <tr><td>Phone</td><td>The package list goes full screen (options A–D; E stays under the card); the table keeps Tracking · Billed · Contract · Difference and moves the rest into the row's detail</td><td><span class="k k-proposed">Proposed</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section class="sec" id="data">
+    <div class="sec-head"><span class="sec-num">7</span><h2>For developers: which data each part needs</h2>
+      <p class="muted small">Skip this if you're not building it. Short version: most of step 2 can be built from data we already have; the document list and the "checked by" badge need new data from Implentio.</p></div>
+    <details class="more">
+      <summary>Show the data table</summary>
+      <div class="more-body">
+        <div class="legend"><span class="d d-have">Have</span><span class="d d-verify">Verify</span><span class="d d-missing">Missing</span><span class="d d-new">New field</span></div>
+        <div class="scroll-x">
+          <table class="ptable">
+            <thead><tr><th>UI element</th><th>Reads</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>Step 1: title, carrier, service levels, charge type, counts, amount</td><td><code>chargeKey</code> → finding-copy, <code>carriers</code>, <code>sv</code> (distinct, simplified), <code>packages</code>, <code>invoices</code>, <code>varN</code></td><td><span class="d d-have">Have</span> (golden memo only)</td></tr>
+              <tr><td>Price list tile in "How we checked"</td><td><code>finding.sources[0]</code></td><td><span class="d d-new">New field</span> <span class="d d-verify">Verify</span></td></tr>
+              <tr><td>Billed / contract / difference</td><td><code>invoicedN</code>, <code>expectedN</code>, <code>varN</code></td><td><span class="d d-have">Have</span></td></tr>
+              <tr><td>What makes up the overcharge (bars and table)</td><td><code>chargeMix {b,f,r,d,o}</code> (and <code>mixText</code>)</td><td><span class="d d-have">Have</span> — not shown today</td></tr>
+              <tr><td>Spread across packages</td><td>per-package <code>tv</code> (derived)</td><td><span class="d d-have">Have</span></td></tr>
+              <tr><td>Example package: largest</td><td>top package <code>b,f,r,d,o</code> pairs, <code>sv</code>, <code>az/ez</code>, <code>wt</code></td><td><span class="d d-have">Have</span></td></tr>
+              <tr><td>Example package: typical</td><td>the package nearest the median <code>tv</code>, same fields</td><td><span class="d d-have">Have</span> (derived; the demo's typical packages are made up)</td></tr>
+              <tr><td>The exact price-list line used ("$92.93 for zone 7, 16 lb")</td><td>rate-cell lineage (note 76)</td><td><span class="d d-missing">Missing</span> <span class="d d-verify">Verify</span></td></tr>
+              <tr><td>Documents list (price list, fuel index week and %, ZIP list, contract clause)</td><td><code>finding.sources[] {kind, name, version, effectiveDate, value?, fileRef?}</code></td><td><span class="d d-new">New field</span> <span class="d d-verify">Q-E2</span></td></tr>
+              <tr><td>Checked by / on</td><td><code>finding.reviewedBy</code>, <code>reviewedAt</code> (note 1)</td><td><span class="d d-verify">Q-E6</span></td></tr>
+              <tr><td>Bills we couldn't check</td><td><code>docGroups</code> (fixture only) → <code>memo.uncheckedRecords[]</code></td><td><span class="d d-verify">Q-E3</span> <span class="d d-new">New field</span></td></tr>
+              <tr><td>Package list</td><td><code>services[].pkgs[]</code> (t, so, inv, sv, az/ez, wt, ti/te/tv, charge pairs)</td><td><span class="d d-have">Have</span> (golden only) · <span class="d d-verify">Q-E5</span></td></tr>
+              <tr><td>Explain-in-place: speed and home/business from the service name</td><td>map <code>sv</code> ("NEXT DAY AIR RESIDENTIAL") → speed + address type, per carrier (UPS, FedEx, DHL, USPS, OSM…)</td><td><span class="d d-new">New</span> <span class="d d-verify">Verify</span></td></tr>
+              <tr><td>Explain-in-place: distance step from the invoice zone</td><td>normalize <code>az/ez</code> per carrier (UPS 107 → speed 1xx, distance 7)</td><td><span class="d d-new">New</span></td></tr>
+              <tr><td>Explain-in-place: destination ZIP on the remote list</td><td>package ZIP + the carrier's remote-ZIP list version</td><td><span class="d d-missing">Missing</span> <span class="d d-verify">Q-E2</span></td></tr>
+              <tr><td>Fallback rule</td><td>A fact we can't derive shows as plain text with no explain button — never a generic or empty explanation</td><td><span class="d d-have">Rule</span></td></tr>
+              <tr><td>Link to the package list (B/C)</td><td>route / query param</td><td><span class="d d-new">New</span></td></tr>
+              <tr><td>Download evidence (.xlsx per finding)</td><td>backend file (demo writes .csv)</td><td><span class="d d-verify">Verify</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- 8 -->
+  <section class="sec" id="questions">
+    <div class="sec-head"><span class="sec-num">8</span><h2>Questions for the client</h2></div>
+    <div class="grid2">
+      <div class="q"><b>Q-E1 · What exactly confused customers?</b>Was it today's app or the old prototype? What were they trying to find? <span class="why">This decides where the package list opens (A–E), or whether we only improve step 2.</span></div>
+      <div class="q"><b>Q-E2 · Which documents can Implentio attach?</b>For each finding: the price list name, version and date? The fuel index week and percentage? The remote-area ZIP list? The contract clause? The files, or just their names? <span class="why">Without these, the "What we compared with" tab is mostly empty.</span></div>
+      <div class="q"><b>Q-E3 · Show the bills Implentio couldn't check?</b>If yes, with what request to the customer ("send us the UPS price list")? Always kept out of the total? <span class="why">Hiding them is honest about the total, but customers never learn money might be there.</span></div>
+      <div class="q"><b>Q-E4 · Must the package list be shareable?</b>With the Biller, a colleague, Implentio staff, later an AI assistant? <span class="why">If yes, options B or C.</span></div>
+      <div class="q"><b>Q-E5 · Package details for every memo?</b>In real use, does every finding come with its packages, or only some memos (as in the demo)? <span class="why">Decides how often the "no package details" version appears.</span></div>
+      <div class="q"><b>Q-E6 · Who reviewed each finding?</b>Is the reviewer and date recorded? <span class="why">We only show "Checked by Implentio" if it's true.</span></div>
+      <div class="q"><b>Q-E8 · How does Implentio decide which finding a package goes in? (for Implentio)</b>In the demo memo 836 of 852 packages sit in the finding for their biggest difference, but 16 don't (e.g. a DHL package in "Fuel charge" whose fuel was <em>below</em> contract). What is the rule? <span class="why">"Show me why" tells customers how packages are assigned; it has to say the true rule.</span></div>
+      <div class="q"><b>Q-E7 · Findings whose name doesn't match the money</b>Should Implentio group them differently ("Home-delivery fee" findings where the money came from other charges), or should the app explain it? <span class="why">Explaining works, but fixing the grouping avoids the doubt entirely.</span></div>
+      <div class="q"><b>Q-02a · Is the spread chart useful?</b>Does it build trust, or is it noise for the "just handle it" customer? <span class="why">It's now behind "Show chart"; the one-sentence spread is always visible. If nobody opens it, drop it.</span></div>
+    </div>
+  </section>
+</main>
+
+<script id="kit">
+/* Planning kit behaviour — inlined into each file's script block with
+   id="kit" by sync-kit.mjs (never write a closing script tag in this file).
+
+   [data-tabs]          container; its [data-tab="x"] buttons show the matching
+                        [data-panel="x"] inside the same container (nearest).
+   [data-toggle="grp"]  buttons with data-value; sets data-<grp>="value" on the
+                        element named by data-target (default: <body>) and
+                        aria-pressed on the buttons. CSS/JS react to it.
+   window.kit.money(n)  "$1,234.56"
+*/
+(function () {
+  const money = (n) =>
+    (n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  function initTabs(root) {
+    root.querySelectorAll('[data-tabs]').forEach((box) => {
+      const own = (el) => el.closest('[data-tabs]') === box
+      const tabs = [...box.querySelectorAll('[data-tab]')].filter(own)
+      const panels = [...box.querySelectorAll('[data-panel]')].filter(own)
+      const show = (key) => {
+        tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === key)))
+        panels.forEach((p) => (p.hidden = p.dataset.panel !== key))
+        box.dispatchEvent(new CustomEvent('tabchange', { detail: key }))
+      }
+      tabs.forEach((t) => {
+        t.setAttribute('role', 'tab')
+        t.addEventListener('click', () => show(t.dataset.tab))
+      })
+      const first = tabs.find((t) => t.getAttribute('aria-selected') === 'true') ?? tabs[0]
+      if (first) show(first.dataset.tab)
+    })
+  }
+
+  function initToggles(root) {
+    const groups = new Map()
+    root.querySelectorAll('[data-toggle]').forEach((b) => {
+      const g = b.dataset.toggle
+      if (!groups.has(g)) groups.set(g, [])
+      groups.get(g).push(b)
+    })
+    groups.forEach((btns, g) => {
+      const set = (v) => {
+        btns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === v)))
+        const targetSel = btns[0].dataset.target
+        const target = targetSel ? document.querySelector(targetSel) : document.body
+        if (target) target.dataset[g] = v
+        document.dispatchEvent(new CustomEvent('toggle:' + g, { detail: v }))
+      }
+      btns.forEach((b) => b.addEventListener('click', () => set(b.dataset.value)))
+      const first = btns.find((b) => b.getAttribute('aria-pressed') === 'true') ?? btns[0]
+      set(first.dataset.value)
+    })
+  }
+
+  window.kit = { money, initTabs, initToggles }
+  document.addEventListener('DOMContentLoaded', () => {
+    initTabs(document)
+    initToggles(document)
+  })
+})()
+</script>
+<script>
+(function () {
+  const $ = (s) => document.querySelector(s)
+  const m = (n) => window.kit.money(n)
+  const signed = (n) => (Math.abs(n) < 0.005 ? '$0.00' : (n > 0 ? '+' : '−') + '$' + Math.abs(n).toFixed(2))
+  const CH = [['b', 'Shipping price'], ['f', 'Fuel charge'], ['r', 'Home-delivery fee'], ['d', 'Remote-area fee'], ['o', 'Other charges']]
+
+  // deterministic PRNG
+  function rng(seed) { return function () { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 } }
+
+  // levels: service levels shown on the card. take: the one-line reading of the breakdown.
+  // typ: a typical package (near the median difference), shown before the largest (ex).
+  // sources: [have it?, document, date, what it means for this finding].
+  const F = [
+    { id: 'base', title: 'Shipping price higher than your contract rate', term: 'Base freight', carriers: 'UPS, OSM', levels: ['Ground', 'Next Day Air', '2nd Day Air', 'Ground Advantage'], pk: 510, inv: 8, billed: 23650.21, contract: 14328.01, diff: 9322.2,
+      label: '510 packages · lots of proof', mix: { b: 9003.21, f: 1322.77, r: -790.26, d: 4.98, o: -218.5 },
+      take: 'Almost all of it is the <strong>shipping price</strong> (97%).',
+      q: [0.79, 14.81, 17.91, 20.24, 24.36, 106.11], spread: 'Most packages were <strong>$15–$20 over</strong>. The largest was $106.11.',
+      hist: [6, 22, 88, 255, 88, 32, 19],
+      ex: { parts: { b: [185.86, 92.93], f: [37.64, 18.74], r: [0, 3.72], d: [0, 0], o: [0, 2] }, billed: 223.5, contract: 117.39, track: '1Z3760WA0129059213', invoice: 'Q3098513' },
+      typ: { parts: { b: [36, 18], f: [7.29, 3.63], r: [0, 3.72], d: [0, 0], o: [0, 0] }, billed: 43.29, contract: 25.35, track: '1Z3760WA0118830417', invoice: 'Q3098511',
+        fa: { wt: 6, speed: 'ground', zone: 5, invZone: '005', invSvc: 'GROUND RESIDENTIAL', dest: 'home', carrier: 'UPS' } },
+      services: ['2nd Day Air Residential', 'Ground Residential', 'Ground Commercial', '2nd Day Air Commercial', 'Ground Advantage'],
+      sources: [['ok', 'QuickBox price list v3', 'Mar 2026', '“Your contract” = its UPS service prices']],
+      qNote: 'Also: the finding lists OSM packages, but the contract line only names UPS services.',
+      why: 'Each package was looked up in your price list by speed, distance and weight, then every billed charge was compared with it.', compared: 'Compared with QuickBox price list v3 (Mar 2026)' },
+    { id: 'fuel', title: 'Fuel charge higher than your contract allows', term: 'Fuel surcharge', carriers: 'DHL, UPS', levels: ['2nd Day Air', 'Ground', 'Next Day Air'], pk: 172, inv: 6, billed: 5064.68, contract: 5029.58, diff: 35.1,
+      label: '172 packages · a few cents each', mix: { b: 0, f: 33.94, r: -6.78, d: 7.94, o: 0 },
+      take: 'Almost all of it is the <strong>fuel charge</strong> (97%).',
+      q: [0.03, 0.06, 0.09, 0.34, 0.43, 0.88], spread: 'Most packages were <strong>a few cents over</strong> (half were under 9¢). The largest was $0.88.',
+      ex: { parts: { b: [44.14, 44.14], f: [8.94, 8.06], r: [0, 0], d: [0, 0], o: [0, 0] }, billed: 53.08, contract: 52.2, track: '1Z3760WA0234482575', invoice: 'QB3098079' },
+      typ: { parts: { b: [11.2, 11.2], f: [2.37, 2.28], r: [0, 0], d: [0, 0], o: [0, 0] }, billed: 13.57, contract: 13.48, track: '1Z3760WA0240017731', invoice: 'QB3098079',
+        fa: { wt: 4, speed: 'ground', zone: 4, invZone: '004', invSvc: 'GROUND COMMERCIAL', dest: 'business', carrier: 'UPS' } },
+      services: ['2nd Day Air Commercial', '2nd Day Air Residential', 'Ground Commercial', 'Next Day Air Commercial'],
+      sources: [['named', 'Weekly fuel index (UPS)', 'Apr 6 – Jun 22, 2026', 'We know which weeks; file not attached'], ['ok', 'QuickBox price list v3', 'Mar 2026', '“Your contract” = its fuel terms: the carrier’s fuel % minus 2 points']],
+      why: 'Fuel is a percentage of the shipping price. We applied your contract’s percentage for the week each package shipped.', compared: 'Compared with the weekly fuel index and your QuickBox fuel terms' },
+    { id: 'res', title: 'Home-delivery fee charged incorrectly', term: 'Residential surcharge', carriers: 'UPS', levels: ['2nd Day Air'], pk: 13, inv: 2, billed: 442.36, contract: 419.72, diff: 22.64,
+      label: '13 packages · name doesn’t match the money', mix: { b: 21.92, f: 8.86, r: -48.36, d: 42.22, o: -2 },
+      take: 'Most of it is the <strong>remote-area fee</strong> and the <strong>shipping price</strong>. The home-delivery fees were billed <em>below</em> your contract.',
+      q: [1.01, 1.09, 1.09, 1.18, 2.24, 4.73], spread: '11 of 13 packages were <strong>about $1 over</strong>. The largest was $4.73.',
+      ex: { parts: { b: [31.58, 23.2], f: [8.7, 7.65], r: [0, 3.72], d: [4.22, 4.2], o: [7.12, 8.12] }, billed: 51.62, contract: 46.89, track: '1Z3760WA0215912789', invoice: 'QB3098105' },
+      typ: { parts: { b: [23.94, 23.2], f: [8, 7.65], r: [3.72, 3.72], d: [0, 0], o: [0, 0] }, billed: 35.66, contract: 34.57, track: '1Z3760WA0215907712', invoice: 'QB3098105',
+        fa: { wt: 3, speed: '2day', zone: 4, invZone: '204', invSvc: '2ND DAY AIR RESIDENTIAL', dest: 'home', carrier: 'UPS' } },
+      services: ['2nd Day Air Residential'], mismatch: true,
+      sources: [['ok', 'QuickBox price list v3', 'Mar 2026', '“Your contract” = its UPS service prices'], ['named', 'UPS home-delivery fee table', '2026', 'We know which one; file not attached']],
+      why: 'We compared every charge on each package with your contract on the day it shipped.', compared: 'Compared with QuickBox price list v3 and UPS 2026 fees' },
+    { id: 'das', title: 'Remote-area fee charged incorrectly', term: 'Delivery area surcharge (DAS)', carriers: 'OSM', levels: ['OSM Premium'], pk: 3, inv: 3, billed: 46.99, contract: 42.31, diff: 4.68,
+      label: '3 packages · all the same', mix: { b: 0, f: 0, r: 0, d: 4.68, o: 0 },
+      take: 'All of it is the <strong>remote-area fee</strong>.',
+      q: [1.56, 1.56, 1.56, 1.56, 1.56, 1.56], spread: 'All 3 packages were <strong>$1.56 over</strong>: the whole remote-area fee.',
+      ex: { parts: { b: [12.47, 12.47], f: [0.75, 0.75], r: [0, 0], d: [1.56, 0], o: [0, 0] }, billed: 14.78, contract: 13.22, track: '9261290318401491629825', invoice: 'QS3098899' },
+      services: ['Premium'],
+      sources: [['named', 'OSM list of remote ZIP codes', 'Apr 2026', 'We know which one; file not attached'], ['ok', 'QuickBox price list v3', 'Mar 2026', '“Your contract” = its OSM service prices']],
+      why: 'A remote-area fee is only allowed for ZIP codes on the carrier’s official list. These packages went to ZIP codes that weren’t on it.', compared: 'Compared with the OSM list of remote ZIP codes' },
+    { id: 'multi', title: 'Shipping price and fuel charge both too high', term: 'Base freight + fuel', carriers: 'OSM', levels: ['OSM Premium'], pk: 154, inv: 13, billed: 1464.61, contract: 1461.53, diff: 3.08,
+      label: '154 packages · 2¢ each', mix: { b: 1.54, f: 1.54, r: 0, d: 0, o: 0 },
+      take: 'It’s split evenly between the <strong>shipping price</strong> and the <strong>fuel charge</strong>.',
+      q: [0.02, 0.02, 0.02, 0.02, 0.02, 0.02], spread: 'Every package was <strong>2¢ over</strong>: 1¢ shipping price, 1¢ fuel.',
+      ex: { parts: { b: [8.92, 8.91], f: [0.54, 0.53], r: [0, 0], d: [0, 0], o: [0, 0] }, billed: 9.46, contract: 9.44, track: '9261290318401490371299', invoice: 'QS3098017' },
+      services: ['Premium'],
+      sources: [['ok', 'QuickBox price list v3', 'Mar 2026', '“Your contract” = its OSM service prices'], ['named', 'Weekly fuel index (OSM)', '', 'We know which one; file not attached']],
+      why: 'We recalculated the shipping price from your price list, then the fuel charge from it. Both were 1¢ too high on every package.', compared: 'Compared with QuickBox price list v3 and the fuel index' },
+    { id: 'one', mock: true, title: 'Home-delivery fee charged on a business address', term: 'Residential surcharge', carriers: 'UPS', levels: ['Ground'], pk: 1, inv: 1, billed: 14.87, contract: 9.72, diff: 5.15,
+      label: '1 package · made-up example', mix: { b: 0, f: 0.25, r: 4.9, d: 0, o: 0 },
+      take: 'Almost all of it is the <strong>home-delivery fee</strong> (95%).',
+      q: [5.15, 5.15, 5.15, 5.15, 5.15, 5.15], spread: '',
+      ex: { parts: { b: [8.4, 8.4], f: [1.57, 1.32], r: [4.9, 0], d: [0, 0], o: [0, 0] }, billed: 14.87, contract: 9.72, track: '1Z-DEMO-000001', invoice: 'INV-DEMO-0417' },
+      services: ['Ground'],
+      sources: [['named', 'UPS address check', '', 'UPS lists this address as a business; file not attached']],
+      why: 'A home-delivery fee is only allowed for homes. UPS lists this address as a business.', compared: 'Compared with UPS’s address check' },
+    { id: 'nodata', nodata: true, title: 'Remote-area fee charged incorrectly', term: 'Delivery area surcharge (DAS)', carriers: '—', pk: null, inv: null, billed: null, contract: null, diff: 875.14,
+      label: 'ShipBob · no package details', memo: 'CM-2026-0514', biller: 'ShipBob' },
+    { id: 'unchecked', unchecked: true, title: 'Bills we couldn’t check', term: 'Price list needed', carriers: 'UPS', pk: 6, inv: 4, diff: null, label: 'Not in the total' },
+  ]
+
+  // synthetic packages matching count, total and quantiles
+  const pkgCache = {}
+  function pkgs(f) {
+    if (pkgCache[f.id]) return pkgCache[f.id]
+    const r = rng(f.id.length * 977 + f.pk)
+    // Stratified draw from the real quantiles (min, p25, p50, p75, p90, max);
+    // the largest package keeps its real value, the rest scale to the total.
+    const q = f.q
+    const P = [0, 0.25, 0.5, 0.75, 0.9, 1]
+    const qf = (u) => { let i = 0; while (i < 4 && u > P[i + 1]) i++; return q[i] + (q[i + 1] - q[i]) * ((u - P[i]) / (P[i + 1] - P[i])) }
+    let rows = []
+    for (let i = 0; i < f.pk; i++) rows.push(qf((i + 0.5) / f.pk))
+    rows[rows.length - 1] = q[5]
+    const restSum = rows.slice(0, -1).reduce((a, b) => a + b, 0)
+    const k = restSum > 0 ? (f.diff - q[5]) / restSum : 1
+    rows = rows.map((v, i) => (i === rows.length - 1 ? v : Math.round(v * k * 100) / 100))
+    const drift = Math.round((f.diff - rows.reduce((a, b) => a + b, 0)) * 100) / 100
+    rows[0] = Math.round((rows[0] + drift) * 100) / 100
+    // shuffle so the table isn't sorted
+    for (let i = rows.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [rows[i], rows[j]] = [rows[j], rows[i]] }
+    const totalMix = Object.values(f.mix).reduce((a, b) => a + b, 0)
+    const out = rows.map((tv, i) => {
+      const svc = f.services[Math.floor(r() * f.services.length)]
+      const zone = 2 + Math.floor(r() * 7)
+      const wt = 1 + Math.floor(r() * 18)
+      const parts = {}
+      let billed = 0, contract = 0
+      for (const [k] of CH) {
+        const share = f.mix[k] / totalMix
+        const d = Math.round(tv * share * 100) / 100
+        const base = k === 'b' ? 6 + zone * 1.8 + wt * 0.9 : k === 'f' ? (6 + zone * 1.8 + wt * 0.9) * 0.18 : k === 'r' ? (/Residential/.test(svc) ? 3.72 : 0) : k === 'd' ? (f.mix.d ? 4.2 : 0) : (f.mix.o ? 2 : 0)
+        const c = Math.max(Math.round(base * 100) / 100, d < 0 ? -d : 0)
+        parts[k] = [Math.round((c + d) * 100) / 100, c]
+        billed += c + d; contract += c
+      }
+      return { t: '1Z-DEMO-' + String(100000 + i * 37 + f.pk).slice(-6), so: 'SO-DEMO-' + String(20000 + i * 7), inv: 'INV-DEMO-04' + String(10 + (i % f.inv)).padStart(2, '0'), svc, zone, wt, billed: Math.round(billed * 100) / 100, contract: Math.round(contract * 100) / 100, tv, parts }
+    })
+    pkgCache[f.id] = out
+    return out
+  }
+
+  // ---------- rendering ----------
+  let cur = 'base'
+  let whyOpen = true
+  // Which example package is showing, and whether each chart shows as a chart or its table.
+  let exPick = 'typ'
+  let vz = { ledger: 'chart', spread: 'chart' }
+  let recOpen = false
+  let idp = 'fx'
+  let listShown = false
+  const rec = { q: '', svc: 'all', view: 'diff', only: 'all', page: 0, open: null }
+
+  // ---------- explain in place ----------
+  // The glossary, brought to where the words are used: every charge and every
+  // package fact explains itself with this package's own numbers.
+  const FACTS = {
+    // invZone / invSvc: exactly as printed on the invoice (base is real data).
+    base: { wt: 16, speed: 'next', zone: 7, invZone: '107', invSvc: 'NEXT DAY AIR RESIDENTIAL', dest: 'home', carrier: 'UPS' },
+    fuel: { wt: 11, speed: '2day', zone: 6, invZone: '206', invSvc: '2ND DAY AIR COMMERCIAL', dest: 'business', carrier: 'UPS' },
+    res: { wt: 5, speed: '2day', zone: 5, invZone: '205', invSvc: '2ND DAY AIR RESIDENTIAL', dest: 'home', carrier: 'UPS' },
+    das: { wt: 5, speed: 'premium', zone: 7, invZone: '7', invSvc: 'PREMIUM', dest: null, carrier: 'OSM', zip: '78101' },
+    multi: { wt: 3, speed: 'premium', zone: 6, invZone: '6', invSvc: 'PREMIUM', dest: null, carrier: 'OSM' },
+    one: { wt: 2, speed: 'ground', zone: 3, invZone: '003', invSvc: 'GROUND COMMERCIAL', dest: 'business', carrier: 'UPS' },
+  }
+  // What each charge is called on the invoice and in the Biller's replies.
+  const INV_TERM = { b: 'Base freight', f: 'Fuel surcharge', r: 'Residential surcharge', d: 'Delivery area surcharge (DAS)', o: 'several lines, e.g. Address Correction, Additional Handling, Peak Surcharge' }
+  const onInvoice = (t) => `<span class="inv">On your invoice: <strong>${t}</strong></span>`
+  const SPEED = { ground: 'Ground', '2day': 'two-day', next: 'next-day', premium: 'OSM Premium' }
+  const far = (z) => (z <= 3 ? 'nearby' : z <= 5 ? 'mid-distance' : 'far')
+  const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1)
+  const r2 = (n) => Math.round(n * 100) / 100
+  const pct = (part, whole) => (whole ? ((part / whole) * 100).toFixed(1) + '%' : '—')
+  const T = (x, y, t, cls = '', anchor = '') => `<text${cls ? ` class="${cls}"` : ''} x="${x}" y="${y}"${anchor ? ` text-anchor="${anchor}"` : ''}>${t}</text>`
+  // Explanations start closed (the "?" and underlines invite a tap).
+  let exOpen = null
+  let factOpen = null
+
+  function svgShip(fa, c, b) {
+    const chip = (y, t) => `<rect class="box" x="6" y="${y}" width="112" height="22" rx="11"/>${T(62, y + 15, t, 'tb', 'middle')}`
+    return `<svg viewBox="0 0 300 84" role="img" aria-label="Your price list sets the shipping price from speed, distance and weight: ${m(c)}. Billed: ${m(b)}.">
+      ${chip(4, cap(SPEED[fa.speed]))}${chip(31, `Zone ${fa.invZone} · ${far(fa.zone) === 'mid-distance' ? 'medium' : far(fa.zone)}`)}${chip(58, `${fa.wt} lb`)}
+      <path class="ln" d="M118 15 C136 15 136 29 152 29"/><path class="ln" d="M118 69 C136 69 136 29 152 29"/><path class="arrow" d="M118 42 C134 42 138 29 154 29"/>
+      <rect class="soft" x="158" y="12" width="136" height="32" rx="6"/>${T(166, 32, 'Your price list', 'tb')}${T(288, 32, m(c), 'tm', 'end')}
+      <rect class="hl" x="158" y="50" width="136" height="30" rx="6"/>${T(166, 69, 'Billed')}${T(288, 69, m(b), 'tm', 'end')}
+    </svg>`
+  }
+  function svgFuel(bc, fc, bb, fb) {
+    const max = bb + fb, W = 212, x0 = 80, s = (v) => (v / max) * W
+    const row = (y, label, b, f) => `${T(6, y + 15, label, 'tb')}<rect class="soft" x="${x0}" y="${y}" width="${s(b)}" height="20" rx="3"/><rect class="hl" x="${x0 + s(b) + 2}" y="${y}" width="${Math.max(s(f), 3)}" height="20" rx="3"/>${T(x0, y + 34, `shipping ${m(b)} + fuel ${m(f)} (${pct(f, b)})`)}`
+    return `<svg viewBox="0 0 300 96" role="img" aria-label="Fuel is a percentage on top of the shipping price. Contract: ${pct(fc, bc)} of ${m(bc)}. Billed: ${pct(fb, bb)} of ${m(bb)}.">${row(4, 'Contract', bc, fc)}${row(50, 'Billed', bb, fb)}</svg>`
+  }
+  function svgAddr(dest) {
+    const icon = dest === 'home'
+      ? '<polygon class="brf" points="8,34 38,10 68,34"/><rect class="box" x="16" y="34" width="44" height="30"/><rect class="mut" x="33" y="48" width="10" height="16"/>'
+      : '<rect class="box" x="16" y="6" width="44" height="58"/>' + [12, 26, 40].map((y) => [22, 34, 46].map((x) => `<rect class="mut" x="${x}" y="${y}" width="8" height="8"/>`).join('')).join('') + '<rect class="mut" x="33" y="54" width="10" height="10"/>'
+    return `<svg viewBox="0 0 300 70" role="img" aria-label="${dest === 'home' ? 'Delivered to a home: your contract price includes a home-delivery fee.' : 'Delivered to a business: no home-delivery fee is allowed.'}">${icon}
+      ${T(84, 30, dest === 'home' ? 'Delivered to a home' : 'Delivered to a business', 'tb')}${dest === 'home' ? T(84, 48, '✓ fee is in your contract price', 'tg') : T(84, 48, '✗ no home-delivery fee allowed', 'tr')}</svg>`
+  }
+  function svgZip(zip) {
+    return `<svg viewBox="0 0 300 92" role="img" aria-label="ZIP ${zip} is not on the carrier's official list of remote ZIP codes, so no remote-area fee is allowed.">
+      <rect class="box" x="6" y="4" width="96" height="84" rx="4"/>${T(14, 20, 'Official list, e.g.', 'tb')}${T(14, 38, '59001')}${T(14, 53, '99501')}${T(14, 68, '82001')}${T(14, 82, '…')}
+      ${T(118, 36, `To ZIP ${zip}`, 'tb')}${T(118, 53, '✗ not on the list', 'tr')}${T(118, 69, 'no remote-area fee allowed')}</svg>`
+  }
+  function svgZone(z, inv) {
+    const bars = [2, 3, 4, 5, 6, 7, 8].map((n, i) => { const x = 20 + i * 40, h = 8 + i * 6; return `<rect class="${n === z ? 'br' : 'mut'}" x="${x}" y="${52 - h}" width="18" height="${h}" rx="2"/>${T(x + 9, 66, n, n === z ? 'tb' : '', 'middle')}` }).join('')
+    return `<svg viewBox="0 0 300 84" role="img" aria-label="Zones run from 2, near the warehouse, to 8, across the country. This package is zone ${inv} on the invoice, distance step ${z}.">${bars}<path class="ln" d="M10 52 H290"/>${T(20, 80, 'near the warehouse')}${T(290, 80, 'across the country', '', 'end')}</svg>`
+  }
+  function svgSpeed(sp) {
+    const rows = [['ground', 'Ground', 5, '$'], ['2day', '2nd Day Air', 2, '$$'], ['next', 'Next Day Air', 1, '$$$']]
+    return `<svg viewBox="0 0 300 80" role="img" aria-label="Ground takes about 5 days and costs least; Next Day Air takes 1 day and costs most. This package went ${SPEED[sp]}.">${rows.map(([k, l, n, p], i) => {
+      const y = 4 + i * 26
+      return `<g class="${k === sp ? '' : 'dim'}">${T(6, y + 13, l, 'tb')}${[0, 1, 2, 3, 4].map((j) => `<rect class="${j < n ? 'br' : 'mut'}" x="${96 + j * 18}" y="${y + 2}" width="14" height="14" rx="2"/>`).join('')}${T(194, y + 13, n === 1 ? '1 day' : `${n} days`)}${T(292, y + 13, p, 'tm', 'end')}</g>`
+    }).join('')}</svg>`
+  }
+  const explainBox = (id, svg, text) => `<div class="explain" id="${id}">${svg || ''}<p class="ex-text">${text}</p></div>`
+  // The visible "?" is decoration; screen readers hear "Shipping price, what is this?".
+  const termBtn = (attr, key, label, open, cls = '') => `<button type="button" class="term ${cls}" data-${attr}="${key}" aria-expanded="${open}" aria-controls="${idp}-x-${attr}-${key}">${label}<span class="vh">, what is this?</span></button>`
+
+  // The package slip's details. Each explainable one is a button; a fact we
+  // can't explain (e.g. OSM Premium) is plain text, never an empty button.
+  function pkgSpecs(fa) {
+    const b = (k, l) => termBtn('fact', k, l, factOpen === k, 'fact')
+    const items = [['Carrier', fa.carrier], ['Weight', b('wt', `${fa.wt} lb`)], ['Speed', fa.speed === 'premium' ? SPEED.premium : b('speed', cap(SPEED[fa.speed]))]]
+    if (fa.dest) items.push(['Delivered to', b('dest', cap(fa.dest))])
+    items.push(['Distance', b('zone', `${{ nearby: 'Near', 'mid-distance': 'Medium', far: 'Far' }[far(fa.zone)]} (zone ${fa.invZone})`)])
+    if (fa.zip) items.push(['Destination', b('zip', `ZIP ${fa.zip}`)])
+    return `<dl class="pkg-specs">${items.map(([t, d]) => `<div><dt>${t}</dt><dd>${d}</dd></div>`).join('')}</dl>`
+  }
+  function factPanel(fa) {
+    if (!factOpen) return ''
+    const P = {
+      wt: [null, `<span class="ex-k">Weight.</span> Heavier packages cost more to send. This one was charged as ${fa.wt} lb.`],
+      speed: [svgSpeed(fa.speed), `<span class="ex-k">Delivery speed.</span> Faster costs more. This one went ${SPEED[fa.speed]}. ${onInvoice(fa.invSvc)}`],
+      zone: [svgZone(fa.zone, fa.invZone), `<span class="ex-k">Zone = distance.</span> 2 is near the warehouse, 8 is across the country. This package is ${far(fa.zone)}${fa.zone >= 6 ? ', so it costs more' : ''}. ${onInvoice(`Zone ${fa.invZone}`)}${fa.invZone.length === 3 ? `<span class="inv">UPS puts the speed in front: 1xx is next-day, 2xx two-day, 0xx Ground. The last digit is the distance.</span>` : ''}`],
+      dest: [svgAddr(fa.dest), fa.dest === 'home' ? `<span class="ex-k">Home address.</span> Deliveries to homes can carry an extra home-delivery fee.` : `<span class="ex-k">Business address.</span> Deliveries to businesses can't carry a home-delivery fee.`],
+      zip: [svgZip(fa.zip), `<span class="ex-k">ZIP ${fa.zip}.</span> Remote-area fees are only allowed for ZIP codes on the carrier's official list. This one isn't on it.`],
+    }[factOpen]
+    return explainBox(`${idp}-x-fact-${factOpen}`, P[0], P[1])
+  }
+  function chargeExplain(k, e, fa) {
+    const [b, c] = e.parts[k]
+    const d = r2(b - c)
+    // The row already shows billed, contract and difference: the panel only says
+    // what the charge is and why this package's contract price is what it is.
+    // Offsets are described per package, never as a separate amount (notes 3, 133).
+    const below = d < 0 ? ` <span class="fav">Billed below your contract</span> — this makes the package's difference smaller; it isn't a separate credit.` : ''
+    const id = `${idp}-x-ch-${k}`
+    const inv = onInvoice(INV_TERM[k])
+    if (k === 'b') return explainBox(id, svgShip(fa, c, b), `<span class="ex-k">Shipping price:</span> the main price for moving a package, set by speed, distance and weight.${below} ${inv}`)
+    if (k === 'f') return explainBox(id, svgFuel(e.parts.b[1], c, e.parts.b[0], b), `<span class="ex-k">Fuel charge:</span> a percentage on top of the shipping price that changes weekly. Your contract allows ${pct(c, e.parts.b[1])} of the correct shipping price.${below} ${inv}`)
+    if (k === 'r') return explainBox(id, svgAddr(fa.dest), `<span class="ex-k">Home-delivery fee:</span> extra for delivering to a home. ${fa.dest === 'business' ? 'This package went to a business, so no fee is allowed.' : `This package went to a home, so your contract price includes ${m(c)}.`}${below} ${inv}`)
+    if (k === 'd') return explainBox(id, fa.zip ? svgZip(fa.zip) : null, `<span class="ex-k">Remote-area fee:</span> extra for hard-to-reach ZIP codes — only allowed for ZIPs on the carrier’s list.${fa.zip ? ` ZIP ${fa.zip} isn’t on it.` : ''}${below} ${inv}`)
+    return explainBox(id, null, `<span class="ex-k">Other charges:</span> smaller fees such as address corrections.${below} ${inv}`)
+  }
+
+  // One package's charges. Step 2's example and step 3's "how this package was
+  // priced" use the same table, so a package always reads the same way.
+  function chargeTable(parts, billed, contract, name = (k, l) => l, after = () => '') {
+    const rows = CH.filter(([k]) => parts[k][0] || parts[k][1]).map(([k, l]) => {
+      const [b, c] = parts[k]
+      const d = r2(b - c)
+      return `<tr><td>${name(k, l)}</td><td class="num" data-l="Billed">${m(b)}</td><td class="num" data-l="Contract">${m(c)}</td><td class="num ${d < 0 ? 'fav' : d > 0 ? 'diff' : ''}" data-l="Difference">${signed(d)}</td></tr>` + after(k)
+    }).join('')
+    return `<table class="tbl ex-tbl"><thead><tr><th>Charge</th><th class="num">Billed</th><th class="num">Your contract</th><th class="num">Difference</th></tr></thead><tbody>${rows}<tr class="total"><td>This package</td><td class="num" data-l="Billed">${m(billed)}</td><td class="num" data-l="Contract">${m(contract)}</td><td class="num money">${signed(r2(billed - contract))}</td></tr></tbody></table>`
+  }
+
+  const ICON = {
+    ledger: '<path d="M3 4h10M3 8h10M3 12h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    spread: '<path d="M3 13V9M6.5 13V5M10 13V3M13.5 13V8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+    pkg: '<path d="M2.5 5 8 2.5 13.5 5v6L8 13.5 2.5 11z M2.5 5 8 7.5 13.5 5 M8 7.5v6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>',
+    check: '<path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  }
+  const CHEV = '<svg class="chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  const TICK = '<svg width="10" height="10" viewBox="0 0 12 12"><path d="M2.5 6.2 5 8.6 9.5 3.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  // A section card of the "why" panel: icon, optional eyebrow, title, optional control on the right.
+  const section = (key, cls, title, body, { eyebrow = '', aside = '' } = {}) => `<section class="sc ${cls}" aria-labelledby="${idp}-h-${key}">
+      <header class="sc-head"><span class="sc-ic" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16">${ICON[key] || ICON.check}</svg></span><div class="sc-titles">${eyebrow ? `<span class="sc-eyebrow">${eyebrow}</span>` : ''}<h4 id="${idp}-h-${key}">${title}</h4></div>${aside}</header>
+      <div class="sc-body">${body}</div></section>`
+  // Every chart has a table twin; the switch never hides a number.
+  const vzSwitch = (sec) => `<div class="seg sc-aside seg-xs" role="group" aria-label="View">${[['chart', 'Chart'], ['table', 'Table']].map(([k, l]) => `<button type="button" data-vz="${sec}:${k}" aria-pressed="${vz[sec] === k}">${l}</button>`).join('')}</div>`
+  const niceStep = (raw) => { const p = 10 ** Math.floor(Math.log10(raw)); const n = raw / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p }
+  const short = (v) => { const a = Math.abs(v); const t = a >= 1000 ? `$${+(a / 1000).toFixed(1)}k` : a > 0 && a < 1 ? `${Math.round(a * 100)}¢` : `$${Math.abs(a - Math.round(a)) < 1e-9 ? Math.round(a) : a.toFixed(2)}`; return (v < 0 ? '−' : '') + t }
+  const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`
+
+  // What makes up the overcharge: billed − contract = overcharged, then every
+  // charge on one zero line — billed above contract goes right, below goes left.
+  function ledgerBlock(f) {
+    const ent = CH.map(([k, l]) => [l, f.mix[k]]).filter(([, v]) => Math.abs(v) > 0.004)
+    const over = ent.filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])
+    const under = ent.filter(([, v]) => v < 0).sort((a, b) => a[1] - b[1])
+    const adds = r2(over.reduce((t, [, v]) => t + v, 0)), off = r2(-under.reduce((t, [, v]) => t + v, 0))
+    const eq = `<div class="eq" role="group" aria-label="Billed minus your contract equals overcharged"><div class="stat"><span class="lbl">Billed</span><span class="val">${m(f.billed)}</span></div><span class="op" aria-hidden="true">−</span><div class="stat"><span class="lbl">Your contract</span><span class="val">${m(f.contract)}</span></div><span class="op" aria-hidden="true">=</span><div class="stat"><span class="lbl">Overcharged</span><span class="val money">${m(f.diff)}</span></div></div>`
+    const foot = '<p class="tiny muted">Other findings cover different packages, so nothing is counted twice.</p>'
+    // A single charge needs no chart: the equation and the sentence say it all.
+    if (ent.length === 1) return section('ledger', 'sc-ledger', 'What makes up the overcharge', `${eq}<p class="viz-take">${f.take}</p>${foot}`)
+    // One scale for both sides, in round steps; the zero line sits where the steps say.
+    const maxPos = over.length ? over[0][1] : 0, maxNeg = under.length ? -under[0][1] : 0
+    const step = niceStep((maxPos + maxNeg) / 5)
+    const lo = -Math.ceil(maxNeg / step - 1e-9) * step, hi = Math.ceil(maxPos / step - 1e-9) * step
+    const span = hi - lo, P = (v) => (v / span) * 100, zero = P(-lo), zi = Math.round(-lo / step)
+    const bar = ([l, v]) => { const w = P(Math.abs(v)); return `<div class="dv-row"><span class="dv-lbl">${l}</span><span class="dv-track"><span class="dv-bar ${v > 0 ? 'over' : 'under'}" style="left:${(v > 0 ? zero : zero - w).toFixed(3)}%;width:${w.toFixed(3)}%"></span></span><span class="dv-val ${v > 0 ? 'money' : 'fav'}">${v > 0 ? '+' : '−'}${m(Math.abs(v))}</span></div>` }
+    // Every other tick hides on a phone (t2); the zero tick always shows (t0).
+    const ticks = Array.from({ length: Math.round(span / step) + 1 }, (_, i) => `<span class="${i === zi ? 't0' : Math.abs(i - zi) % 2 ? 't2' : 't4'}" style="left:${P(i * step).toFixed(3)}%">${i === zi ? '$0' : short(lo + i * step)}</span>`).join('')
+    const legend = `<div class="viz-legend" aria-hidden="true"><span><i class="sw-over"></i>Billed above your contract · adds <b>${m(adds)}</b></span>${under.length ? `<span><i class="sw-under"></i>Billed below your contract · comes off <b>${m(off)}</b></span>` : ''}</div>`
+    const chart = `${legend}<div class="dv" role="group" aria-label="Amount each charge adds to or takes off the overcharge"><div class="dv-rows" style="--zero:${zero.toFixed(3)}%;--grid:${P(step).toFixed(4)}%">${[...over, ...under].map(bar).join('')}</div>
+      <div class="dv-axis" aria-hidden="true"><span></span><span class="dv-ticks">${ticks}</span><span></span></div></div>`
+    const trs = (xs, cls) => xs.map(([l, v]) => `<tr><td>${l}</td><td class="num ${cls}">${v > 0 ? '+' : '−'}${m(Math.abs(v))}</td></tr>`).join('')
+    const table = `<table class="tbl bk-tbl"><thead><tr><th>Charge</th><th class="num">Amount</th></tr></thead><tbody>
+      <tr class="grp"><th colspan="2" scope="colgroup">Billed above your contract</th></tr>${trs(over, 'diff')}
+      ${under.length ? `<tr class="subt"><td>Adds</td><td class="num">+${m(adds)}</td></tr><tr class="grp"><th colspan="2" scope="colgroup">Billed below your contract</th></tr>${trs(under, 'fav')}<tr class="subt"><td>Comes off</td><td class="num">−${m(off)}</td></tr>` : ''}
+      <tr class="total"><td>Overcharged</td><td class="num money">${m(f.diff)}</td></tr></tbody></table>`
+    const rule = under.length ? '<p class="pn tiny"><span class="k k-unresolved">Decide</span> "Comes off" totals what was billed below contract. Section 1\'s rules say we never show that total (note 3).</p>' : ''
+    return section('ledger', 'sc-ledger viz', 'What makes up the overcharge', `${eq}<p class="viz-take">${f.take}</p>${vz.ledger === 'chart' ? chart : table}${rule}${foot}`, { aside: vzSwitch('ledger') })
+  }
+
+  // Overcharge per package: one sentence, then a histogram with one accent bucket.
+  function spreadBlock(f) {
+    if (f.pk < 2) return ''
+    const title = 'Overcharge per package'
+    // Few or identical packages: the sentence is the whole story.
+    if (f.q[0] === f.q[5] || f.pk <= 25) return section('spread', 'sc-spread', title, `<p class="viz-take">${f.spread}</p>`)
+    // Six equal buckets up to ~1.2× the 90th percentile, then one for the long tail.
+    const w = niceStep((f.q[4] * 1.2) / 6), cents = w < 1, n = f.pk
+    const counts = f.hist || pkgs(f).reduce((c, p) => { c[Math.min(6, Math.floor(p.tv / w + 1e-9))]++; return c }, new Array(7).fill(0))
+    const amt = (v) => (cents ? `${Math.round(v * 100)}¢` : `$${+v.toFixed(2)}`)
+    const lbl = (i) => (i === 0 ? `Up to ${amt(w)}` : i < 6 ? `${amt(i * w)}–${amt((i + 1) * w)}` : `${amt(6 * w)} to ${m(f.q[5])}`)
+    const axis = (i) => (i === 0 ? `<${amt(w)}` : i < 6 ? (cents ? `${Math.round(i * w * 100)}–${Math.round((i + 1) * w * 100)}¢` : `$${+(i * w).toFixed(2)}–${+((i + 1) * w).toFixed(2)}`) : `${amt(6 * w)}+`)
+    const share = (c) => `${Math.round((c / n) * 100)}%`
+    const top = Math.max(...counts), ys = niceStep(top / 3), yMax = Math.ceil(top / ys) * ys, hot = counts.indexOf(top)
+    const H = (c) => (c / yMax) * 100
+    const yt = Array.from({ length: Math.round(yMax / ys) + 1 }, (_, i) => i * ys)
+    const bars = counts.map((c, i) => `<span class="hg-bar${i === hot ? ' hot' : ''}" style="--h:${H(c).toFixed(2)}%" tabindex="0" data-tip-val="${plural(c, 'package')}" data-tip-lbl="${lbl(i)} over" data-tip-meta="${share(c)} of packages" aria-label="${lbl(i)} over: ${plural(c, 'package')}, ${share(c)}">${i === hot ? `<span class="hg-cap">${c} · ${share(c)}</span>` : ''}</span>`).join('')
+    // Bracket the last buckets that together hold the top 10% of packages.
+    let k = 0, acc = 0
+    while (k < 6 && acc < n * 0.1) { acc += counts[6 - k]; k++ }
+    const bracket = k && k <= 3 ? `<div class="hg-bracket" style="width:calc(${((k * 100) / 7).toFixed(4)}% - 1px);bottom:calc(${Math.max(...counts.slice(7 - k)) / yMax * 100}% + 10px)" aria-hidden="true"><span>Top 10%</span></div>` : ''
+    const chart = `<div class="hg-wrap"><div class="hg" role="group" aria-label="Packages by amount over contract">
+        <span class="hg-ytitle" aria-hidden="true">Packages</span>
+        <div class="hg-y" aria-hidden="true">${yt.map((v) => `<span style="bottom:${H(v).toFixed(2)}%">${v}</span>`).join('')}</div>
+        <div class="hg-plot"><div class="hg-grid" aria-hidden="true">${yt.map((v) => `<i style="bottom:${H(v).toFixed(2)}%"></i>`).join('')}</div><div class="hg-bars">${bars}</div>${bracket}</div>
+        <div class="hg-x" aria-hidden="true">${counts.map((_, i) => `<span>${axis(i)}</span>`).join('')}</div>
+      </div><p class="hg-xtitle">Amount over contract</p></div>`
+    const table = `<table class="tbl"><thead><tr><th>Over contract by</th><th class="num">Packages</th><th class="num">Share</th></tr></thead><tbody>${counts.map((c, i) => `<tr${i === hot ? ' class="hl"' : ''}><td>${lbl(i)}</td><td class="num">${c}</td><td class="num">${share(c)}</td></tr>`).join('')}</tbody></table>`
+    const note = `<p class="pn tiny"><span class="k k-proposed">Proposed</span> ${f.hist ? 'bucket counts are illustrative, shaped to match the sentence' : 'the sentence uses the real packages; the chart buckets made-up packages with the same spread'}</p>`
+    return section('spread', 'sc-spread viz', title, `<p class="viz-take">${f.spread}</p>${vz.spread === 'chart' ? chart : table}${note}`, { aside: vzSwitch('spread') })
+  }
+
+  // How one package was priced, as a package slip. A typical package comes
+  // first and the largest is one tap away, so an outlier never stands alone.
+  function exampleBlock(f) {
+    const X = f.typ ? { typ: { ...f.typ, mock: true }, max: { ...f.ex, fa: FACTS[f.id] } } : { only: { ...f.ex, fa: FACTS[f.id] } }
+    const key = X[exPick] ? exPick : Object.keys(X)[0]
+    const e = X[key], fa = e.fa
+    const eyebrow = f.pk === 1 ? 'The only package' : f.q[0] === f.q[5] ? `One of ${f.pk} packages · all were ${m(f.q[0])} over` : `One of ${f.pk} packages`
+    const pick = f.typ ? `<div class="seg sc-aside" role="group" aria-label="Example package">${[['typ', 'Typical'], ['max', 'Largest']].map(([k, l]) => `<button type="button" data-ex="${k}" aria-pressed="${k === key}">${l}</button>`).join('')}</div>` : ''
+    const table = chargeTable(e.parts, e.billed, e.contract, (k, l) => termBtn('ch', k, l, exOpen === k), (k) => (exOpen === k ? `<tr class="explain-row"><td colspan="4">${chargeExplain(k, e, fa)}</td></tr>` : ''))
+    return section('pkg', 'sc-example', `How ${f.pk === 1 ? 'the' : 'one'} package was priced`, `<div class="pkg">
+        <span class="pkg-tab">${f.pk === 1 ? 'The package' : 'Example package'}</span>
+        <dl class="pkg-head"><div><dt>Tracking</dt><dd class="mono pkg-track">${e.track}</dd></div><div><dt>Invoice</dt><dd class="mono pkg-track">${e.invoice}</dd></div></dl>
+        ${pkgSpecs(fa)}${factPanel(fa)}
+        <div class="scroll-x cq">${table}</div>
+        ${e.mock ? '<p class="pn tiny"><span class="k k-proposed">Proposed</span> illustrative package — needs a real median package from the data</p>' : ''}
+        <p class="pkg-hint">Tap a charge or an underlined detail to see what it means.</p>
+      </div>`, { eyebrow, aside: pick })
+  }
+
+  // How we checked: the method in one sentence, then every document as a tile
+  // that says honestly whether we have the file.
+  function methodBlock(f) {
+    const ic = { ok: ['src-ok', '✓', 'Attached'], named: ['src-named', '!', 'We know which one; file not attached'], none: ['src-none', '–', 'We don’t have it'] }
+    const tile = (st, name, when, sub, btn) => `<li><span class="src-ic ${ic[st][0]}" title="${ic[st][2]}" aria-hidden="true">${ic[st][1]}</span><div class="srcs2-txt"><span class="srcs2-name">${name}${when ? ` <span class="muted">· ${when}</span>` : ''}</span><span class="srcs2-sub">${sub}</span></div>${btn}</li>`
+    const docs = f.sources.map(([st, n, w, sub]) => tile(st, n, w, sub, st === 'ok' ? '<button class="lnk sm" type="button">Open</button>' : st === 'named' ? '<button class="lnk sm" type="button">Ask Implentio</button>' : '<span></span>')).join('')
+    const invs = tile('ok', plural(f.inv, 'QuickBox invoice'), '', `${plural(f.pk, 'package')} matched by tracking number`, '<button class="lnk sm" type="button">List</button>')
+    return section('check', 'sc-method', 'How we checked', `<p class="small">${f.why}</p><ul class="srcs2">${docs}${invs}</ul>
+      <p class="small reviewed">✓ Checked by an Implentio reviewer · Jul 6, 2026 <span class="k k-unresolved pn">Q-E6</span></p>
+      <p class="q pn"><b>Q-E2 · open</b>Which documents Implentio can attach is open; the names and dates here are made up. Assumes the price list is part of the brand's agreement with QuickBox.${f.qNote ? ` <span class="why">${f.qNote}</span>` : ''}</p>`)
+  }
+
+  function nodataBlock(f) {
+    return section('check', 'sc-method', 'What we can show', `<p class="small">Implentio found ${m(f.diff)} of remote-area fees charged by ShipBob for ZIP codes that aren't on the official remote-area list. The package-by-package calculation is in the credit memo file.</p>
+      <div class="row"><button class="btn sm" type="button">Download the credit memo</button><button class="lnk sm" type="button">Ask Implentio about this finding</button></div>
+      <div class="note pn"><span class="note-label">Little proof available</span>5 of the 6 demo memos look like this. If real memos do too (Q-E5), "Show why" must still explain the finding in words and name what it was compared with; the downloadable file takes the place of the package list.</div>`)
+  }
+
+  // The finding card: what, how much and by when on top, one action row, and the
+  // "why" panel as section cards. `after` goes inside the card (option E's list).
+  function level1(f, after = '') {
+    if (f.unchecked) return `<div class="card warn"><div class="stack s8"><div class="row between"><div class="row" style="gap:8px"><h3>We couldn't check 6 bills on 4 UPS invoices</h3><span class="tag">Not in the total</span></div><span class="k k-unresolved pn">Q-E3</span></div>
+      <p class="small">Implentio couldn't work out what these should have cost: it doesn't have your QuickBox price list for these UPS delivery speeds. They aren't counted as overcharges and can't be disputed until Implentio has checked them.</p>
+      <p class="small"><strong>The earliest dispute deadline on this memo is Sep 20, 2026 (3 days).</strong> Send the price list before then, so Implentio can check these bills in time.</p>
+      <div class="row"><button class="btn sm primary" type="button">Send Implentio the price list</button><button class="lnk sm" type="button">See the 6 bills</button></div>
+      <p class="tiny muted pn">Real demo data, never shown in the app today. Bills we couldn't check are always kept apart from the total. Whether to show each invoice's own deadline here depends on Q-E3.</p></div></div>`
+    const meta = f.nodata
+      ? [['Biller', f.biller], ['Memo', f.memo], ['Charge type', f.term]]
+      : [['Carrier', f.carriers], ['Service level', `${f.levels.slice(0, 2).join(', ')}${f.levels.length > 2 ? ` <span class="muted">+${f.levels.length - 2}</span>` : ''}`], ['Charge type', f.term]]
+    const note = f.mock ? 'made-up finding: the one-package case' : f.nodata ? 'real memo; its package details were never published' : 'made-up data — Q-E2, Q-E6; service levels illustrative'
+    // The name is the category Implentio assigned; when other charges carry the
+    // money, the card says so before anyone ticks it (product note 136).
+    const mismatch = f.mismatch ? '<p class="small mismatch">⚠ Grouped under home-delivery fees, but most of the difference came from remote-area fees and shipping price.</p>' : ''
+    const sections = f.nodata ? nodataBlock(f) : `${ledgerBlock(f)}${spreadBlock(f)}${exampleBlock(f)}${methodBlock(f)}`
+    const foot = f.nodata ? '' : `<footer class="why-foot"><div class="row">${f.pk > 1 && !listShown ? `<button class="btn sm" type="button" data-act="rec">See all ${f.pk} packages</button>` : ''}<button class="lnk sm" type="button">Download evidence (.xlsx)</button></div></footer>`
+    return `<article class="card fc" aria-labelledby="${idp}-title">
+      <div class="fc-top">
+        <div class="fc-main"><h3 id="${idp}-title">${f.title}</h3><dl class="fc-meta">${meta.map(([t, d]) => `<div><dt>${t}</dt><dd>${d}</dd></div>`).join('')}</dl>${mismatch}<p class="pn"><span class="k k-proposed">Proposed</span> <span class="tiny">${note}</span></p></div>
+        <div class="fc-amount"><span class="small muted">Overcharged</span><span class="fc-money">${m(f.diff)}</span><span class="small muted">${f.nodata ? 'Package details not published' : `${plural(f.inv, 'invoice')} · ${plural(f.pk, 'package')}`}</span></div>
+        <div class="fc-bar"><div class="fc-bar-actions">
+          <label class="fc-pick"><input type="checkbox" class="fc-cb"><span class="fc-box" aria-hidden="true">${TICK}</span><span>Include in dispute package</span></label>
+          <button class="fc-toggle" type="button" data-act="why" aria-expanded="${whyOpen}" aria-controls="${idp}-why"><span data-label>${whyOpen ? 'Hide why' : 'Show why'}</span>${CHEV}</button>
+        </div><span class="chip attention fc-due">${f.nodata ? 'Dispute by Oct 2 · 15 days left' : 'Dispute by Sep 20 · 3 days left'}</span></div>
+      </div>
+      <div class="fc-why" id="${idp}-why" data-open="${whyOpen}"${whyOpen ? '' : ' inert'}><div class="why-inner">
+        <div class="why-sticky" aria-hidden="true"><span class="ws-title">${f.title}</span><span class="money">${m(f.diff)}</span><button class="lnk sm" type="button" data-act="why" tabindex="-1">Hide why ▴</button></div>
+        <div class="why-grid">${sections}</div>${foot}
+      </div></div>${after}
+    </article>`
+  }
+
+  // ---------- card behaviour (DOM only, so the panel can animate) ----------
+  const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches
+  // The page's section nav is sticky too; the card's summary bar sits under it.
+  const navH = () => document.querySelector('.toc')?.offsetHeight || 0
+  const syncNav = () => document.documentElement.style.setProperty('--sticky-top', navH() + 'px')
+  window.addEventListener('resize', syncNav)
+  // Open or close "Show why"; the grid-rows transition starts from the current state.
+  function setOpen(card, open, returnFocus) {
+    const why = card.querySelector('.fc-why'), toggle = card.querySelector('.fc-toggle')
+    why.classList.add('is-animating')
+    why.dataset.open = String(open)
+    why.inert = !open
+    toggle.setAttribute('aria-expanded', String(open))
+    toggle.querySelector('[data-label]').textContent = open ? 'Hide why' : 'Show why'
+    if (!open) {
+      card.classList.remove('stuck')
+      // Closing from deep inside the panel brings the finding back into view.
+      if (card.getBoundingClientRect().top < navH()) card.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' })
+      if (returnFocus) toggle.focus({ preventScroll: true })
+    }
+  }
+  const watchers = {}
+  function bindCard(key, card) {
+    watchers[key]?.disconnect()
+    if (!card || !card.querySelector('.fc-why')) return
+    const why = card.querySelector('.fc-why')
+    why.addEventListener('transitionend', (e) => {
+      if (e.target === why && (e.propertyName === 'grid-template-rows' || (reduced() && e.propertyName === 'opacity'))) why.classList.remove('is-animating')
+    })
+    // The summary bar shows once the card's header has scrolled under the nav.
+    syncNav()
+    const io = new IntersectionObserver(([en]) => {
+      card.classList.toggle('stuck', !en.isIntersecting && en.boundingClientRect.top < navH() + 1 && why.dataset.open === 'true')
+    }, { rootMargin: `-${navH()}px 0px 0px 0px` })
+    io.observe(card.querySelector('.fc-top'))
+    watchers[key] = io
+  }
+  // Chart tooltips: one per chart section, on hover and keyboard focus.
+  function bindViz(root) {
+    root.querySelectorAll('.viz').forEach((sec) => {
+      const tip = document.createElement('div')
+      tip.className = 'viz-tip'
+      tip.setAttribute('aria-hidden', 'true')
+      const tv = document.createElement('b'), tl = document.createElement('span'), tm = document.createElement('span')
+      tip.append(tv, tl, tm)
+      sec.appendChild(tip)
+      const show = (el) => {
+        tv.textContent = el.dataset.tipVal
+        tl.textContent = el.dataset.tipLbl
+        tm.textContent = el.dataset.tipMeta || ''
+        const s = sec.getBoundingClientRect(), r = el.getBoundingClientRect()
+        tip.classList.add('on')
+        const w = tip.offsetWidth, h = tip.offsetHeight
+        const x = Math.max(8, Math.min(r.left - s.left + r.width / 2 - w / 2, s.width - w - 8))
+        let y = r.top - s.top - h - 8
+        if (y < 8) y = r.bottom - s.top + 8
+        tip.style.left = x + 'px'
+        tip.style.top = y + 'px'
+      }
+      const hide = () => tip.classList.remove('on')
+      sec.querySelectorAll('[data-tip-val]').forEach((el) => {
+        el.addEventListener('pointerenter', () => show(el))
+        el.addEventListener('pointerleave', hide)
+        el.addEventListener('focus', () => show(el))
+        el.addEventListener('blur', hide)
+      })
+    })
+  }
+
+  // Zones as printed on the invoice: UPS puts the speed in front (1xx next-day, 2xx two-day, 0xx Ground).
+  const invZoneOf = (svc, z) => (/Next Day/.test(svc) ? '10' : /2nd Day/.test(svc) ? '20' : /Ground/.test(svc) ? '00' : '') + z
+  function records(f, compact) {
+    const P = pkgs(f)
+    // Up to 25 packages: a plain table, no search, filters or pages (section 5a).
+    const simple = f.pk <= 25
+    const filtered = !simple && (rec.q || rec.svc !== 'all' || rec.only !== 'all')
+    let rows = simple ? P : P.filter((p) => (!rec.q || (p.t + p.so + p.inv).toLowerCase().includes(rec.q.toLowerCase())) && (rec.svc === 'all' || p.svc === rec.svc) && (rec.only === 'all' || Math.abs(p.parts[rec.only][0] - p.parts[rec.only][1]) > 0.005))
+    const total = rows.length
+    const per = simple ? total : 25
+    const pages = Math.max(1, Math.ceil(total / per))
+    rec.page = Math.min(rec.page, pages - 1)
+    const slice = rows.slice(rec.page * per, rec.page * per + per)
+    const full = rec.view === 'full' && !compact && !simple
+    const cols = full ? 16 : compact ? 4 : 7
+    const head = full
+      ? `<tr><th>Tracking</th><th>Invoice</th><th>Service</th><th class="num">Zone</th><th class="num">lb</th>${CH.map(([, l]) => `<th class="num">${l} billed</th><th class="num">${l} contract</th>`).join('')}<th class="num">Difference</th></tr>`
+      : `<tr><th>Tracking</th>${compact ? '' : '<th>Invoice</th><th>Service</th>'}<th class="num">Billed</th><th class="num">Contract</th><th class="num">Difference</th>${compact ? '' : '<th>Charges that differ</th>'}</tr>`
+    const diffs = (p) => CH.map(([k, l]) => [l, r2(p.parts[k][0] - p.parts[k][1])]).filter(([, d]) => Math.abs(d) > 0.004).map(([l, d]) => `<span class="${d < 0 ? 'fav' : ''}">${l} ${signed(d)}${d < 0 ? ' (below contract)' : ''}</span>`).join(' · ')
+    const body = slice.map((p) => {
+      // The tracking number is the disclosure button, so keyboards and screen readers can open it too.
+      const trk = `<td><button type="button" class="lnk mono" data-pkg="${p.t}" aria-expanded="${rec.open === p.t}">${p.t}</button></td>`
+      const main = full
+        ? `<tr>${trk}<td>${p.inv}</td><td>${p.svc}</td><td class="num">${invZoneOf(p.svc, p.zone)}</td><td class="num">${p.wt}</td>${CH.map(([k]) => `<td class="num">${m(p.parts[k][0])}</td><td class="num">${m(p.parts[k][1])}</td>`).join('')}<td class="num diff">${signed(p.tv)}</td></tr>`
+        : `<tr>${trk}${compact ? '' : `<td>${p.inv}</td><td>${p.svc}</td>`}<td class="num">${m(p.billed)}</td><td class="num">${m(p.contract)}</td><td class="num diff">${signed(p.tv)}</td>${compact ? '' : `<td class="diffs">${diffs(p)}</td>`}</tr>`
+      const det = rec.open === p.t ? `<tr class="pkg-detail"><td colspan="${cols}"><div class="stack s8 small"><strong>How this package was priced</strong><span class="muted">Order ${p.so} · ${p.svc} · zone ${invZoneOf(p.svc, p.zone)} · charged as ${p.wt} lb · shipped Apr ${1 + (p.wt % 28)}, 2026</span><div class="scroll-x">${chargeTable(p.parts, p.billed, p.contract).replace('tbl ex-tbl', compact ? 'tbl ex-tbl stacked' : 'tbl ex-tbl')}</div><span class="muted pn">We can't yet point to the exact line of the price list.</span></div></td></tr>` : ''
+      return main + det
+    }).join('')
+    const empty = total === 0 ? `<tr><td colspan="${cols}"><div class="stack s4" style="padding:16px 0"><strong>No packages match.</strong><span class="small muted">Search looks at tracking, order and invoice numbers. Filtering never changes the finding's total.</span><button class="btn sm" type="button" data-act="clear" style="align-self:flex-start">Clear search and filters</button></div></td></tr>` : ''
+    const svcOpts = f.services.map((sv) => [sv, P.filter((p) => p.svc === sv).length]).filter(([, n]) => n).map(([sv, n]) => `<option value="${sv}" ${rec.svc === sv ? 'selected' : ''}>${sv} (${n})</option>`).join('')
+    const dl = '<button class="lnk sm" type="button">Download evidence (.xlsx)</button>'
+    const controls = simple ? `<div class="rec-controls">${dl}</div>` : `<div class="rec-controls">
+        <input class="input" type="search" placeholder="Search tracking, order, invoice" aria-label="Search packages" value="${rec.q}" data-in="q">
+        <select class="select" aria-label="Service level" data-in="svc"><option value="all">All service levels (${P.length})</option>${svcOpts}</select>
+        ${compact ? '' : `<select class="select" aria-label="Only where a charge differs" data-in="only"><option value="all">Any charge</option>${CH.map(([k, l]) => `<option value="${k}" ${rec.only === k ? 'selected' : ''}>Only where ${l.toLowerCase()} differs</option>`).join('')}</select>
+        <div class="seg" role="group" aria-label="Columns"><button type="button" data-view="diff" aria-pressed="${rec.view === 'diff'}">Differences only</button><button type="button" data-view="full" aria-pressed="${rec.view === 'full'}">Full breakdown</button></div>`}
+        ${dl}
+      </div>`
+    const foot = simple
+      ? `<div class="small muted">All ${total} packages · open a tracking number to see how it was priced</div>`
+      : `<div class="row between small muted"><span>Showing ${total ? rec.page * 25 + 1 : 0}–${Math.min(total, rec.page * 25 + 25)} of ${total} packages · open a tracking number to see how it was priced</span><span class="row"><button class="btn sm" type="button" data-pg="-1" ${rec.page === 0 ? 'disabled' : ''}>Previous</button><button class="btn sm" type="button" data-pg="1" ${rec.page >= pages - 1 ? 'disabled' : ''}>Next</button></span></div>`
+    return `<div class="stack s8">
+      ${controls}
+      ${filtered && total ? `<p class="tiny muted">Filtered view. The finding's total stays ${m(f.diff)}.</p>` : ''}
+      <div class="scroll-x" style="border:1px solid var(--line);border-radius:var(--r-l);background:var(--surface)"><table class="tbl recs"><thead>${head}</thead><tbody>${body}${empty}</tbody></table></div>
+      ${foot}
+    </div>`
+  }
+
+  function render() {
+    const f = F.find((x) => x.id === cur)
+    const opt = document.body.dataset.l3 || 'A'
+    $('#flist').innerHTML = F.map((x) => `<button type="button" data-f="${x.id}" aria-pressed="${x.id === cur}"><span class="fl-t">${x.title}</span><span class="fl-s">${x.diff != null ? m(x.diff) : ''}<span class="pn">${x.diff != null ? ' · ' : ''}${x.label}</span></span></button>`).join('')
+    const canRec = recOpen && f.pk > 1 && !f.nodata
+    // Phones: the package list goes full screen for A–D, with the compact table (section 6, Phone).
+    const narrow = window.innerWidth < 640
+    const sheet = canRec && narrow && opt !== 'E'
+    // D: the panel takes step 2's place, so the card shows it closed. E: the list
+    // opens under an open step 2, so "Hide packages" is the only close control.
+    const recHead = `<div class="row between"><div class="stack s4"><h3 id="rec-title" tabindex="-1">${f.title}</h3><span class="small muted">${f.pk} packages · ${f.inv} invoices · ${m(f.diff)} overcharged</span></div><button class="btn sm" type="button" data-act="close">${opt === 'C' ? '← Back to findings' : opt === 'E' ? 'Hide packages' : 'Close'}</button></div>`
+    const saved = whyOpen
+    if (canRec && opt === 'D') whyOpen = false
+    listShown = canRec && opt === 'E'
+    const card = level1(f, listShown ? `<div class="fc-list" role="region" aria-labelledby="rec-title">${recHead}${records(f, narrow)}</div>` : '')
+    whyOpen = saved
+    listShown = false
+    // B's whole point is the link, so it's a real control, not just a planning note.
+    const link = opt === 'B' ? `<div class="row" style="gap:8px"><button class="btn sm" type="button">Copy link</button><span class="url pn">/memos/CM-2026-0630?finding=eg-${f.id}&amp;view=records</span></div>` : ''
+    const url = `<span class="url pn">/memos/CM-2026-0630?finding=eg-${f.id}&amp;view=records</span>`
+    const others = F.filter((x) => x.id !== cur && !x.mock && !x.nodata && !x.unchecked).slice(0, 2).map((x) => `<div class="ghost-card"><span>${x.title}</span><span class="num">${m(x.diff)}</span></div>`).join('')
+    let html
+    $('#frame-bar').textContent = canRec && (opt === 'C' || sheet) ? 'Memo CM-2026-0630 › Findings › ' + f.title : 'Memo CM-2026-0630 · Summary & findings'
+    if (!canRec) html = `<div class="memo-mock">${card}${others}</div>`
+    else if (sheet) html = `<div class="stack" role="${opt === 'C' ? 'region' : 'dialog'}" aria-labelledby="rec-title">${recHead}${opt === 'C' ? url : link}${records(f, true)}<p class="tiny muted pn">On a phone every option but E opens the list full screen.</p></div>`
+    else if (opt === 'A' || opt === 'B') html = `<div class="dim-wrap"><div class="modal" role="dialog" aria-labelledby="rec-title"><div class="modal-head"><strong>Packages in this finding</strong>${link}</div><div class="modal-body">${recHead}${records(f, narrow)}</div></div></div>`
+    else if (opt === 'C') html = `<div class="stack">${url}${recHead}<div class="box tint small"><span class="pn">The "Show me why" summary, repeated at the top of the page: </span>Billed ${m(f.billed)} · contract ${m(f.contract)} · difference ${m(f.diff)} · ${f.compared}</div>${records(f, narrow)}</div>`
+    else if (opt === 'D') html = `<div class="memo-mock side"><div class="stack">${card}${others}</div><div class="card" role="region" aria-labelledby="rec-title" style="box-shadow:var(--shadow-pop)">${recHead}${records(f, true)}<p class="tiny muted pn">A side panel has room for 4 columns; the full breakdown doesn't fit. "Show why" closes while the panel is open.</p></div></div>`
+    else html = `<div class="memo-mock">${card}${others}</div>`
+    $('#stage').innerHTML = html
+    bind(f)
+    bindCard('fx', $('#stage .fc'))
+    bindViz($('#stage'))
+  }
+  function bind(f) {
+    const st = $('#stage')
+    // Every action re-renders the stage; put focus where the user expects it next.
+    const again = (sel) => { render(); $('#stage ' + sel)?.focus() }
+    // One explanation open at a time, across charges and package details.
+    st.querySelectorAll('[data-ch]').forEach((b) => b.onclick = () => { const k = b.dataset.ch; exOpen = b.getAttribute('aria-expanded') === 'true' ? null : k; factOpen = null; again(`[data-ch="${k}"]`) })
+    st.querySelectorAll('[data-fact]').forEach((b) => b.onclick = () => { const k = b.dataset.fact; factOpen = factOpen === k ? null : k; exOpen = null; again(`[data-fact="${k}"]`) })
+    st.querySelectorAll('[data-ex]').forEach((b) => b.onclick = () => { exPick = b.dataset.ex; exOpen = null; factOpen = null; again(`[data-ex="${exPick}"]`) })
+    st.querySelectorAll('[data-vz]').forEach((b) => b.onclick = () => { const [sec, v] = b.dataset.vz.split(':'); vz[sec] = v; again(`[data-vz="${b.dataset.vz}"]`) })
+    $('#flist').querySelectorAll('[data-f]').forEach((b) => b.onclick = () => { cur = b.dataset.f; recOpen = false; exPick = 'typ'; exOpen = null; factOpen = null; Object.assign(rec, { q: '', svc: 'all', only: 'all', page: 0, open: null }); render() })
+    // "Show why" animates in place. In D the side panel stands in for it: reopening closes the panel.
+    st.querySelectorAll('[data-act="why"]').forEach((b) => b.onclick = () => {
+      if (recOpen && document.body.dataset.l3 === 'D') { recOpen = false; whyOpen = true; return again('.fc-toggle') }
+      whyOpen = !whyOpen
+      setOpen(b.closest('.fc'), whyOpen, !b.classList.contains('fc-toggle'))
+    })
+    st.querySelectorAll('[data-act="rec"]').forEach((b) => b.onclick = () => { recOpen = true; again('#rec-title') })
+    const close = () => { recOpen = false; again('[data-act="rec"]') }
+    st.querySelectorAll('[data-act="close"]').forEach((b) => b.onclick = close)
+    st.querySelectorAll('[role="dialog"]').forEach((d) => d.onkeydown = (e) => { if (e.key === 'Escape') close() })
+    st.querySelectorAll('[data-act="clear"]').forEach((b) => b.onclick = () => { Object.assign(rec, { q: '', svc: 'all', only: 'all', page: 0 }); again('[data-in="q"]') })
+    st.querySelectorAll('[data-view]').forEach((b) => b.onclick = () => { rec.view = b.dataset.view; again(`[data-view="${rec.view}"]`) })
+    st.querySelectorAll('[data-pg]').forEach((b) => b.onclick = () => { rec.page += +b.dataset.pg; again(`[data-pg="${b.dataset.pg}"]:not([disabled])`) })
+    st.querySelectorAll('[data-pkg]').forEach((b) => b.onclick = () => { rec.open = rec.open === b.dataset.pkg ? null : b.dataset.pkg; again(`[data-pkg="${b.dataset.pkg}"]`) })
+    st.querySelectorAll('[data-in]').forEach((el) => {
+      el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', () => {
+        rec[el.dataset.in] = el.value; rec.page = 0
+        const pos = el.selectionStart
+        render()
+        if (el.tagName === 'INPUT') { const n = $('#stage [data-in="q"]'); n.focus(); n.setSelectionRange(pos, pos) }
+        else $(`#stage [data-in="${el.dataset.in}"]`)?.focus()
+      })
+    })
+  }
+
+  // Before / after (section 2): today's biggest finding with the proposed
+  // "Show why", live. Its own state, so it doesn't fight the demo.
+  const cmp = { ex: null, fact: null, pick: 'typ', vz: { ledger: 'chart', spread: 'chart' } }
+  function renderCompare() {
+    const f = F[0]
+    const saved = [whyOpen, exOpen, factOpen, exPick, vz, idp]
+    ;[whyOpen, exOpen, factOpen, exPick, vz, idp] = [true, cmp.ex, cmp.fact, cmp.pick, cmp.vz, 'cmp']
+    const html = level1(f)
+    ;[whyOpen, exOpen, factOpen, exPick, vz, idp] = saved
+    const box = $('#compare-proposed')
+    box.innerHTML = html
+    // Explanations, the example switch and the chart switches are live; the rest is a picture.
+    box.querySelectorAll('button, input').forEach((b) => { if (!b.matches('[data-ch], [data-fact], [data-ex], [data-vz]')) { b.setAttribute('tabindex', '-1'); b.setAttribute('aria-disabled', 'true'); if (b.tagName === 'INPUT') b.disabled = true } })
+    const again = (sel) => { renderCompare(); $('#compare-proposed ' + sel)?.focus() }
+    box.querySelectorAll('[data-ch]').forEach((b) => b.onclick = () => { const k = b.dataset.ch; cmp.ex = b.getAttribute('aria-expanded') === 'true' ? null : k; cmp.fact = null; again(`[data-ch="${k}"]`) })
+    box.querySelectorAll('[data-fact]').forEach((b) => b.onclick = () => { const k = b.dataset.fact; cmp.fact = cmp.fact === k ? null : k; cmp.ex = null; again(`[data-fact="${k}"]`) })
+    box.querySelectorAll('[data-ex]').forEach((b) => b.onclick = () => { cmp.pick = b.dataset.ex; cmp.ex = null; cmp.fact = null; again(`[data-ex="${cmp.pick}"]`) })
+    box.querySelectorAll('[data-vz]').forEach((b) => b.onclick = () => { const [sec, v] = b.dataset.vz.split(':'); cmp.vz[sec] = v; again(`[data-vz="${b.dataset.vz}"]`) })
+    bindViz(box)
+  }
+
+  document.addEventListener('toggle:l3', () => render())
+  document.addEventListener('DOMContentLoaded', () => { renderCompare(); render() })
+})()
+</script>
+</body>
+</html>

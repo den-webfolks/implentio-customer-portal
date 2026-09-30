@@ -37,17 +37,44 @@ export function ReportPreviewModal({
       <div>
         <StatusChip tone="muted">PDF preview</StatusChip>
       </div>
-      <div style={{ background: 'var(--ds-bg-default)', border: '1px solid var(--ds-stroke-disabled)', borderRadius: 'var(--ds-radius-large)', padding: '28px 32px', boxShadow: 'var(--ds-shadow-popover)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, borderBottom: '1px solid var(--ds-stroke-emphasis)', paddingBottom: 16 }}>
+      <div
+        style={{
+          background: 'var(--ds-bg-default)',
+          border: '1px solid var(--ds-stroke-disabled)',
+          borderRadius: 'var(--ds-radius-large)',
+          padding: '28px 32px',
+          boxShadow: 'var(--ds-shadow-popover)',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: 16,
+            borderBottom: '1px solid var(--ds-stroke-emphasis)',
+            paddingBottom: 16,
+          }}
+        >
           <div>
-            <img src="/brand/implentio-wordmark.svg" alt="Implentio" style={{ height: 18, marginBottom: 10 }} />
+            <img
+              src="/brand/implentio-wordmark.svg"
+              alt="Implentio"
+              style={{ height: 18, marginBottom: 10 }}
+            />
             <div className="ds-heading-small">Credit memo summary</div>
             <div className="imp-small" style={{ margin: '4px 0 0' }}>
               Prepared for Implentio · {memo.id} · {memo.period} · {memo.version}
             </div>
           </div>
           <div style={{ textAlign: 'end' }}>
-            <Statistic bare size="large" type="accent" label="Total variance" value={memo.netN == null ? '—' : fmtMoney(memo.netN)} />
+            <Statistic
+              bare
+              size="large"
+              type="accent"
+              label="Total variance"
+              value={memo.netN == null ? '—' : fmtMoney(memo.netN)}
+            />
           </div>
         </div>
         {detail.reportMonths.map((mo) => (
@@ -81,7 +108,14 @@ export function ReportPreviewModal({
                       <td className="num">{cell(row.peak)}</td>
                       <td className="num">{fmtMoney(row.invN)}</td>
                       <td className="num">{fmtMoney(row.expN)}</td>
-                      <td className="num" style={row.varN > 0.005 ? { color: 'var(--ds-fg-accent-text)', fontWeight: 600 } : undefined}>
+                      <td
+                        className="num"
+                        style={
+                          row.varN > 0.005
+                            ? { color: 'var(--ds-fg-accent-text)', fontWeight: 600 }
+                            : undefined
+                        }
+                      >
                         {posMoney(row.varN)}
                       </td>
                     </tr>
@@ -103,7 +137,8 @@ export function ReportPreviewModal({
           </div>
         ))}
         <p className="ds-body-small" style={{ margin: '22px 0 0', color: 'var(--ds-fg-muted)' }}>
-          Amounts represent audited variance for the period. This summary is a report preview and does not constitute an approved or submitted credit.
+          Amounts represent audited variance for the period. This summary is a report preview and
+          does not constitute an approved or submitted credit.
         </p>
       </div>
     </Modal>

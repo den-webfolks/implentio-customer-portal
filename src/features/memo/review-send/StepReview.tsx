@@ -3,9 +3,20 @@
  *  connect, or the guided checklist for sending by hand. Every handoff on the
  *  checklist is reported up so the dispute becomes "prepared". */
 import type { RefObject } from 'react'
-import { ArrowDownTrayIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, EnvelopeIcon } from '@heroicons/react/24/outline'
+import {
+  ArrowDownTrayIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  EnvelopeIcon,
+} from '@heroicons/react/24/outline'
 import { CheckCircleIcon } from '@heroicons/react/20/solid'
-import type { DisputeRecord, EmailAccountStatus, EmailProvider, HandoffMethod } from '@/domain/types'
+import type {
+  DisputeRecord,
+  EmailAccountStatus,
+  EmailProvider,
+  HandoffMethod,
+} from '@/domain/types'
 import { COMPOSE_LABELS, type ComposeProvider } from '@/domain/dispute-email'
 import { fmtMoney } from '@/domain/money'
 import { plural } from '@/domain/plural'
@@ -33,9 +44,19 @@ export interface Mailbox {
 }
 
 const PROVIDER_NAME: Record<EmailProvider, string> = { gmail: 'Gmail', outlook: 'Outlook' }
-const PROVIDER_LOGO: Record<EmailProvider, string> = { gmail: '/brand/gmail.png', outlook: '/brand/outlook.png' }
+const PROVIDER_LOGO: Record<EmailProvider, string> = {
+  gmail: '/brand/gmail.png',
+  outlook: '/brand/outlook.png',
+}
 
-const CREATE_METHODS: HandoffMethod[] = ['eml', 'gmail', 'outlook', 'outlook_com', 'copy', 'copy_part']
+const CREATE_METHODS: HandoffMethod[] = [
+  'eml',
+  'gmail',
+  'outlook',
+  'outlook_com',
+  'copy',
+  'copy_part',
+]
 
 export function StepReview({
   model,
@@ -100,7 +121,8 @@ export function StepReview({
 }) {
   const files = model.attachments
   const created = !!record?.handoffs.some((h) => CREATE_METHODS.includes(h.method))
-  const expired = (['gmail', 'outlook'] as const).find((p) => accountStatus[p] === 'expired') ?? null
+  const expired =
+    (['gmail', 'outlook'] as const).find((p) => accountStatus[p] === 'expired') ?? null
 
   const summary = (
     <dl className={`ds-body-base ${styles.summary}`}>
@@ -112,7 +134,9 @@ export function StepReview({
               {mailbox.name} · {mailbox.email}
             </span>
             <Link variant="accent" size="small" bold onClick={() => onRoute('manual')}>
-              {record ? 'Already sent it from your mail app? Answer here' : 'Send it yourself instead'}
+              {record
+                ? 'Already sent it from your mail app? Answer here'
+                : 'Send it yourself instead'}
             </Link>
           </dd>
         </>
@@ -120,23 +144,42 @@ export function StepReview({
       <dt>To / CC</dt>
       <dd>
         <span>{[snapshot.to || 'not set', snapshot.cc].filter(Boolean).join(' · ')}</span>
-        <Link variant="accent" size="small" bold onClick={() => onEdit('to')} aria-label="Edit recipients">
+        <Link
+          variant="accent"
+          size="small"
+          bold
+          onClick={() => onEdit('to')}
+          aria-label="Edit recipients"
+        >
           Edit
         </Link>
       </dd>
       <dt>Subject</dt>
       <dd>
         <span>{snapshot.subject}</span>
-        <Link variant="accent" size="small" bold onClick={() => onEdit('subject')} aria-label="Edit the subject">
+        <Link
+          variant="accent"
+          size="small"
+          bold
+          onClick={() => onEdit('subject')}
+          aria-label="Edit the subject"
+        >
           Edit
         </Link>
       </dd>
       <dt>Disputing</dt>
       <dd>
         <span>
-          {wholeMemo ? 'Complete credit memo' : plural(model.rows.length, 'finding')} · {fmtMoney(model.amountN)}
+          {wholeMemo ? 'Complete credit memo' : plural(model.rows.length, 'finding')} ·{' '}
+          {fmtMoney(model.amountN)}
         </span>
-        <Link variant="accent" size="small" bold onClick={() => onEdit('selection')} aria-label="Edit what you're disputing">
+        <Link
+          variant="accent"
+          size="small"
+          bold
+          onClick={() => onEdit('selection')}
+          aria-label="Edit what you're disputing"
+        >
           Edit
         </Link>
       </dd>
@@ -145,7 +188,13 @@ export function StepReview({
           <dt>Email</dt>
           <dd>
             <span>Evidence edited by you — check it matches the files</span>
-            <Link variant="accent" size="small" bold onClick={() => onEdit('evidence')} aria-label="Check the edited evidence">
+            <Link
+              variant="accent"
+              size="small"
+              bold
+              onClick={() => onEdit('evidence')}
+              aria-label="Check the edited evidence"
+            >
               Check
             </Link>
           </dd>
@@ -155,7 +204,12 @@ export function StepReview({
       <dd>
         <span>{files.map((f) => f.name).join(' · ')}</span>
         {!wholeMemo && (
-          <Link variant="accent" size="small" bold onClick={() => onIncludeComplete(!includeComplete)}>
+          <Link
+            variant="accent"
+            size="small"
+            bold
+            onClick={() => onIncludeComplete(!includeComplete)}
+          >
             {includeComplete ? 'Remove the complete credit memo' : '+ Add the complete credit memo'}
           </Link>
         )}
@@ -169,8 +223,12 @@ export function StepReview({
         Review &amp; send
       </h3>
       {blockedByPrepared && (
-        <Banner type="warning" title={`First tell us whether you sent the email prepared on ${shortDate(blockedByPrepared.preparedAt)}.`}>
-          One email at a time per credit memo. Choose “I sent it” below once it’s sent, then tick the next findings to dispute.
+        <Banner
+          type="warning"
+          title={`First tell us whether you sent the email prepared on ${shortDate(blockedByPrepared.preparedAt)}.`}
+        >
+          One email at a time per credit memo. Choose “I sent it” below once it’s sent, then tick
+          the next findings to dispute.
         </Banner>
       )}
       {record && !record.recipientsChecked && !recipientsOk && (
@@ -184,7 +242,10 @@ export function StepReview({
 
       {route === 'connected' && mailbox && (
         <p className={`ds-body-small ${styles.lead}`}>
-          {record ? 'Send dispute sends it again from your mailbox. If it already went from your mail app, choose “Answer here” above instead. ' : ''}A copy of exactly what’s sent is saved to this dispute. You’ll also find it in your{' '}
+          {record
+            ? 'Send dispute sends it again from your mailbox. If it already went from your mail app, choose “Answer here” above instead. '
+            : ''}
+          A copy of exactly what’s sent is saved to this dispute. You’ll also find it in your{' '}
           {mailbox.name} Sent folder.
         </p>
       )}
@@ -214,7 +275,8 @@ export function StepReview({
             </ul>
             {connect.status === 'connecting' ? (
               <p className="ds-body-base" style={{ margin: 0 }} aria-live="polite">
-                Connecting to {connect.provider === 'gmail' ? 'Google' : 'Microsoft'}… finish on their screen, then come back here.{' '}
+                Connecting to {connect.provider === 'gmail' ? 'Google' : 'Microsoft'}… finish on
+                their screen, then come back here.{' '}
                 <Link size="small" bold onClick={onCancelConnect}>
                   Cancel
                 </Link>
@@ -228,15 +290,34 @@ export function StepReview({
                 )}
                 {expired && (
                   <p className="ds-body-base ds-w-medium" style={{ margin: 0 }}>
-                    Your {PROVIDER_NAME[expired]} connection expired. Reconnect to send from it again.
+                    Your {PROVIDER_NAME[expired]} connection expired. Reconnect to send from it
+                    again.
                   </p>
                 )}
                 <div className={styles.connectButtons}>
-                  {([...(expired ? [expired] : []), ...(['gmail', 'outlook'] as const).filter((p) => p !== expired)] as EmailProvider[]).map((p) => (
-                      <Button key={p} variant={p === expired ? 'primary' : 'secondary'} iconLeft={<img src={PROVIDER_LOGO[p]} alt="" width={20} height={20} style={{ objectFit: 'contain' }} />} onClick={() => onConnect(p)}>
-                        {p === expired ? 'Reconnect' : 'Connect'} {PROVIDER_NAME[p]}
-                      </Button>
-                    ))}
+                  {(
+                    [
+                      ...(expired ? [expired] : []),
+                      ...(['gmail', 'outlook'] as const).filter((p) => p !== expired),
+                    ] as EmailProvider[]
+                  ).map((p) => (
+                    <Button
+                      key={p}
+                      variant={p === expired ? 'primary' : 'secondary'}
+                      iconLeft={
+                        <img
+                          src={PROVIDER_LOGO[p]}
+                          alt=""
+                          width={20}
+                          height={20}
+                          style={{ objectFit: 'contain' }}
+                        />
+                      }
+                      onClick={() => onConnect(p)}
+                    >
+                      {p === expired ? 'Reconnect' : 'Connect'} {PROVIDER_NAME[p]}
+                    </Button>
+                  ))}
                 </div>
               </>
             )}
@@ -247,7 +328,9 @@ export function StepReview({
           <div className={styles.manualBox}>
             <div>
               <div className="ds-body-base ds-w-semi">Send it yourself</div>
-              <div className="ds-body-small ds-muted">Open the email in your mail app, attach the files, send it, then confirm here.</div>
+              <div className="ds-body-small ds-muted">
+                Open the email in your mail app, attach the files, send it, then confirm here.
+              </div>
             </div>
             <Button onClick={() => onRoute('manual')}>Continue manually</Button>
           </div>
@@ -256,9 +339,22 @@ export function StepReview({
 
       {route === 'manual' && (
         <>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexWrap: 'wrap',
+            }}
+          >
             <span className="ds-body-base ds-w-semi">Send it yourself</span>
-            <Link variant="accent" size="small" bold onClick={() => onRoute(mailbox ? 'connected' : 'choose')}>
+            <Link
+              variant="accent"
+              size="small"
+              bold
+              onClick={() => onRoute(mailbox ? 'connected' : 'choose')}
+            >
               ← {mailbox ? 'Send from my mailbox instead' : 'Connect instead'}
             </Link>
           </div>
@@ -270,10 +366,18 @@ export function StepReview({
           <ol className={styles.checklist}>
             <ChecklistItem n={1} done={created} title="Create the email">
               <div className={styles.buttonRow}>
-                <Button variant="primary" size="small" iconLeft={<EnvelopeIcon aria-hidden="true" />} onClick={onOpenEml}>
+                <Button
+                  variant="primary"
+                  size="small"
+                  iconLeft={<EnvelopeIcon aria-hidden="true" />}
+                  onClick={onOpenEml}
+                >
                   Download the email (.eml) — files attached
                 </Button>
-                <span className="ds-body-small ds-muted">Open it in Outlook desktop for a ready draft with every file attached. Other mail apps show it as a message to forward.</span>
+                <span className="ds-body-small ds-muted">
+                  Open it in Outlook desktop for a ready draft with every file attached. Other mail
+                  apps show it as a message to forward.
+                </span>
               </div>
               <div className={styles.buttonRow}>
                 {(Object.keys(COMPOSE_LABELS) as ComposeProvider[]).map((p) => (
@@ -289,19 +393,36 @@ export function StepReview({
               </div>
               <CopyParts snapshot={snapshot} onCopy={onCopyPart} />
             </ChecklistItem>
-            <ChecklistItem n={2} done={!!record?.handoffs.some((h) => h.method === 'download')} title="Attach the files (web mail only)">
+            <ChecklistItem
+              n={2}
+              done={!!record?.handoffs.some((h) => h.method === 'download')}
+              title="Attach the files (web mail only)"
+            >
               <div className={styles.buttonRow}>
-                <Button size="small" iconLeft={<ArrowDownTrayIcon aria-hidden="true" />} onClick={onDownloadAll}>
+                <Button
+                  size="small"
+                  iconLeft={<ArrowDownTrayIcon aria-hidden="true" />}
+                  onClick={onDownloadAll}
+                >
                   Download all files (.zip)
                 </Button>
-                <span className="ds-body-small ds-muted">{files.map((f) => f.name).join(' · ')}</span>
+                <span className="ds-body-small ds-muted">
+                  {files.map((f) => f.name).join(' · ')}
+                </span>
               </div>
               <span className="ds-body-small ds-muted">
-                Unzip it (your browser may do this for you) and attach the {plural(files.length, 'file')} inside — not the .zip itself, which some billers’ mail blocks. Check that {files.length === 1 ? 'it is' : `all ${files.length} are`} attached before sending.
+                Unzip it (your browser may do this for you) and attach the{' '}
+                {plural(files.length, 'file')} inside — not the .zip itself, which some billers’
+                mail blocks. Check that {files.length === 1 ? 'it is' : `all ${files.length} are`}{' '}
+                attached before sending.
               </span>
             </ChecklistItem>
             <ChecklistItem n={3} done={false} title="Send it from your mail app" />
-            <ChecklistItem n={4} done={false} title={`Come back and choose “I sent it”, so we can track ${provider}’s answer`} />
+            <ChecklistItem
+              n={4}
+              done={false}
+              title={`Come back and choose “I sent it”, so we can track ${provider}’s answer`}
+            />
           </ol>
         </>
       )}
@@ -314,7 +435,17 @@ function shortDate(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-function ChecklistItem({ n, done, title, children }: { n: number; done: boolean; title: string; children?: React.ReactNode }) {
+function ChecklistItem({
+  n,
+  done,
+  title,
+  children,
+}: {
+  n: number
+  done: boolean
+  title: string
+  children?: React.ReactNode
+}) {
   return (
     <li className={[styles.item, done ? styles.itemDone : ''].filter(Boolean).join(' ')}>
       <span className={styles.itemNum} aria-hidden="true">
@@ -329,7 +460,13 @@ function ChecklistItem({ n, done, title, children }: { n: number; done: boolean;
   )
 }
 
-function CopyParts({ snapshot, onCopy }: { snapshot: EmailSnapshot; onCopy: (label: string, value: string, method: HandoffMethod) => void }) {
+function CopyParts({
+  snapshot,
+  onCopy,
+}: {
+  snapshot: EmailSnapshot
+  onCopy: (label: string, value: string, method: HandoffMethod) => void
+}) {
   const parts: { label: string; value: string }[] = [
     { label: 'To', value: snapshot.to },
     { label: 'CC', value: snapshot.cc },
@@ -348,7 +485,12 @@ function CopyParts({ snapshot, onCopy }: { snapshot: EmailSnapshot; onCopy: (lab
       </summary>
       <div className={styles.copyParts}>
         {parts.map((p) => (
-          <CopyRow key={p.label} label={p.label} value={p.value} onCopy={() => onCopy(p.label, p.value, 'copy_part')} />
+          <CopyRow
+            key={p.label}
+            label={p.label}
+            value={p.value}
+            onCopy={() => onCopy(p.label, p.value, 'copy_part')}
+          />
         ))}
       </div>
     </details>

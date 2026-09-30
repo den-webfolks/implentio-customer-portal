@@ -17,7 +17,9 @@ const copyEmail = async (page: import('@playwright/test').Page) => {
   await page.keyboard.press('ControlOrMeta+c')
 }
 
-test('tick a finding, walk the three steps, open the email in a mail app, confirm it was sent', async ({ page }) => {
+test('tick a finding, walk the three steps, open the email in a mail app, confirm it was sent', async ({
+  page,
+}) => {
   await page.goto(`${MEMO}?scenario=report-ready&demo=1`)
   await page.getByRole('checkbox', { name: /^Include in dispute: Shipping price/ }).click()
   const bar = page.getByRole('region', { name: 'Selected for your dispute' })
@@ -29,9 +31,13 @@ test('tick a finding, walk the three steps, open the email in a mail app, confir
   await expect(dialog.getByText(/4 other findings \(\$65\.50\) are not included/)).toBeVisible()
   await dialog.getByRole('button', { name: 'Next: check the email' }).click()
   // Step 2: recipients from the Biller contact, then the email; it names its file, and the file previews.
-  await expect(dialog.getByRole('heading', { name: 'Check the email — nothing is sent yet' })).toBeFocused()
+  await expect(
+    dialog.getByRole('heading', { name: 'Check the email — nothing is sent yet' }),
+  ).toBeFocused()
   await expect(dialog.getByLabel('To', { exact: true })).toHaveValue('billing@quickbox.com')
-  await expect(dialog.getByText(/You're asking QuickBox for \$9,322\.20 back for 1 overcharge/)).toBeVisible()
+  await expect(
+    dialog.getByText(/You're asking QuickBox for \$9,322\.20 back for 1 overcharge/),
+  ).toBeVisible()
   await dialog.getByRole('button', { name: 'Base-Freight.csv', exact: true }).click()
   const preview = page.getByRole('dialog', { name: 'Base-Freight.csv' })
   await expect(preview.getByText('… 498 more in the file')).toBeVisible()
@@ -39,11 +45,17 @@ test('tick a finding, walk the three steps, open the email in a mail app, confir
   await preview.getByRole('button', { name: 'Close', exact: true }).last().click()
   // The wording is editable in place; the evidence is locked until asked.
   const evidence = dialog.getByRole('region', { name: 'Evidence from your audit' })
-  await expect(evidence.getByText('Locked so the amounts and file names match the attached files.')).toBeVisible()
+  await expect(
+    evidence.getByText('Locked so the amounts and file names match the attached files.'),
+  ).toBeVisible()
   await expect(evidence.getByRole('textbox')).toHaveCount(0)
-  await dialog.getByRole('textbox', { name: 'Opening' }).fill('Hi Dana,\n\nWe found charges that don’t match our contract.')
+  await dialog
+    .getByRole('textbox', { name: 'Opening' })
+    .fill('Hi Dana,\n\nWe found charges that don’t match our contract.')
   await evidence.getByRole('button', { name: 'More details' }).click()
-  await expect(evidence.getByText(/^Billed \$[\d,.]+ · your contract \$[\d,.]+ · difference \$9,322\.20/)).toBeVisible()
+  await expect(
+    evidence.getByText(/^Billed \$[\d,.]+ · your contract \$[\d,.]+ · difference \$9,322\.20/),
+  ).toBeVisible()
   await evidence.getByRole('button', { name: 'Edit evidence' }).click()
   await expect(dialog.getByRole('textbox', { name: 'Evidence' })).toBeFocused()
   await dialog.getByRole('button', { name: 'Done' }).click()
@@ -61,11 +73,17 @@ test('tick a finding, walk the three steps, open the email in a mail app, confir
   await dialog.getByRole('button', { name: 'I sent it', exact: true }).click()
   await expect(dialog.getByText('Sent and recorded — QuickBox dispute')).toBeVisible()
   await dialog.getByRole('button', { name: 'Done' }).click()
-  await expect(page.getByRole('region', { name: /^QuickBox dispute/ }).getByText('Waiting on Biller')).toBeVisible()
-  await expect(page.locator('#finding-eg-fuel').getByText('Dispute by September 20, 2026 · 3 days remaining')).toBeVisible()
+  await expect(
+    page.getByRole('region', { name: /^QuickBox dispute/ }).getByText('Waiting on Biller'),
+  ).toBeVisible()
+  await expect(
+    page.locator('#finding-eg-fuel').getByText('Dispute by Sep 20 · 3 days left'),
+  ).toBeVisible()
 })
 
-test('a connected mailbox sends in one click and the request shows as submitted', async ({ page }) => {
+test('a connected mailbox sends in one click and the request shows as submitted', async ({
+  page,
+}) => {
   await page.goto(`${MEMO}?scenario=dispute-prep-started&demo=1&send=1`)
   const dialog = page.getByRole('dialog', { name: DIALOG })
   await dialog.getByRole('button', { name: 'Next: check the email' }).click()
@@ -74,7 +92,9 @@ test('a connected mailbox sends in one click and the request shows as submitted'
   await dialog.getByRole('button', { name: 'Connect Gmail' }).click()
   await expect(dialog.getByText('Gmail · tori@implentio.com')).toBeVisible()
   await dialog.getByRole('button', { name: 'Send dispute' }).click()
-  await expect(dialog.getByText('Request submitted to QuickBox from tori@implentio.com')).toBeVisible()
+  await expect(
+    dialog.getByText('Request submitted to QuickBox from tori@implentio.com'),
+  ).toBeVisible()
   await dialog.getByRole('button', { name: 'Done' }).click()
   await expect(page.getByRole('region', { name: 'QuickBox dispute, Sep 17, 2026' })).toBeVisible()
 })
@@ -97,7 +117,9 @@ test('step 2 checks the recipients on Next, and Edit links land on the field', a
   await expect(to).toBeFocused()
 })
 
-test('a half-typed address is never saved as the Biller contact, even when the email is copied', async ({ page }) => {
+test('a half-typed address is never saved as the Biller contact, even when the email is copied', async ({
+  page,
+}) => {
   await page.goto(`${MEMO}?scenario=dispute-prep-started&demo=1&send=1`)
   const dialog = page.getByRole('dialog', { name: DIALOG })
   await dialog.getByRole('button', { name: 'Next: check the email' }).click()
@@ -117,7 +139,9 @@ test('a half-typed address is never saved as the Biller contact, even when the e
     ;(document.activeElement as HTMLElement | null)?.blur()
   })
   await page.keyboard.press('ControlOrMeta+c')
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/^Hi Dana Reyes,[\s\S]*Tori Matthews$/)
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(
+    /^Hi Dana Reyes,[\s\S]*Tori Matthews$/,
+  )
   await expect(dialog.getByText(/We saved this email as prepared/)).toBeVisible()
   // The review step points back to the bad address, until it's fixed.
   await dialog.getByRole('button', { name: 'Next: review' }).click()
@@ -125,31 +149,53 @@ test('a half-typed address is never saved as the Biller contact, even when the e
   await dialog.getByLabel('To', { exact: true }).fill('dana@quickbox.com')
   await dialog.getByRole('button', { name: 'Next: review' }).click()
   await expect(dialog.getByRole('heading', { name: 'Review & send' })).toBeVisible()
-  await expect(dialog.getByText('The email left the app before its recipients were complete.')).toHaveCount(0)
+  await expect(
+    dialog.getByText('The email left the app before its recipients were complete.'),
+  ).toHaveCount(0)
   await page.keyboard.press('Escape')
-  await page.getByRole('dialog', { name: /^Before you go/ }).getByRole('button', { name: 'Not yet' }).click()
-  await page.getByRole('region', { name: /^Email to QuickBox prepared/ }).getByRole('link', { name: 'Connect Gmail or Outlook' }).click()
+  await page
+    .getByRole('dialog', { name: /^Before you go/ })
+    .getByRole('button', { name: 'Not yet' })
+    .click()
+  await page
+    .getByRole('region', { name: /^Email to QuickBox prepared/ })
+    .getByRole('link', { name: 'Connect Gmail or Outlook' })
+    .click()
   await expect(page.getByText('billing@quickbox.com').first()).toBeVisible()
   await expect(page.getByText('dana@quickbox', { exact: true })).toHaveCount(0)
 })
 
-test('copying the email at step 2 prepares the dispute; closing asks; the tracker asks again', async ({ page }) => {
+test('copying the email at step 2 prepares the dispute; closing asks; the tracker asks again', async ({
+  page,
+}) => {
   await page.goto(`${MEMO}?scenario=dispute-prep-started&demo=1&send=1`)
   const dialog = page.getByRole('dialog', { name: DIALOG })
   await dialog.getByRole('button', { name: 'Next: check the email' }).click()
   await copyEmail(page)
   // A copy that spans the greeting gets the whole email, not the page text.
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/^Hi Dana Reyes,[\s\S]*1\) Shipping price[\s\S]*Thank you,\nTori Matthews$/)
-  await expect(dialog.getByText('We saved this email as prepared. When you’ve sent it to QuickBox, come back and choose “I sent it”.')).toBeVisible()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(
+    /^Hi Dana Reyes,[\s\S]*1\) Shipping price[\s\S]*Thank you,\nTori Matthews$/,
+  )
+  await expect(
+    dialog.getByText(
+      'We saved this email as prepared. When you’ve sent it to QuickBox, come back and choose “I sent it”.',
+    ),
+  ).toBeVisible()
   await page.keyboard.press('Escape')
-  const guard = page.getByRole('dialog', { name: 'Before you go: did you send the email to QuickBox?' })
+  const guard = page.getByRole('dialog', {
+    name: 'Before you go: did you send the email to QuickBox?',
+  })
   await expect(guard).toBeVisible()
   await guard.getByRole('button', { name: 'Not yet' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   // The memo page keeps asking, and the findings are reserved.
   const card = page.getByRole('region', { name: /^Email to QuickBox prepared/ })
-  await expect(card.getByRole('heading', { name: /prepared Sep 17, 2026 by you — not confirmed as sent/ })).toBeVisible()
-  await expect(page.locator('#finding-eg-base').getByText('In a prepared email', { exact: true })).toBeVisible()
+  await expect(
+    card.getByRole('heading', { name: /prepared Sep 17, 2026 by you — not confirmed as sent/ }),
+  ).toBeVisible()
+  await expect(
+    page.locator('#finding-eg-base').getByText('In a prepared email', { exact: true }),
+  ).toBeVisible()
   await expect(page.locator('#finding-eg-base').getByRole('checkbox')).toHaveCount(0)
   await expect(page.getByRole('region', { name: 'Selected for your dispute' })).toHaveCount(0)
   // The tracker shows it, and Check details lands on the prepared card (no dialog).
@@ -158,43 +204,73 @@ test('copying the email at step 2 prepares the dispute; closing asks; the tracke
   await expect(row.getByText('Email prepared, not sent')).toBeVisible()
   await expect(row.getByText('Prepared Sep 17, 2026 · mark it sent on the memo page')).toBeVisible()
   await row.getByRole('link', { name: 'Check details for CM-2026-0630' }).click()
-  await expect(page.getByRole('heading', { name: /prepared Sep 17, 2026 by you — not confirmed as sent/ })).toBeFocused()
+  await expect(
+    page.getByRole('heading', { name: /prepared Sep 17, 2026 by you — not confirmed as sent/ }),
+  ).toBeFocused()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   // Prepared today and in time: one click records today.
-  await page.getByRole('region', { name: /^Email to QuickBox prepared/ }).getByRole('button', { name: 'Yes, I sent it' }).click()
+  await page
+    .getByRole('region', { name: /^Email to QuickBox prepared/ })
+    .getByRole('button', { name: 'Yes, I sent it' })
+    .click()
   await expect(page.getByRole('region', { name: 'QuickBox dispute, Sep 17, 2026' })).toBeVisible()
 })
 
-test('"I didn’t send it" frees the findings and keeps the email in the activity', async ({ page }) => {
+test('"I didn’t send it" frees the findings and keeps the email in the activity', async ({
+  page,
+}) => {
   await page.goto(`${MEMO}?scenario=dispute-prepared&demo=1`)
-  await page.getByRole('region', { name: /^Email to QuickBox prepared/ }).getByRole('button', { name: 'I didn’t send it' }).click()
-  await page.getByRole('dialog', { name: 'Discard this email?' }).getByRole('button', { name: 'Discard — I didn’t send it' }).click()
+  await page
+    .getByRole('region', { name: /^Email to QuickBox prepared/ })
+    .getByRole('button', { name: 'I didn’t send it' })
+    .click()
+  await page
+    .getByRole('dialog', { name: 'Discard this email?' })
+    .getByRole('button', { name: 'Discard — I didn’t send it' })
+    .click()
   await expect(page.getByRole('region', { name: /^Email to QuickBox prepared/ })).toHaveCount(0)
   await expect(page.locator('#finding-eg-base').getByRole('checkbox')).toBeVisible()
-  await page.getByRole('navigation', { name: 'Credit memo sections' }).getByRole('link', { name: 'Activity & exports' }).click()
+  await page
+    .getByRole('navigation', { name: 'Credit memo sections' })
+    .getByRole('link', { name: 'Activity & exports' })
+    .click()
   await expect(page.getByText(/^Prepared dispute email discarded/)).toBeVisible()
 })
 
 test('no second dispute starts until the prepared email is answered', async ({ page }) => {
   await page.goto(`${MEMO}?scenario=dispute-prepared&demo=1`)
-  await page.locator('#findings').getByRole('button', { name: /^Show 3 smaller findings/ }).click()
-  await expect(page.getByText('Answer “Did you send it?” above before choosing more to dispute.')).toBeVisible()
+  await page
+    .locator('#findings')
+    .getByRole('button', { name: /^Show 3 smaller findings/ })
+    .click()
+  await expect(
+    page.getByText('Answer “Did you send it?” above before choosing more to dispute.'),
+  ).toBeVisible()
   await expect(page.locator('#findings').getByRole('checkbox')).toHaveCount(0)
   // The prepared email can still go from a connected mailbox.
-  await page.getByRole('region', { name: /^Email to QuickBox prepared/ }).getByRole('button', { name: 'Open the email again' }).click()
+  await page
+    .getByRole('region', { name: /^Email to QuickBox prepared/ })
+    .getByRole('button', { name: 'Open the email again' })
+    .click()
   const dialog = page.getByRole('dialog', { name: DIALOG })
   await dialog.getByRole('button', { name: '← Connect instead' }).click()
   await dialog.getByRole('button', { name: 'Connect Gmail' }).click()
   await dialog.getByRole('button', { name: 'Send dispute' }).click()
-  await expect(dialog.getByText('Request submitted to QuickBox from tori@implentio.com')).toBeVisible()
+  await expect(
+    dialog.getByText('Request submitted to QuickBox from tori@implentio.com'),
+  ).toBeVisible()
   await dialog.getByRole('button', { name: 'Done' }).click()
   await expect(page.getByRole('region', { name: /^Email to QuickBox prepared/ })).toHaveCount(0)
   await expect(page.locator('#finding-eg-res').getByRole('checkbox')).toBeVisible()
 })
 
-test('after the deadline the date is the question; the card records the answer in one click', async ({ page }) => {
+test('after the deadline the date is the question; the card records the answer in one click', async ({
+  page,
+}) => {
   await page.goto(`${MEMO}?scenario=dispute-prepared-late&demo=1`)
-  await expect(page.locator('#finding-eg-base').getByText('In a prepared email', { exact: true })).toBeVisible()
+  await expect(
+    page.locator('#finding-eg-base').getByText('In a prepared email', { exact: true }),
+  ).toBeVisible()
   const card = page.getByRole('region', { name: /^Email to QuickBox prepared/ })
   // Prepared Sep 12: the date defaults to that day, not today.
   await expect(card.getByLabel('Sent on')).toHaveValue('2026-09-12')
@@ -204,7 +280,9 @@ test('after the deadline the date is the question; the card records the answer i
   await dialog.getByRole('button', { name: 'Back' }).click()
   await dialog.getByRole('button', { name: 'Next: review' }).dblclick()
   await expect(dialog.getByRole('button', { name: 'I sent it', exact: true })).toBeVisible()
-  await expect(page.getByRole('dialog', { name: 'When did you send the email to QuickBox?' })).toHaveCount(0)
+  await expect(
+    page.getByRole('dialog', { name: 'When did you send the email to QuickBox?' }),
+  ).toHaveCount(0)
   // Opened again today, so today is the likely send date — and it's late.
   await dialog.getByRole('button', { name: 'Download all files (.zip)' }).click()
   await dialog.getByRole('button', { name: 'I sent it', exact: true }).click()
@@ -221,7 +299,10 @@ test('after the deadline the date is the question; the card records the answer i
 test('answers are recorded finding by finding on each dispute card', async ({ page }) => {
   await page.goto(`${MEMO}?scenario=dispute-awaiting&demo=1`)
   const answer = (dispute: string, finding: string) =>
-    page.getByRole('region', { name: dispute }).getByRole('group', { name: `Answer for ${finding}` }).getByRole('radio', { name: 'Fully collected' })
+    page
+      .getByRole('region', { name: dispute })
+      .getByRole('group', { name: `Answer for ${finding}` })
+      .getByRole('radio', { name: 'Fully collected' })
   await answer('QuickBox dispute, Sep 15, 2026', 'Home-delivery fee charged incorrectly').click()
   for (const finding of [
     'Shipping price higher than your contract rate',
@@ -235,7 +316,10 @@ test('answers are recorded finding by finding on each dispute card', async ({ pa
 
 test('a whole-memo dispute is sent and completed', async ({ page }) => {
   await page.goto(`${MEMO}?scenario=findings-unavailable&demo=1`)
-  await page.getByRole('region', { name: 'Summary' }).getByRole('button', { name: 'Review & send' }).click()
+  await page
+    .getByRole('region', { name: 'Summary' })
+    .getByRole('button', { name: 'Review & send' })
+    .click()
   const dialog = page.getByRole('dialog', { name: DIALOG })
   await expect(dialog.getByText('Complete credit memo', { exact: true })).toBeVisible()
   await dialog.getByRole('button', { name: 'Next: check the email' }).click()
@@ -247,22 +331,31 @@ test('a whole-memo dispute is sent and completed', async ({ page }) => {
   await dialog.getByRole('button', { name: 'I sent it', exact: true }).click()
   await dialog.getByRole('button', { name: 'Done' }).click()
   await expect(page.getByText('Waiting on Biller', { exact: true }).first()).toBeVisible()
-  await page.getByRole('group', { name: 'Answer for Complete credit memo' }).getByRole('radio', { name: 'Fully collected' }).click()
+  await page
+    .getByRole('group', { name: 'Answer for Complete credit memo' })
+    .getByRole('radio', { name: 'Fully collected' })
+    .click()
   await expect(page.getByText('Every finding has a final outcome.')).toBeVisible()
 })
 
 test('a finding can be marked not pursued and undone', async ({ page }) => {
   await page.goto(`${MEMO}?scenario=report-ready&demo=1`)
   const das = page.locator('#finding-eg-das')
-  await page.locator('#findings').getByRole('button', { name: /^Show 3 smaller findings/ }).click()
+  await page
+    .locator('#findings')
+    .getByRole('button', { name: /^Show 3 smaller findings/ })
+    .click()
   await das.getByRole('button', { name: /^Won’t pursue/ }).click()
   await expect(das.getByText('Won’t pursue', { exact: true })).toBeVisible()
   await expect(das.getByRole('checkbox')).toHaveCount(0)
   await das.getByRole('button', { name: /^Undo/ }).click()
-  await expect(das.getByText('Ready to dispute', { exact: true })).toBeVisible()
+  // Open again: its checkbox and deadline are back.
+  await expect(das.getByRole('checkbox', { name: /^Include in dispute/ })).toBeVisible()
 })
 
-test('a link to the dispute record scrolls to the dispute cards with what was sent', async ({ page }) => {
+test('a link to the dispute record scrolls to the dispute cards with what was sent', async ({
+  page,
+}) => {
   await page.goto(`${MEMO}?scenario=report-downloaded&demo=1&dispute=1`)
   const sep8 = page.getByRole('region', { name: 'QuickBox dispute, Sep 8, 2026' })
   await expect(page.locator('#disputes')).toBeInViewport()
@@ -276,18 +369,41 @@ test('outcomes appear in the memo activity', async ({ page }) => {
   await page.goto(`${MEMO}?scenario=dispute-awaiting&demo=1`)
   const card = page.getByRole('region', { name: 'QuickBox dispute, Sep 15, 2026' })
   await card.getByRole('radio', { name: 'Denied' }).click()
-  await page.getByRole('navigation', { name: 'Credit memo sections' }).getByRole('link', { name: 'Activity & exports' }).click()
+  await page
+    .getByRole('navigation', { name: 'Credit memo sections' })
+    .getByRole('link', { name: 'Activity & exports' })
+    .click()
   await expect(page.getByText(/^Outcome recorded — .*: Denied$/)).toBeVisible()
 })
 
-test('a close deadline shows its countdown and a passed one shows Expired', async ({ page }) => {
+test('a passed deadline warns but never closes the finding; Won’t pursue the rest skips it, and Undo brings it back', async ({
+  page,
+}) => {
   await page.goto(`${MEMO}?scenario=dispute-deadline&demo=1`)
   await expect(page.getByText('Action needed', { exact: true })).toHaveCount(0)
-  await page.locator('#findings').getByRole('button', { name: /smaller finding/ }).click()
-  await expect(page.getByText('Dispute by September 19, 2026 · 2 days remaining').first()).toBeVisible()
+  await expect(page.getByText('1 finding past the dispute deadline')).toBeVisible()
+  await page
+    .locator('#findings')
+    .getByRole('button', { name: /smaller finding/ })
+    .click()
+  await expect(
+    page.getByText('Dispute by September 19, 2026 · 2 days remaining').first(),
+  ).toBeVisible()
   const multi = page.locator('#finding-eg-multi')
-  await expect(multi.getByText('Expired', { exact: true })).toBeVisible()
-  await expect(multi.getByText(/Dispute window closed September 15, 2026/)).toBeVisible()
+  await expect(
+    multi.getByText('Past the dispute deadline (Sep 15) · QuickBox may refuse it'),
+  ).toBeVisible()
+  await expect(multi.getByRole('checkbox')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Won’t pursue the rest (1 finding · $3.08)' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Won’t pursue 1 finding past the deadline?' })
+  await dialog.getByRole('button', { name: 'Won’t pursue 1 finding' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByRole('heading', { name: 'Findings', exact: true })).toBeFocused()
+  await expect(multi.getByText('Won’t pursue', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Won’t pursue the rest/ })).toHaveCount(0)
+  await multi.getByRole('button', { name: /^Undo/ }).click()
+  await expect(multi.getByRole('checkbox', { name: /^Include in dispute/ })).toBeVisible()
 })
 
 test('a partial credit asks for a valid amount', async ({ page }) => {
@@ -318,4 +434,60 @@ test('updated-v2 scenario shows the change banner and superseded version', async
   await expect(page.getByText('What changed:')).toBeVisible()
   await page.getByRole('link', { name: 'Activity & exports' }).click()
   await expect(page.getByText('Version 1 · Superseded')).toBeVisible()
+})
+
+test('"Show why" explains a finding in place, and names a finding whose money came from other charges', async ({
+  page,
+}) => {
+  await page.goto(`${MEMO}?scenario=report-ready&demo=1`)
+  const card = page.locator('#finding-eg-base')
+  await card.getByRole('button', { name: 'Show why' }).click()
+  await expect(card.getByText(/Almost all of it is the\s*shipping price\s*\(97%\)\./)).toBeVisible()
+  const spread = card.getByRole('group', { name: 'Overcharge per package' })
+  await expect(spread).toContainText('Half the packages$15–$20 over')
+  await expect(spread).toContainText('The largest$106.11 over')
+  // A typical package first; the largest is one tap away, and each charge explains itself.
+  await card.getByText('Largest', { exact: true }).click()
+  await expect(card.getByRole('button', { name: 'Largest', pressed: true })).toBeVisible()
+  const example = card.getByRole('region', { name: 'How one package was priced' })
+  await example.getByRole('button', { name: 'Fuel charge, what is this?' }).click()
+  // Every helper explains itself in the same popover.
+  const fuel = page.getByRole('dialog', { name: 'Fuel charge' })
+  await expect(fuel.getByText('On this package')).toBeVisible()
+  await expect(
+    fuel.getByText(
+      /worked out on the overcharged shipping price \(\$185\.86 instead of \$92\.93\); the percentage was about the same/,
+    ),
+  ).toBeVisible()
+  await page.keyboard.press('Escape')
+  // The name says home delivery, but the money came from other charges: the card says so before anyone ticks it.
+  await page
+    .locator('#findings')
+    .getByRole('button', { name: /smaller findings/ })
+    .click()
+  await expect(
+    page
+      .locator('#finding-eg-res')
+      .getByText(
+        /Grouped under home-delivery fees, but most of the difference came from the remote-area fee and the shipping price/,
+      ),
+  ).toBeVisible()
+})
+
+test('words that need explaining open a popover with this finding’s numbers', async ({ page }) => {
+  await page.goto(`${MEMO}?scenario=report-ready&demo=1`)
+  const card = page.locator('#finding-eg-base')
+  // On the card: the charge type, summed over the finding's packages.
+  await card.getByRole('button', { name: 'Base freight, what is this?' }).click()
+  const pop = page.getByRole('dialog', { name: 'Shipping price' })
+  await expect(pop.getByText(/Your contract comes to \$9,378\.43\./)).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(pop).toBeHidden()
+  // In the breakdown: a charge billed below contract says it isn't a separate credit.
+  await card.getByRole('button', { name: 'Show why' }).click()
+  const breakdown = card.getByRole('region', { name: 'What makes up the overcharge' })
+  await breakdown.getByRole('button', { name: 'Home-delivery fee, what is this?' }).click()
+  await expect(
+    page.getByRole('dialog', { name: 'Home-delivery fee' }).getByText(/isn’t a separate credit/),
+  ).toBeVisible()
 })

@@ -1,0 +1,108 @@
+/* Figma ❖ Popover (5760:5358): white card, 8px radius, popover shadow,
+   caret toward the trigger, 4px from it. Tokens only. */
+
+.content {
+  position: relative;
+  z-index: var(--ds-z-popover);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 36px 12px 14px;
+  border: 1px solid var(--ds-stroke-disabled);
+  border-radius: var(--ds-radius-large);
+  background: var(--ds-bg-default);
+  box-shadow: var(--ds-shadow-popover);
+  color: var(--ds-fg-default);
+  font: var(--ds-weight-regular) 13px/1.5 var(--ds-font);
+  letter-spacing: var(--ds-tracking-body);
+  animation: popIn var(--ds-dur-fast) var(--ds-ease-out);
+}
+
+.content:focus {
+  outline: none;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content {
+    animation: none;
+  }
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--ds-icon-default);
+}
+
+.icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.title {
+  font: var(--ds-weight-semi) 13.5px/1.35 var(--ds-font);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.body p {
+  margin: 0;
+}
+
+.action {
+  display: flex;
+  gap: 8px;
+}
+
+.close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ds-radius-small);
+  background: none;
+  color: var(--ds-icon-muted);
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--ds-bg-disabled);
+  color: var(--ds-icon-default);
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--ds-stroke-focus);
+  outline-offset: 0;
+}
+
+.close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.arrow {
+  fill: var(--ds-bg-default);
+  filter: drop-shadow(0 1px 0 var(--ds-stroke-emphasis));
+}

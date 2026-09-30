@@ -105,8 +105,28 @@ describe('tracker memo row', () => {
     expect(skipped.chip).toBeNull()
   })
 
-  it('closes a memo once every finding is answered or past its deadline', () => {
+  it('keeps past-deadline money left to dispute and says so, instead of closing the memo', () => {
     const v = view([row('a', { ...sentSep8, collection: fullC(100) }), row('b', { disputeDeadline: '2026-09-01', amountN: 50 })])
+    expect(v).toMatchObject({
+      place: 'list',
+      pastOnly: true,
+      deadline: null,
+      hero: { valueN: 50 },
+      sub: 'of $150.00 overcharged · all past the deadline',
+      facts: [{ key: 'collected', valueN: 100 }],
+      status: { tone: 'neutral', label: 'Not disputed yet', detail: ['Past the dispute deadline (Sep 1, 2026)'] },
+      target: 'findings',
+    })
+    // A live deadline still counts down; the passed part is named under the number.
+    expect(view([row('a', { disputeDeadline: '2026-09-01', amountN: 50 }), row('b', { disputeDeadline: '2026-09-19' })])).toMatchObject({
+      pastOnly: false,
+      sub: '2 findings · $50.00 past the deadline',
+      status: { detail: ['Dispute by Sep 19, 2026 · 2 days remaining'] },
+    })
+  })
+
+  it('closes a memo only by answers or the team’s decision', () => {
+    const v = view([row('a', { ...sentSep8, collection: fullC(100) }), row('b', { pursuit: 'excluded', disputeDeadline: '2026-09-01', amountN: 50 })])
     expect(v).toMatchObject({
       place: 'finished',
       hero: { valueN: 0 },
@@ -117,8 +137,7 @@ describe('tracker memo row', () => {
       status: { tone: 'success', label: 'Closed', detail: ['Last answer Sep 12, 2026'] },
       target: 'dispute',
     })
-    expect(view([row('a', { disputeDeadline: '2026-09-01' })]).status).toMatchObject({ label: 'Closed, not disputed', detail: ['The deadline passed'] })
-    expect(view([row('a', { pursuit: 'excluded' })]).status).toMatchObject({ detail: ['Your team chose not to dispute'] })
+    expect(view([row('a', { pursuit: 'excluded' })]).status).toMatchObject({ label: 'Closed, not disputed', detail: ['Your team chose not to dispute'] })
   })
 
   it('files an all-clear memo under Finished and a memo without findings yet as in audit', () => {
@@ -168,6 +187,16 @@ describe('tracker list and summary', () => {
     expect(sortRows(views, 'deadline').list.map((x) => x.id)).toEqual(['small-due', 'mixed', 'big', 'wait-old', 'wait-new'])
   })
 
+  it('puts memos whose open money is all past its deadline after live deadlines, in both sorts', () => {
+    const stale = at('stale', 6, [row('s', { amountN: 20000, disputeDeadline: '2026-05-15' })])
+    // A mixed memo ranks by what is still on time.
+    const mostlyPast = at('mostly-past', 7, [row('m1', { amountN: 50000, disputeDeadline: '2026-05-15' }), row('m2', { amountN: 10 })])
+    const all = [...views, stale, mostlyPast]
+    expect(sortRows(all, 'value').list.map((x) => x.id)).toEqual(['big', 'mixed', 'small-due', 'mostly-past', 'wait-old', 'wait-new', 'stale'])
+    expect(sortRows(all, 'deadline').list.map((x) => x.id)).toEqual(['small-due', 'mixed', 'big', 'mostly-past', 'wait-old', 'wait-new', 'stale'])
+    expect(trackerSummary(all, NOW).toDispute.pastDeadline).toEqual({ amountN: 70000, memos: 2 })
+  })
+
   it('every row adds up: left to dispute plus the rest is the memo total', () => {
     for (const v of views) {
       const rest = v.facts.reduce((t, f) => t + f.valueN, 0)
@@ -180,7 +209,7 @@ describe('tracker list and summary', () => {
     expect(s.buckets).toEqual({ open: 12400, awaiting: 6200, collected: 800, notRecovered: 200, notDisputed: 0 })
     expect(s.totalN).toBe(19600)
     expect(s.memoCount).toBe(6)
-    expect(s.toDispute).toEqual({ memos: 3, nextDeadline: '2026-09-18', daysLeft: 1 })
+    expect(s.toDispute).toEqual({ memos: 3, nextDeadline: '2026-09-18', daysLeft: 1, pastDeadline: { amountN: 0, memos: 0 } })
     expect(s.waiting).toEqual({ memos: 3, oldestSent: 'Sep 8, 2026' })
     expect(s.recoveryRate).toBeCloseTo(0.8)
   })

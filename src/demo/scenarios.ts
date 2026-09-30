@@ -7,10 +7,19 @@
  * ships those screens.
  */
 import type { Collection, DisputeRecord, FindingGroup } from '@/domain/types'
-import { SUMMARY_FILE_NAME, attachmentNames, buildEmailBlocks, claimFileName, claimFromFinding, defaultSubject, emailText } from '@/domain/dispute-email'
+import {
+  SUMMARY_FILE_NAME,
+  attachmentNames,
+  buildEmailBlocks,
+  claimFileName,
+  claimFromFinding,
+  defaultSubject,
+  emailText,
+} from '@/domain/dispute-email'
 import { r2 } from '@/domain/money'
 import { DEMO_NOW } from '@/lib/clock'
 import { demoDownloadEvent, type SeedState } from './seed'
+import { extraFindings } from './extra-findings'
 
 export type ScenarioId =
   | 'processing'
@@ -33,6 +42,7 @@ export type ScenarioId =
   | 'dispute-deadline'
   | 'dispute-prepared'
   | 'dispute-prepared-late'
+  | 'more-findings'
 
 export interface Scenario {
   id: ScenarioId
@@ -84,7 +94,13 @@ function preparedEmail(s: SeedState, groupIds: string[], preparedAt: string): Di
     completeFile: null,
     sender: s.account.user.name,
   }
-  const snapshot = { to: contact?.email ?? '', cc: contact?.cc ?? '', subject: defaultSubject(email), body: emailText(buildEmailBlocks(email)), attachments: attachmentNames(email) }
+  const snapshot = {
+    to: contact?.email ?? '',
+    cc: contact?.cc ?? '',
+    subject: defaultSubject(email),
+    body: emailText(buildEmailBlocks(email)),
+    attachments: attachmentNames(email),
+  }
   return {
     id: 'dsp-prepared',
     memoId: email.memoId,
@@ -279,9 +295,7 @@ export const scenarios: Scenario[] = [
       return {
         ...s,
         findingGroups: s.findingGroups.map(clearDispute),
-        disputeExcludedIds: s.findingGroups
-          .filter((g) => !keep.includes(g.id))
-          .map((g) => g.id),
+        disputeExcludedIds: s.findingGroups.filter((g) => !keep.includes(g.id)).map((g) => g.id),
         disputeDraftDate: 'Sep 16, 2026',
       }
     },
@@ -319,7 +333,8 @@ export const scenarios: Scenario[] = [
         findingGroups: s.findingGroups.map((g) => {
           if (g.id === 'eg-base') return { ...g, ...pursuedSep8, collection: full(g, '2026-09-16') }
           if (g.id === 'eg-fuel') return { ...g, collection: full(g, '2026-09-13') }
-          if (g.id === 'eg-multi') return { ...g, ...pursuedSep8, collection: full(g, '2026-09-16') }
+          if (g.id === 'eg-multi')
+            return { ...g, ...pursuedSep8, collection: full(g, '2026-09-16') }
           if (g.id === 'eg-res')
             return {
               ...g,
@@ -366,9 +381,10 @@ export const scenarios: Scenario[] = [
   },
   {
     // Phase 1 addition (not in the prototype): exercises the deadline
-    // countdown and the "Expired" label. One finding is due in 2 days, one expired unsent.
+    // countdown and the past-deadline warning. One finding is due in 2 days; the
+    // others passed their deadline unsent and stay open (status model, 2026-09-29).
     id: 'dispute-deadline',
-    label: 'Dispute — deadline close / expired',
+    label: 'Dispute — deadline close / past deadline',
     available: true,
     initialLocation: `/memos/${FEATURED}`,
     seed: (s) => {
@@ -396,8 +412,16 @@ scenarios.push(
     initialLocation: `/memos/${FEATURED}`,
     seed: (s) => {
       const cleared = s.findingGroups.map(clearDispute)
-      const next = { ...s, findingGroups: cleared, disputeExcludedIds: cleared.map((g) => g.id), disputeDraftDate: null }
-      return { ...next, disputes: [preparedEmail(next, ['eg-base', 'eg-fuel'], '2026-09-17T09:12:00')] }
+      const next = {
+        ...s,
+        findingGroups: cleared,
+        disputeExcludedIds: cleared.map((g) => g.id),
+        disputeDraftDate: null,
+      }
+      return {
+        ...next,
+        disputes: [preparedEmail(next, ['eg-base', 'eg-fuel'], '2026-09-17T09:12:00')],
+      }
     },
   },
   {
@@ -408,9 +432,59 @@ scenarios.push(
     available: true,
     initialLocation: `/memos/${FEATURED}`,
     seed: (s) => {
-      const cleared = s.findingGroups.map((g) => (['eg-base', 'eg-fuel'].includes(g.id) ? { ...clearDispute(g), disputeDeadline: '2026-09-15' } : clearDispute(g)))
-      const next = { ...s, findingGroups: cleared, disputeExcludedIds: cleared.map((g) => g.id), disputeDraftDate: null }
-      return { ...next, disputes: [preparedEmail(next, ['eg-base', 'eg-fuel'], '2026-09-12T16:40:00')] }
+      const cleared = s.findingGroups.map((g) =>
+        ['eg-base', 'eg-fuel'].includes(g.id)
+          ? { ...clearDispute(g), disputeDeadline: '2026-09-15' }
+          : clearDispute(g),
+      )
+      const next = {
+        ...s,
+        findingGroups: cleared,
+        disputeExcludedIds: cleared.map((g) => g.id),
+        disputeDraftDate: null,
+      }
+      return {
+        ...next,
+        disputes: [preparedEmail(next, ['eg-base', 'eg-fuel'], '2026-09-12T16:40:00')],
+      }
+    },
+  },
+  {
+    // Not in the prototype: MADE-UP findings for the situations the real memo
+    // can't show in "Show why" (plan 02, 5a) — one package, other charges, a
+    // farther zone, a fuel percentage above contract. The memo's totals grow
+    // with them so the summary still adds up; its invoice list doesn't.
+    id: 'more-findings',
+    label: 'Findings — more examples (made-up)',
+    available: true,
+    initialLocation: `/memos/${FEATURED}`,
+    seed: (s) => {
+      const extra = extraFindings()
+      const sum = (k: 'varN' | 'invoicedN' | 'expectedN') => r2(extra.reduce((t, g) => t + g[k], 0))
+      const packages = extra.reduce((t, g) => t + g.packages, 0)
+      const invoices = new Set(
+        extra.flatMap((g) => g.services.flatMap((v) => v.pkgs.map((p) => p.inv))),
+      ).size
+      const groups = [...s.findingGroups.map(clearDispute), ...extra]
+      return {
+        ...s,
+        memos: s.memos.map((m) =>
+          m.id === s.goldenMemoId
+            ? {
+                ...m,
+                netN: r2((m.netN ?? 0) + sum('varN')),
+                overN: r2((m.overN ?? 0) + sum('varN')),
+                invoicedN: r2((m.invoicedN ?? 0) + sum('invoicedN')),
+                expectedN: r2((m.expectedN ?? 0) + sum('expectedN')),
+                orders: (m.orders ?? 0) + packages,
+                invoices: (m.invoices ?? 0) + invoices,
+              }
+            : m,
+        ),
+        findingGroups: groups,
+        disputeExcludedIds: groups.map((g) => g.id),
+        disputeDraftDate: null,
+      }
     },
   },
 )

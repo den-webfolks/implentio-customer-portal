@@ -14,7 +14,7 @@
 
 /** How a finding entered (or left) the dispute process: 'pursued' once a
  *  dispute including it was sent; 'excluded' when the customer chose "Won't
- *  pursue" (reversible while the deadline is open); null while undecided. */
+ *  pursue" (reversible any time); null while undecided. */
 export type Pursuit = 'pursued' | 'excluded' | null
 
 export type CollectionStatus = 'awaiting' | 'partial' | 'full' | 'not_issued'
@@ -54,7 +54,7 @@ export interface DisputeState {
   pursuedVia?: 'connected' | 'manual' | null
   collection: Collection | null
   /** In a prepared email that hasn't been confirmed as sent: reserved (not
-   *  selectable, no "Won't pursue") and never Expired while it waits. */
+   *  selectable, no "Won't pursue") while it waits. */
   prepared?: boolean
   /** When that email was prepared (ISO timestamp). */
   preparedAt?: string | null
@@ -62,7 +62,8 @@ export interface DisputeState {
 
 /** How a dispute email left the app for a manual send, with a snapshot of
  *  what left (the customer's backup, "as prepared in Implentio"). */
-export type HandoffMethod = 'copy' | 'copy_part' | 'eml' | 'gmail' | 'outlook' | 'outlook_com' | 'download'
+export type HandoffMethod =
+  'copy' | 'copy_part' | 'eml' | 'gmail' | 'outlook' | 'outlook_com' | 'download'
 
 export interface DisputeHandoff {
   /** ISO timestamp. */
@@ -343,6 +344,32 @@ export interface FindingGroup extends DisputeState {
   varN: number
   chargeMix: { b: number; f: number; r: number; d: number; o: number }
   services: FindingService[]
+  /** What Implentio compared the bills with (price list, fuel index, ZIP
+   *  list…). Missing until Implentio publishes it (plan 02, Q-E2). */
+  sources?: FindingSource[]
+  /** A more specific plain-language name from Implentio, e.g. "Home-delivery
+   *  fee charged on a business address"; without it the card uses the
+   *  charge's general one (finding-copy.ts). */
+  problem?: string | null
+  /** Set only when an Implentio reviewer really checked the finding (Q-E6). */
+  reviewedBy?: string | null
+  /** ISO date of that review. */
+  reviewedAt?: string | null
+}
+
+/** A document a finding was checked against, honest about whether we have
+ *  the file: 'attached' (it can be opened), 'named' (we know which one but
+ *  don't have the file), 'missing' (we don't have it). */
+export interface FindingSource {
+  kind: 'price_list' | 'fuel_index' | 'zip_list' | 'contract' | 'carrier_table' | 'other'
+  status: 'attached' | 'named' | 'missing'
+  name: string
+  /** e.g. "Version 3 · valid from Mar 1, 2026" or "Weeks of Apr 6 – Jun 22, 2026". */
+  detail?: string
+  /** What it stands for in this finding, e.g. "“Your contract” = its UPS service prices". */
+  role: string
+  /** Only for 'attached'. */
+  fileUrl?: string
 }
 
 /** Invoice-level variance record inside an over/under variance group. */

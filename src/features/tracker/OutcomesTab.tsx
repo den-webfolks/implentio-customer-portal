@@ -56,7 +56,6 @@ const PURSUIT_OPTIONS = [
   { value: 'eligible', label: STATUS_LABELS.eligible },
   { value: 'pursued', label: 'Disputed' },
   { value: 'not_pursued', label: STATUS_LABELS.not_pursued },
-  { value: 'expired', label: STATUS_LABELS.expired },
 ]
 
 /** The filter chips a donut slice stands for (display only; rows are
@@ -66,7 +65,7 @@ const SLICE_CHIPS: Record<DispositionKey, { ocPursuit: string[]; ocOutcome: stri
   awaiting: { ocPursuit: ['pursued'], ocOutcome: ['awaiting'] },
   collected: { ocPursuit: ['pursued'], ocOutcome: ['full', 'partial'] },
   notRecovered: { ocPursuit: ['pursued'], ocOutcome: ['partial', 'not_issued'] },
-  notDisputed: { ocPursuit: ['not_pursued', 'expired'], ocOutcome: [] },
+  notDisputed: { ocPursuit: ['not_pursued'], ocOutcome: [] },
 }
 
 const rowKey = (g: OutcomeRow) => `${g.memoId}-${g.id}`
@@ -120,7 +119,7 @@ export function OutcomesTab() {
 
   if (!rowsQ.data) return null
 
-  // Pursuit filter value: pursued, or the unpursued state (eligible / not pursued / expired).
+  // Pursuit filter value: pursued, or the unpursued state (eligible / not pursued).
   const pursuitKey = (g: OutcomeRow) => (g.pursuit === 'pursued' ? 'pursued' : groupStatusLine(g, now).key)
 
   let rows = allRows.filter(
@@ -131,7 +130,7 @@ export function OutcomesTab() {
   )
   const donutRows = rows
   if (disposition !== 'all') {
-    rows = rows.filter((g) => dispositionMatch(g, disposition, now))
+    rows = rows.filter((g) => dispositionMatch(g, disposition))
   } else {
     rows = rows.filter(
       (g) =>
@@ -140,8 +139,8 @@ export function OutcomesTab() {
     )
   }
 
-  const disp = dispositionAmounts(donutRows, now)
-  const donut = dispositionDonut(donutRows, now)
+  const disp = dispositionAmounts(donutRows)
+  const donut = dispositionDonut(donutRows)
   const metricValue: Record<SliceFilter, string> = {
     all: donut.total,
     open: fmtMoney(disp.open),
@@ -172,10 +171,10 @@ export function OutcomesTab() {
 
   const table = rows.map((g) => {
     const sl = groupStatusLine(g, now)
-    const ci: { label: string; tone: StatusTone } =
+    const ci: { label: string; tone: StatusTone; pastDeadline?: boolean } =
       g.pursuit === 'pursued'
         ? { label: COLLECTION_LABELS[g.collection?.status ?? 'awaiting'], tone: COLLECTION_TONE[g.collection?.status ?? 'awaiting'] }
-        : { label: sl.label, tone: GROUP_STATUS_TONE[sl.key] }
+        : { label: sl.label, tone: GROUP_STATUS_TONE[sl.key], pastDeadline: sl.pastDeadline }
     const reason =
       g.collection?.status === 'not_issued' && g.collection.reason
         ? {
@@ -422,7 +421,7 @@ function RowGroup({
   onToggleNotes,
 }: {
   g: OutcomeRow
-  ci: { label: string; tone: StatusTone }
+  ci: { label: string; tone: StatusTone; pastDeadline?: boolean }
   reason: { text: string; author: string; when: string } | null
   isNotIssued: boolean
   canExpand: boolean
@@ -454,7 +453,17 @@ function RowGroup({
         <td className="num">{fmtMoney(g.amountN ?? 0)}</td>
         <td className="num">{g.pursuit === 'pursued' ? fmtMoney(g.amountN ?? 0) : DASH}</td>
         <td className="num">{g.collection?.amountN != null ? fmtMoney(g.collection.amountN) : DASH}</td>
-        <td className="ds-muted nowrap">{g.disputeDeadline ? fmtDateLong(g.disputeDeadline) : DASH}</td>
+        <td className="ds-muted nowrap">
+          {g.disputeDeadline ? fmtDateLong(g.disputeDeadline) : DASH}
+          {ci.pastDeadline && (
+            <>
+              <br />
+              <span className="ds-w-medium" style={{ color: 'var(--ds-status-attention-fg)' }}>
+                Past the deadline
+              </span>
+            </>
+          )}
+        </td>
         <td className="ds-muted nowrap">
           {g.pursuit === 'pursued' ? (
             <>

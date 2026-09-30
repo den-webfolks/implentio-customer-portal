@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>00 · Overview — Implentio planning</title>
+<style id="kit">
+/* Planning kit — shared by every prototype-planning/*.html file.
+   Inlined into each file's style block with id="kit" by sync-kit.mjs, so
+   every file stays self-contained (never write a closing style tag here). Edit here, then run:
+     node prototype-planning/_kit/sync-kit.mjs
+   Token values are copied from src/styles/tokens.css (--ds-*). */
+
+:root {
+  --ds-purple-700: #34287c; --ds-purple-600: #4535a5; --ds-purple-500: #5642ce;
+  --ds-purple-300: #bbb3eb; --ds-purple-100: #eeecfa;
+  --ds-orange-700: #913806; --ds-orange-500: #f25e0a; --ds-orange-100: #feefe6;
+  --ds-neutral-900: #10103e; --ds-neutral-800: #393863; --ds-neutral-700: #61608b;
+  --ds-neutral-600: #9a98b7; --ds-neutral-500: #bab8d1; --ds-neutral-400: #cccadc;
+  --ds-neutral-300: #e0dfec; --ds-neutral-200: #eceafa; --ds-neutral-100: #f6f4fe;
+  --ds-neutral-50: #f7f6f9; --ds-neutral-0: #ffffff;
+  --ds-red-500: #aa261b; --ds-red-100: #fbd8d6; --ds-green-500: #3a802f; --ds-green-100: #d3edce;
+  --ds-yellow-500: #9c6d11; --ds-yellow-100: #ffeac2;
+  --ds-blue-800: #1f4366; --ds-blue-500: #477db2; --ds-blue-300: #9dcaf5; --ds-blue-100: #d9ecff;
+
+  --fg: var(--ds-neutral-900); --muted: var(--ds-neutral-700); --faint: var(--ds-neutral-600);
+  --bg: var(--ds-neutral-50); --surface: var(--ds-neutral-0);
+  --line: rgba(16, 16, 62, 0.1); --line-2: rgba(16, 16, 62, 0.16); --line-3: rgba(16, 16, 62, 0.24);
+  --brand: var(--ds-purple-500); --brand-dark: var(--ds-purple-600); --brand-soft: var(--ds-purple-100);
+  --money: var(--ds-orange-700); --accent-soft: var(--ds-orange-100);
+  --focus: var(--ds-blue-300);
+
+  --t-neutral-fg: var(--ds-purple-500); --t-neutral-bg: var(--ds-purple-100);
+  --t-info-fg: var(--ds-blue-800); --t-info-bg: var(--ds-blue-100);
+  --t-success-fg: #2e6a28; --t-success-bg: var(--ds-green-100);
+  --t-attention-fg: #7f5a14; --t-attention-bg: var(--ds-yellow-100);
+  --t-danger-fg: var(--ds-red-500); --t-danger-bg: var(--ds-red-100);
+  --t-muted-fg: var(--ds-neutral-700); --t-muted-bg: var(--ds-neutral-50);
+
+  /* chart colours = the app's TONE_CHART_COLOR */
+  --c-open: var(--ds-purple-500); --c-wait: var(--ds-blue-500); --c-good: var(--ds-green-500);
+  --c-part: var(--ds-yellow-500); --c-bad: var(--ds-red-500); --c-none: var(--ds-neutral-500);
+
+  --r-s: 4px; --r-m: 6px; --r-l: 8px; --r-xl: 12px;
+  --shadow: 0 1px 0 rgba(27, 31, 35, 0.04);
+  --shadow-pop: 0 1px 0 rgba(27, 31, 35, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+  --font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* planning-layer colours (annotations, never product UI) */
+  --k-existing: #5d5c78; --k-existing-bg: #eceaf3;
+  --k-confirmed: #1f4366; --k-confirmed-bg: #d9ecff;
+  --k-proposed: #913806; --k-proposed-bg: #feefe6;
+  --k-unresolved: #7f5a14; --k-unresolved-bg: #ffeac2;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 400 14px/1.5 var(--font); letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums;
+}
+h1, h2, h3, h4 { margin: 0; letter-spacing: -0.02em; font-weight: 600; line-height: 1.25; }
+h1 { font-size: 28px; letter-spacing: -0.03em; }
+h2 { font-size: 21px; }
+h3 { font-size: 16px; }
+h4 { font-size: 14px; }
+p { margin: 0; }
+a { color: var(--brand); text-decoration: none; font-weight: 500; }
+a:hover { text-decoration: underline; }
+button { font: inherit; letter-spacing: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+ul, ol { margin: 0; padding-inline-start: 20px; }
+li + li { margin-top: 4px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
+
+/* ---------- document shell ---------- */
+.doc { max-width: 1200px; margin: 0 auto; padding: 28px 24px 96px; display: flex; flex-direction: column; gap: 40px; }
+.doc-head { display: flex; flex-direction: column; gap: 10px; }
+.crumbs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 13px; }
+.crumbs a { font-weight: 500; }
+.eyebrow { font: 600 12px/1.3 var(--font); letter-spacing: 0.05em; text-transform: uppercase; color: var(--brand); }
+.lede { font-size: 16px; color: var(--muted); max-width: 80ch; }
+.toc {
+  position: sticky; top: 0; z-index: 50; display: flex; gap: 6px; flex-wrap: wrap;
+  padding: 10px 0; margin: -10px 0 0; background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(6px); border-bottom: 1px solid var(--line);
+}
+.toc a { padding: 4px 10px; border-radius: 99px; font-size: 13px; color: var(--muted); border: 1px solid var(--line); background: var(--surface); }
+.toc a:hover { color: var(--brand); border-color: var(--ds-purple-300); text-decoration: none; }
+.sec { display: flex; flex-direction: column; gap: 16px; scroll-margin-top: 64px; }
+.sec-head { display: flex; flex-direction: column; gap: 6px; }
+.sec-num { font: 600 12px/1 var(--font); color: var(--faint); letter-spacing: 0.05em; text-transform: uppercase; }
+.sub { display: flex; flex-direction: column; gap: 12px; }
+.prose { max-width: 78ch; }
+.prose > * + * { margin-top: 8px; }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+.small { font-size: 13px; }
+.tiny { font-size: 12px; }
+.semi { font-weight: 600; }
+.medium { font-weight: 500; }
+.nowrap { white-space: nowrap; }
+.money { color: var(--money); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* layout helpers */
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.row.top { align-items: flex-start; }
+.between { justify-content: space-between; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.stack.s4 { gap: 4px; } .stack.s8 { gap: 8px; } .stack.s16 { gap: 16px; } .stack.s24 { gap: 24px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+.grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+
+/* ---------- planning layer (annotations) ---------- */
+.k { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 99px; font: 600 11px/18px var(--font); letter-spacing: 0.02em; white-space: nowrap; vertical-align: middle; }
+.k::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.k-existing { color: var(--k-existing); background: var(--k-existing-bg); }
+.k-confirmed { color: var(--k-confirmed); background: var(--k-confirmed-bg); }
+.k-proposed { color: var(--k-proposed); background: var(--k-proposed-bg); }
+.k-unresolved { color: var(--k-unresolved); background: var(--k-unresolved-bg); }
+.cx { display: inline-block; padding: 1px 7px; border-radius: var(--r-s); font: 600 11px/18px var(--font); border: 1px solid currentColor; white-space: nowrap; }
+.cx-change { color: var(--k-confirmed); }
+.cx-compat { color: var(--ds-green-500); }
+.cx-conflict { color: var(--ds-red-500); }
+.cx-verify { color: var(--k-unresolved); }
+.legend { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); }
+
+/* .note and .q are block containers: inline text inside them flows normally. */
+.note {
+  border: 1px dashed var(--line-3); border-radius: var(--r-l); background: #fffdf7;
+  padding: 12px 14px; font-size: 13px; color: var(--ds-neutral-800);
+}
+.note > .note-label { display: block; margin-bottom: 6px; font: 600 11px/1 var(--font); letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+.note > * + *:not(.note-label) { margin-top: 6px; }
+.q {
+  border-inline-start: 3px solid var(--ds-yellow-500); background: var(--k-unresolved-bg);
+  border-radius: 0 var(--r-m) var(--r-m) 0; padding: 10px 12px; font-size: 13px;
+}
+.q > b:first-child { display: block; margin-bottom: 4px; color: var(--k-unresolved); }
+.q > * + * { margin-top: 4px; }
+.problem { border-inline-start: 3px solid var(--ds-red-500); background: #fff6f5; border-radius: 0 var(--r-m) var(--r-m) 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.box.tint { background: var(--ds-neutral-100); }
+
+/* planning tables */
+.ptable { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); overflow: hidden; }
+.ptable th { text-align: start; font-weight: 600; color: var(--muted); background: var(--ds-neutral-50); padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+.ptable td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ptable tr:last-child td { border-bottom: 0; }
+.scroll-x { overflow-x: auto; border-radius: var(--r-l); }
+.d { display: inline-block; padding: 0 6px; border-radius: var(--r-s); font: 600 11px/18px var(--font); white-space: nowrap; }
+.d-have { background: var(--ds-green-100); color: #2e6a28; }
+.d-verify { background: var(--ds-yellow-100); color: #7f5a14; }
+.d-missing { background: var(--ds-red-100); color: var(--ds-red-500); }
+.d-new { background: var(--ds-blue-100); color: var(--ds-blue-800); }
+
+details.more { border: 1px solid var(--line); border-radius: var(--r-l); background: var(--surface); }
+details.more > summary { cursor: pointer; padding: 10px 14px; font-weight: 600; list-style: none; display: flex; gap: 8px; align-items: center; }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::before { content: '▸'; color: var(--faint); transition: transform 120ms; }
+details.more[open] > summary::before { transform: rotate(90deg); }
+details.more > .more-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+/* compare columns */
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; align-items: start; }
+.compare > .col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.col-head { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+
+/* segmented control & tabs (planning + app) */
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--r-l); background: var(--ds-neutral-200); flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; padding: 5px 12px; border-radius: var(--r-m); cursor: pointer; font-weight: 500; color: var(--muted); font-size: 13px; }
+.seg button[aria-pressed='true'], .seg button[aria-selected='true'] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow-pop); }
+.tabs { display: flex; gap: 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { border: 0; background: none; padding: 8px 2px 10px; cursor: pointer; color: var(--muted); font-weight: 500; font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button[aria-selected='true'] { color: var(--brand); border-bottom-color: var(--brand); }
+[data-panel][hidden] { display: none !important; }
+
+/* ---------- product UI mock (looks like the app) ---------- */
+/* Inline labels never stretch when they sit in a flex column. */
+.chip, .tag, .k, .cx, .d, .owner, .flag { width: fit-content; max-width: 100%; }
+.frame { border: 1px solid var(--line-2); border-radius: var(--r-xl); background: var(--bg); overflow: hidden; box-shadow: var(--shadow-pop); }
+.frame-bar { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--surface); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--faint); }
+.frame-bar::before { content: ''; width: 34px; height: 8px; background: radial-gradient(circle, var(--ds-neutral-400) 3.5px, transparent 4px) 0 0 / 12px 8px repeat-x; }
+.frame-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.frame.narrow { max-width: 420px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow); padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+.card.flat { box-shadow: none; }
+.card.accent { border-inline-start: 3px solid var(--brand); }
+.card.waiting { background: #f3f8fe; border-color: #d4e4f5; border-inline-start: 3px solid var(--ds-blue-500); }
+.card.warn { background: #fffaf0; border-color: #f1ddb2; border-inline-start: 3px solid var(--ds-yellow-500); }
+.card.implentio { background: #f7f5fe; border-color: #ddd8f6; border-inline-start: 3px solid var(--brand); }
+
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--r-m); font: 500 12px/20px var(--font); white-space: nowrap; background: var(--t-neutral-bg); color: var(--t-neutral-fg); vertical-align: middle; }
+.chip.lg { font-size: 14px; line-height: 24px; padding: 2px 10px; }
+.chip.info { background: var(--t-info-bg); color: var(--t-info-fg); }
+.chip.success { background: var(--t-success-bg); color: var(--t-success-fg); }
+.chip.attention { background: var(--t-attention-bg); color: var(--t-attention-fg); }
+.chip.danger { background: var(--t-danger-bg); color: var(--t-danger-fg); }
+.chip.muted { background: var(--t-muted-bg); color: var(--t-muted-fg); box-shadow: inset 0 0 0 1px var(--line); }
+.tag { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 99px; font: 500 12px/20px var(--font); border: 1px solid var(--line-2); color: var(--fg); background: var(--surface); white-space: nowrap; }
+.owner { display: inline-flex; align-items: center; gap: 5px; font: 500 12px/20px var(--font); color: var(--brand-dark); }
+.owner .dot { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--brand); color: #fff; font: 700 10px/1 var(--font); }
+.owner.you .dot { background: var(--ds-neutral-700); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 7px 12px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); color: var(--fg); font: 500 14px/1.46 var(--font); cursor: pointer; box-shadow: var(--shadow); white-space: nowrap; }
+.btn:hover { box-shadow: 0 1px 0 rgba(27, 31, 35, 0.12); }
+.btn.primary { background: var(--brand); border-color: var(--line); color: #fff; }
+.btn.primary:hover { background: var(--brand-dark); }
+.btn.sm { min-height: 32px; padding: 5px 11px; font-size: 13px; }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.lnk { border: 0; background: none; padding: 0; color: var(--brand); font-weight: 500; cursor: pointer; font-size: inherit; text-align: start; }
+.lnk:hover { text-decoration: underline; }
+.lnk.sm { font-size: 13px; }
+.lnk.bold { font-weight: 600; }
+
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat .lbl { font-size: 12px; color: var(--muted); }
+.stat .val { font-size: 18px; font-weight: 600; }
+.stat .val.big { font-size: 28px; letter-spacing: -0.03em; }
+.hero-amt { font: 600 34px/1.05 var(--font); letter-spacing: -0.03em; color: var(--money); }
+
+.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tbl th { text-align: start; color: var(--muted); font-weight: 400; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: bottom; }
+.tbl td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.tbl tbody tr:hover td { background: var(--ds-neutral-50); }
+.tbl .num, .tbl th.num { text-align: end; }
+.tbl tr.total td { font-weight: 600; background: var(--ds-neutral-50); }
+.tbl td.diff { color: var(--money); font-weight: 600; }
+.tbl tr.hl td { background: #fff8e8; }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label, .field .flabel { font-size: 13px; font-weight: 500; }
+.input, .textarea, .select { width: 100%; border: 1px solid var(--line-2); border-radius: var(--r-m); padding: 7px 10px; font: 400 14px/1.4 var(--font); background: var(--surface); color: var(--fg); }
+.textarea { min-height: 72px; resize: vertical; }
+.hint { font-size: 12px; color: var(--muted); }
+.radios { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.radios label { display: inline-flex; align-items: center; gap: 8px; padding: 5px 11px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); cursor: pointer; font-size: 14px; }
+.radios input { accent-color: var(--brand); margin: 0; }
+.radios label:has(input:checked) { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+.choice { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-l); background: var(--surface); cursor: pointer; }
+.choice input { accent-color: var(--brand); margin-top: 3px; }
+.choice:has(input:checked) { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); background: #fbfaff; }
+.check { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
+.check input { accent-color: var(--brand); width: 16px; height: 16px; margin: 0; }
+
+.banner { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--r-l); border: 1px solid var(--line); font-size: 13.5px; }
+.banner.info { background: var(--ds-blue-100); border-color: #bcd8f5; }
+.banner.warn { background: var(--ds-yellow-100); border-color: #f1d9a4; }
+.banner.good { background: var(--ds-green-100); border-color: #b9dcb2; }
+.banner.brand { background: var(--brand-soft); border-color: var(--ds-purple-300); }
+
+.stepper { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.stepper .step { display: inline-flex; align-items: center; gap: 6px; }
+.stepper .step b { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--ds-neutral-200); color: var(--muted); font-size: 11px; }
+.stepper .step.on { color: var(--fg); font-weight: 600; }
+.stepper .step.on b { background: var(--brand); color: #fff; }
+.stepper .step.done b { background: var(--ds-green-500); color: #fff; }
+.stepper .sep { width: 24px; height: 1px; background: var(--line-2); }
+
+.modal { border: 1px solid var(--line-2); border-radius: var(--r-xl); background: var(--surface); box-shadow: 0 12px 40px rgba(16, 16, 62, 0.18); display: flex; flex-direction: column; overflow: hidden; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.modal-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--line); background: var(--ds-neutral-50); flex-wrap: wrap; }
+.overlay-hint { background: rgba(16, 16, 62, 0.28); padding: 20px; border-radius: var(--r-xl); }
+
+/* bars */
+.bar { display: flex; height: 10px; border-radius: 99px; overflow: hidden; background: var(--ds-neutral-200); gap: 2px; }
+.bar > span { display: block; height: 100%; }
+.bar.thin { height: 8px; }
+.bar.tall { height: 14px; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; vertical-align: middle; margin-inline-end: 4px; }
+
+/* timeline */
+.tl { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; }
+.tl li { position: relative; padding: 0 0 14px 22px; margin: 0; }
+.tl li::before { content: ''; position: absolute; left: 4px; top: 5px; width: 9px; height: 9px; border-radius: 50%; background: var(--surface); border: 2px solid var(--line-3); }
+.tl li::after { content: ''; position: absolute; left: 8px; top: 16px; bottom: 0; width: 1px; background: var(--line-2); }
+.tl li:last-child::after { display: none; }
+.tl li.done::before { background: var(--ds-green-500); border-color: var(--ds-green-500); }
+.tl li.now::before { background: var(--brand); border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+.tl li.todo { color: var(--faint); }
+
+/* ---------- diagrams ---------- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; row-gap: 12px; }
+.flow .node { padding: 8px 12px; border-radius: var(--r-l); border: 1px solid var(--line-2); background: var(--surface); font-weight: 500; font-size: 13px; display: flex; flex-direction: column; gap: 2px; justify-content: center; min-width: 96px; }
+.flow .node small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.flow .arrow { align-self: center; color: var(--faint); padding: 0 6px; font-size: 16px; }
+.node.n-open { border-color: var(--ds-purple-300); background: var(--ds-purple-100); }
+.node.n-wait { border-color: #bcd8f5; background: var(--ds-blue-100); }
+.node.n-good { border-color: #b9dcb2; background: var(--ds-green-100); }
+.node.n-bad { border-color: #f0b8b3; background: var(--ds-red-100); }
+.node.n-part { border-color: #f1d9a4; background: var(--ds-yellow-100); }
+.node.n-muted { border-color: var(--line-2); background: var(--ds-neutral-50); color: var(--muted); }
+.node.n-new { border-style: dashed; border-color: var(--ds-orange-500); background: #fff8f3; }
+.node.n-gone { border-style: dashed; color: var(--faint); background: repeating-linear-gradient(135deg, #fff, #fff 6px, #f6f5f9 6px, #f6f5f9 12px); text-decoration: line-through; }
+
+/* print-ish */
+@media print { .toc { position: static; } body { background: #fff; } }
+@media (max-width: 640px) { .doc { padding: 16px 16px 64px; gap: 28px; } h1 { font-size: 23px; } .frame-body { padding: 14px; } }
+</style>
+<style>
+.lc { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0; row-gap: 14px; }
+.lc.flow { align-items: center; }
+.lc .node { position: relative; }
+.lc .node small { white-space: nowrap; }
+.lc .pin { position: absolute; top: -9px; right: -7px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 99px; background: var(--ds-red-500); color: #fff; font: 700 10px/18px var(--font); text-align: center; cursor: pointer; border: 0; }
+.lc .pin.new { background: var(--ds-orange-500); }
+.branch { display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+.fmap { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 14px; }
+.fcard2 { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 16px; display: flex; flex-direction: column; gap: 8px; transition: box-shadow 120ms, opacity 120ms; }
+.fcard2 .num { font: 600 12px/1 var(--font); color: var(--brand); letter-spacing: .05em; text-align: start; }
+.fcard2.hl { box-shadow: 0 0 0 2px var(--brand); }
+.fcard2.up { box-shadow: 0 0 0 2px var(--ds-blue-500); }
+.fcard2.down { box-shadow: 0 0 0 2px var(--ds-green-500); }
+.fcard2.dim { opacity: .45; }
+.dep svg { width: 100%; height: auto; display: block; }
+.dep .gn rect { fill: var(--surface); stroke: var(--line-3); rx: 8; }
+.dep .gn text { font: 600 13px var(--font); fill: var(--fg); }
+.dep .gn .sub { font: 400 11px var(--font); fill: var(--muted); }
+.dep .gn { cursor: pointer; }
+.dep .gn.hl rect { stroke: var(--brand); stroke-width: 2; }
+.dep .gn.up rect { stroke: var(--ds-blue-500); stroke-width: 2; fill: var(--ds-blue-100); }
+.dep .gn.down rect { stroke: var(--ds-green-500); stroke-width: 2; fill: var(--ds-green-100); }
+.dep .gn.dim { opacity: .35; }
+.dep path.e { fill: none; stroke: var(--line-3); stroke-width: 1.5; }
+.dep path.e.on { stroke: var(--brand); stroke-width: 2.2; }
+.order { counter-reset: o; list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.order li { counter-increment: o; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 10px 12px; margin: 0; }
+.order li::before { content: counter(o); width: 24px; height: 24px; border-radius: 50%; background: var(--brand); color: #fff; display: grid; place-items: center; font: 600 12px/1 var(--font); }
+.lens-col li::before { background: var(--ds-neutral-600); }
+.dec { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 12px; }
+.dec .q { gap: 6px; }
+.pins-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 8px; }
+.pins-list li { list-style: none; margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-m); padding: 8px 10px; font-size: 13px; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; }
+.pins-list li.hl { box-shadow: 0 0 0 2px var(--ds-red-500); }
+.pins-list b { color: var(--ds-red-500); }
+.pins-list { padding: 0; }
+</style>
+</head>
+<body>
+<main class="doc">
+  <header class="doc-head">
+    <nav class="crumbs" aria-label="Planning files"><span>Start here</span><span>·</span><a href="../docs/client-app-prototype-plan.md">Plan document (docs/client-app-prototype-plan.md)</a></nav>
+    <div class="eyebrow">Planning map · Sep 28, 2026 · not production UI</div>
+    <h1>Findings → dispute → outcome → learning: the redesign plan</h1>
+    <p class="lede">The latest client meeting, translated into six features that can be refined one at a time. This page shows the lifecycle today and as proposed, what the meeting changed, how the features depend on each other, the order of work, and the decisions we need before building anything.</p>
+    <div class="legend"><span class="k k-existing">Existing</span><span class="k k-confirmed">Newly confirmed</span><span class="k k-proposed">Proposed</span><span class="k k-unresolved">Unresolved</span></div>
+  </header>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#where">Where we are</a><a href="#lifecycle">Lifecycle</a><a href="#changes">What changes</a><a href="#features">Features</a><a href="#deps">Dependencies</a><a href="#order">Order</a><a href="#decisions">Decisions needed</a><a href="#conflicts">Conflicts</a><a href="#review">Review</a>
+  </nav>
+
+  <section class="sec" id="where">
+    <div class="sec-head"><h2>Where we are</h2></div>
+    <div class="grid3">
+      <div class="box"><div class="row between"><strong>Kept from the redesign</strong><span class="k k-confirmed">Newly confirmed</span></div><p class="small">The client liked the condensed financials, the cleaner dispute flow and the cleaner email flow (memo workspace, tracker, "Dispute with QuickBox", prepared-email record — built 2026-09-24/25). We extend them; we don't restart.</p></div>
+      <div class="box"><div class="row between"><strong>Most of the lifecycle already exists</strong><span class="k k-existing">Existing</span></div><p class="small">The meeting's example labels map onto decided names: <em>Ready to dispute</em>, <em>In a prepared email</em>, <em>Waiting on Biller</em>, <em>Fully / Partly collected</em>, <em>Denied</em>, <em>Won't pursue</em>. The real changes are the <strong>Expired rule</strong>, <strong>who owns a dispute</strong>, and <strong>what Credit outcomes is for</strong>.</p></div>
+      <div class="box"><div class="row between"><strong>How to use these files</strong><span class="k k-proposed">Working method</span></div><p class="small">Open one feature file, decide its open questions, refine it, then build that feature — one at a time. Nothing here changes the app. Mock data is labelled; package rows are synthetic.</p></div>
+    </div>
+  </section>
+
+  <section class="sec" id="lifecycle">
+    <div class="sec-head"><h2>The lifecycle — today and proposed</h2>
+      <p class="muted">Red pins mark problems in today's flow; click one to read it. Orange pins mark what's new.</p></div>
+    <div class="row"><div class="seg" role="group" aria-label="Lifecycle version">
+      <button type="button" data-toggle="lc" data-value="now" aria-pressed="true">Today (built)</button>
+      <button type="button" data-toggle="lc" data-value="new">Proposed</button>
+    </div></div>
+    <div class="box" id="lc-box"></div>
+    <ul class="pins-list" id="pins"></ul>
+  </section>
+
+  <section class="sec" id="changes">
+    <div class="sec-head"><h2>What the meeting changes</h2></div>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th>Meeting input</th><th>Classification</th><th>What exists</th><th>What it means</th><th>File</th></tr></thead>
+        <tbody>
+          <tr><td>A finding isn't closed just because the dispute deadline passed; closure comes from a business outcome</td><td><span class="cx cx-change">Confirmed change</span></td><td>Expired is automatic and final, "no workaround" (n342, n349, D1)</td><td>Deadline becomes a warning flag. How that counts for memo "Done" and money is a product decision (A/B/C/D)</td><td><a href="01-status-model.html">01</a></td></tr>
+          <tr><td>"Show me why" is one of the largest UX problems</td><td><span class="cx cx-verify">Needs verification</span></td><td>Three layers built 2026-09-24</td><td>The gap is mostly content: what the amount is made of, sources, spread, hard cases. Container waits for Q-E1</td><td><a href="02-findings-evidence.html">02</a></td></tr>
+          <tr><td>Customer-managed and Implentio-managed disputes</td><td><span class="cx cx-change">Confirmed change</span> (direction)</td><td>Delegation deferred (D3); CC ≠ ownership (n326)</td><td>First confirm the level: per dispute, per Biller or per account (Q-O8)</td><td><a href="03-dispute-ownership.html">03</a></td></tr>
+          <tr><td>Capture why a dispute was denied</td><td><span class="cx cx-compat">Compatible addition</span></td><td>Optional "Add reason" after saving</td><td>Ask at the moment of denial, with the Biller's answer date</td><td><a href="04-outcome-capture.html">04</a></td></tr>
+          <tr><td>Credit outcomes = historical intelligence, not another dashboard</td><td><span class="cx cx-change">Newly confirmed</span> direction</td><td>Tiles + donut repeat the tracker; biller table at the bottom</td><td>By variance type / by Biller / denial reasons; money stays on the tracker</td><td><a href="05-credit-outcomes.html">05</a></td></tr>
+          <tr><td>"What should I know before disputing this?"</td><td><span class="cx cx-compat">Compatible addition</span>; pooled data is a <span class="cx cx-conflict">Potential conflict</span></td><td>Nothing; n347 forbids pooling reasons across customers</td><td>Counts, time window, link to cases; confidence tiers; never a prediction</td><td><a href="06-historical-guidance.html">06</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="sec" id="features">
+    <div class="sec-head"><h2>The six features</h2>
+      <p class="muted">Each has its own file with the problem, current vs proposed, model, flow, states, edge cases, data and open questions. Hover or focus a card to see what it depends on (blue) and what depends on it (green).</p></div>
+    <div class="fmap" id="fmap"></div>
+  </section>
+
+  <section class="sec" id="deps">
+    <div class="sec-head"><h2>Dependencies</h2><p class="muted">Click a feature: blue = it needs these first, green = these need it.</p></div>
+    <div class="box dep"><svg viewBox="0 0 960 300" role="img" aria-label="Feature dependency graph" id="dep-svg"></svg></div>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th>Feature</th><th>Depends on</th><th>Unblocks</th><th>Can start now?</th></tr></thead>
+        <tbody>
+          <tr><td>01 Status model</td><td>Decisions only (C2, Q-S3, Q-S4)</td><td>03, 04, 05, 06</td><td>Yes — decision-heavy; Q-S4 shapes 04's data</td></tr>
+          <tr><td>02 Evidence</td><td>Q-E1 (container), Q-E2 (sources data)</td><td>06 (placement in layer ②)</td><td><strong>Yes — fully parallel</strong></td></tr>
+          <tr><td>03 Ownership</td><td>01; business answers Q-O8, Q-O1–O4</td><td>05 (filter), 06 (hand-over)</td><td>Design yes; build waits on the business</td></tr>
+          <tr><td>04 Outcome capture</td><td>01 (no-answer result, attempts)</td><td>05, 06 (their data)</td><td>Yes, once 01 settles Q-S3/Q-S4</td></tr>
+          <tr><td>05 Credit outcomes</td><td>04 (answer dates, reasons), 01, C5 rate</td><td>06</td><td>Design yes; value needs 04's data</td></tr>
+          <tr><td>06 Guidance</td><td>05, 04; placement from 02, 03</td><td>—</td><td>Wording and tiers can be drafted</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="sec" id="order">
+    <div class="sec-head"><h2>Recommended order</h2><p class="muted">Three lenses, then the recommendation that balances them.</p></div>
+    <div class="row"><div class="seg" role="group" aria-label="Lens">
+      <button type="button" data-toggle="lens" data-value="rec" aria-pressed="true">Recommended</button>
+      <button type="button" data-toggle="lens" data-value="logic">Logical dependency</button>
+      <button type="button" data-toggle="lens" data-value="ux">UX priority</button>
+      <button type="button" data-toggle="lens" data-value="cx">Implementation complexity</button>
+    </div></div>
+    <ol class="order" id="order-list"></ol>
+  </section>
+
+  <section class="sec" id="decisions">
+    <div class="sec-head"><h2>Decisions needed before building</h2><p class="muted">The plan review flagged the first three as product-logic decisions — they are yours and the client's to make, not the plan's.</p></div>
+    <div class="dec">
+      <div class="q"><b>1 · Past the deadline — which option? (C2, Q-S1)</b>A flag only · B separate bucket (memo can be Done) · C ask once · D open, aged. No recommendation; B closes by the calendar one level up. <a href="01-status-model.html#states">Compare them on a real memo →</a></div>
+      <div class="q"><b>2 · Implentio-managed at what level? (Q-O8)</b>Per dispute, per Biller, or the whole account? Delegating accounts never tick findings, so the level decides the design. <a href="03-dispute-ownership.html">See both models →</a></div>
+      <div class="q"><b>3 · Who records answers on Implentio-managed disputes? (C11, Q-O4)</b>n344/n350 say outcomes are the customer's report. (a) Implentio records it and the customer can correct it, or (b) Implentio reports it and the customer confirms it before it counts? <a href="04-outcome-capture.html">Options →</a></div>
+      <div class="q"><b>4 · What couldn't the client find? (Q-E1)</b>Decides where evidence records open, and whether the fix is content or container. <a href="02-findings-evidence.html">Explore →</a></div>
+      <div class="q"><b>5 · Can a finding be disputed again? (Q-S4)</b>After a denial, or for the unpaid part of a partial answer. Either way, store answers per dispute attempt.</div>
+      <div class="q"><b>6 · One recovery rate (C5, Q-D1)</b>Recovered ÷ answered (proposed; waiting never counts as failure) or n348's collected ÷ pursued?</div>
+    </div>
+  </section>
+
+  <section class="sec" id="conflicts">
+    <div class="sec-head"><h2>Conflict register</h2><p class="muted">Where the meeting and existing decisions disagree. Full text in the plan, section B2.</p></div>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th>#</th><th>Topic</th><th>Classification</th><th>Recommendation</th></tr></thead>
+        <tbody>
+          <tr><td>C1</td><td>Expired after the deadline</td><td><span class="cx cx-change">Confirmed change</span></td><td>Flag, not state; counting is a decision (C2)</td></tr>
+          <tr><td>C2</td><td>Undo "Won't pursue" after the deadline (n360)</td><td><span class="cx cx-verify">Needs verification</span></td><td>Allow, if C1 holds</td></tr>
+          <tr><td>C3</td><td>Implentio-managed vs D3 deferral and n326</td><td><span class="cx cx-change">Confirmed change</span></td><td>Explicit, recorded ownership; confirm the level first</td></tr>
+          <tr><td>C4</td><td>Pooled knowledge vs n347</td><td><span class="cx cx-conflict">Potential conflict</span></td><td>Reasons: never pooled. Outcome rates: undecided (Q-D3b)</td></tr>
+          <tr><td>C5</td><td>Two rate definitions</td><td><span class="cx cx-conflict">Potential conflict</span></td><td>Recovered ÷ answered</td></tr>
+          <tr><td>C6</td><td>Evidence inline (n108/n141) vs dialog</td><td><span class="cx cx-verify">Needs verification</span></td><td>Decide after Q-E1</td></tr>
+          <tr><td>C7</td><td>"Recovered" vs "collected"</td><td><span class="cx cx-verify">Needs verification</span></td><td>Keep existing until the PM names them</td></tr>
+          <tr><td>C8</td><td>Denied final vs dispute again</td><td><span class="cx cx-verify">Needs verification</span></td><td>Store per attempt</td></tr>
+          <tr><td>C9</td><td>"Closed, no answer" vs removed "No reply yet"</td><td><span class="cx cx-conflict">Potential conflict</span></td><td>A closing result, not a nudge — decide Q-S3</td></tr>
+          <tr><td>C10</td><td>Credits realized on Implentio-managed disputes</td><td><span class="cx cx-verify">Needs verification</span></td><td>Label by source</td></tr>
+          <tr><td>C11</td><td>Implentio-recorded answers vs n344/n350/D8</td><td><span class="cx cx-conflict">Potential conflict</span></td><td>Product decision (see decision 3)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="sec" id="review">
+    <div class="sec-head"><h2>Plan review</h2><p class="muted">An adversarial UX review of the plan (plan mode), then a re-review of the plan and all seven files. Verdict both times: keep, with targeted changes. All findings accepted; details in the plan, section I.</p></div>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th>ID</th><th>Severity</th><th>Finding</th><th>Change made</th></tr></thead>
+        <tbody>
+          <tr><td>F1</td><td>HIGH</td><td>Recommended option B closed memos by the calendar in the UI</td><td>Added option D; no recommendation</td></tr>
+          <tr><td>F2</td><td>HIGH</td><td>Per-dispute hand-over doesn't fit accounts that delegate everything</td><td>Level (Q-O8) first; two peer models in 03</td></tr>
+          <tr><td>F3</td><td>HIGH</td><td>Implentio recording answers conflicts with n344/n350/n347/D8</td><td>New conflict C11; two options</td></tr>
+          <tr><td>F4</td><td>HIGH</td><td>Today-stamped answers would turn logging lag into "Biller speed"</td><td>Answer date inline; response metrics wait</td></tr>
+          <tr><td>F5</td><td>HIGH</td><td>Q-S4 open but the data assumed "no"</td><td>Answers per dispute attempt</td></tr>
+          <tr><td>F6</td><td>HIGH</td><td>Evidence container picked before the problem was known</td><td>02 is content first; container after Q-E1</td></tr>
+          <tr><td>F7–F10</td><td>MEDIUM</td><td>State→memo/money matrix; owner-change rules; guidance at selection points; thin data and n347 scope</td><td>Matrix in 01; rules in 03; Mixed tier + counts in 06; Q-D3a/b, Q-D4, Q-D5</td></tr>
+          <tr><td>N1</td><td>HIGH (re-review)</td><td>05 labelled "Usually paid / Often denied" from 3 answers, breaking 06's tiers</td><td>Pattern tier only, one shared tier function and window</td></tr>
+          <tr><td>N2–N8</td><td>MEDIUM (re-review)</td><td>Answered % unreliable; reason labels; attempts double-counting; missing states; M2 dead ends; stale examples; titles vs charge mix</td><td>Fixed in 01–05 and the plan; N6 (M2 + A/D + C11 b) left to you as a product decision</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script id="kit">
+/* Planning kit behaviour — inlined into each file's script block with
+   id="kit" by sync-kit.mjs (never write a closing script tag in this file).
+
+   [data-tabs]          container; its [data-tab="x"] buttons show the matching
+                        [data-panel="x"] inside the same container (nearest).
+   [data-toggle="grp"]  buttons with data-value; sets data-<grp>="value" on the
+                        element named by data-target (default: <body>) and
+                        aria-pressed on the buttons. CSS/JS react to it.
+   window.kit.money(n)  "$1,234.56"
+*/
+(function () {
+  const money = (n) =>
+    (n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  function initTabs(root) {
+    root.querySelectorAll('[data-tabs]').forEach((box) => {
+      const own = (el) => el.closest('[data-tabs]') === box
+      const tabs = [...box.querySelectorAll('[data-tab]')].filter(own)
+      const panels = [...box.querySelectorAll('[data-panel]')].filter(own)
+      const show = (key) => {
+        tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === key)))
+        panels.forEach((p) => (p.hidden = p.dataset.panel !== key))
+        box.dispatchEvent(new CustomEvent('tabchange', { detail: key }))
+      }
+      tabs.forEach((t) => {
+        t.setAttribute('role', 'tab')
+        t.addEventListener('click', () => show(t.dataset.tab))
+      })
+      const first = tabs.find((t) => t.getAttribute('aria-selected') === 'true') ?? tabs[0]
+      if (first) show(first.dataset.tab)
+    })
+  }
+
+  function initToggles(root) {
+    const groups = new Map()
+    root.querySelectorAll('[data-toggle]').forEach((b) => {
+      const g = b.dataset.toggle
+      if (!groups.has(g)) groups.set(g, [])
+      groups.get(g).push(b)
+    })
+    groups.forEach((btns, g) => {
+      const set = (v) => {
+        btns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === v)))
+        const targetSel = btns[0].dataset.target
+        const target = targetSel ? document.querySelector(targetSel) : document.body
+        if (target) target.dataset[g] = v
+        document.dispatchEvent(new CustomEvent('toggle:' + g, { detail: v }))
+      }
+      btns.forEach((b) => b.addEventListener('click', () => set(b.dataset.value)))
+      const first = btns.find((b) => b.getAttribute('aria-pressed') === 'true') ?? btns[0]
+      set(first.dataset.value)
+    })
+  }
+
+  window.kit = { money, initTabs, initToggles }
+  document.addEventListener('DOMContentLoaded', () => {
+    initTabs(document)
+    initToggles(document)
+  })
+})()
+</script>
+<script>
+(function () {
+  const $ = (s) => document.querySelector(s)
+  const FEAT = {
+    '01': { t: 'Status & dispute eligibility', short: 'Status model', f: '01-status-model.html', q: 'What states exist, what closes a finding, what "past the deadline" means for the memo and the money.', tags: ['confirmed', 'unresolved'], dep: [], blk: ['03', '04', '05', '06'], x: 20, y: 150 },
+    '02': { t: 'Findings evidence', short: 'Evidence', f: '02-findings-evidence.html', q: 'Summary → why → evidence → records, from 1 package to 500, with honest sources and the hard cases.', tags: ['verify', 'proposed'], dep: [], blk: ['06'], x: 20, y: 40 },
+    '03': { t: 'Dispute ownership', short: 'Ownership', f: '03-dispute-ownership.html', q: 'You or Implentio: at what level, where it\'s chosen, how responsibility shows, what changes after hand-over.', tags: ['confirmed', 'unresolved'], dep: ['01'], blk: ['05', '06'], x: 270, y: 215 },
+    '04': { t: 'Outcome capture', short: 'Outcome capture', f: '04-outcome-capture.html', q: 'Answer, amount, the Biller\'s answer date and reason — fast enough that people actually record it.', tags: ['compat', 'proposed'], dep: ['01'], blk: ['05', '06'], x: 270, y: 95 },
+    '05': { t: 'Credit outcomes', short: 'Credit outcomes', f: '05-credit-outcomes.html', q: 'What worked, by variance type and by Biller; why disputes were denied — not another money dashboard.', tags: ['confirmed', 'proposed'], dep: ['01', '03', '04'], blk: ['06'], x: 520, y: 150 },
+    '06': { t: 'Historical guidance', short: 'Guidance', f: '06-historical-guidance.html', q: '"What should I know before disputing this?" — with counts, dates and links, never predictions.', tags: ['compat', 'conflict'], dep: ['02', '03', '04', '05'], blk: [], x: 770, y: 95 },
+  }
+  const TAG = { confirmed: '<span class="k k-confirmed">Newly confirmed</span>', unresolved: '<span class="k k-unresolved">Decisions open</span>', verify: '<span class="cx cx-verify">Needs verification</span>', proposed: '<span class="k k-proposed">Proposed</span>', compat: '<span class="cx cx-compat">Compatible addition</span>', conflict: '<span class="cx cx-conflict">Potential conflict</span>' }
+
+  // lifecycle
+  const PINS = [
+    ['L1', 'Expired is final because of the calendar, not a decision — the meeting objects (n349 "no workaround").'],
+    ['L2', 'Nothing closes a dispute the Biller never answers; people record a false Denied.'],
+    ['L3', 'Answers are stamped with the day they\'re recorded, so "how fast does this Biller answer" can\'t be measured.'],
+    ['L4', 'The denial reason is optional and only asked after saving; partial answers have no reason field in the UI.'],
+    ['L5', 'Two rates: "Collection rate" counts waiting disputes as failures (ShipBob 0%); the tracker\'s "Recovery rate" doesn\'t.'],
+    ['L7', 'Credit outcomes repeats the tracker\'s totals; the only learning part is at the bottom with technical names.'],
+    ['L8', 'Nobody owns a dispute in the data; a CSM who sends for a customer can\'t record it.'],
+    ['L9', 'Layer ② can\'t say which rate card, fuel index or ZIP list the contract number came from.'],
+    ['L10', 'Records Implentio couldn\'t check ("UPS rate card required") are never shown.'],
+    ['L12', '5 of 6 demo memos have no package data — minimal evidence is the normal case.'],
+  ]
+  function lifecycle(v) {
+    const n = (cls, label, sub, pin, isNew) => `<span class="node ${cls}">${label}${sub ? `<small>${sub}</small>` : ''}${pin ? pin.split(',').map((p) => `<button type="button" class="pin ${isNew ? 'new' : ''}" data-pin="${p}" aria-label="Problem ${p}">${p.replace('L', '')}</button>`).join('') : ''}</span>`
+    const a = '<span class="arrow">→</span>'
+    if (v === 'now') return `<div class="lc flow">
+      ${n('n-muted', 'Finding published', 'reviewed by Implentio', 'L9,L12')}${a}
+      ${n('n-open', 'Ready to dispute', 'deadline countdown')}${a}
+      <span class="branch">${n('n-muted', 'Ticked (draft)', 'not a status')}${n('n-muted', 'Won\'t pursue', 'undo before deadline')}${n('n-muted', 'Expired', 'deadline passed · final', 'L1')}</span>${a}
+      ${n('n-part', 'In a prepared email', 'or connected send')}${a}
+      ${n('n-wait', 'Waiting on Biller', 'you send · you record', 'L2,L8')}${a}
+      <span class="branch">${n('n-good', 'Fully collected', 'date = today', 'L3')}${n('n-part', 'Partly collected', 'amount')}${n('n-bad', 'Denied', 'reason optional, later', 'L4')}</span>${a}
+      ${n('n-muted', 'Credit outcomes', 'totals + biller table', 'L5,L7')}
+    </div>`
+    return `<div class="lc flow">
+      ${n('n-muted', 'Finding published', 'with sources &amp; spread (02)')}${a}
+      ${n('n-open', 'Ready to dispute', 'past deadline = flag (01)')}${a}
+      <span class="branch">${n('n-muted', 'Ticked (draft)', 'no pre-selection')}${n('n-muted', 'Won\'t pursue', 'undo any time?')}${n('n-gone', 'Expired', 'removed')}</span>${a}
+      ${n('n-part', 'In a prepared email', 'you send')}${a}
+      ${n('n-wait', 'Waiting on Biller', 'who handles it: separate (03)')}${a}
+      <span class="branch">${n('n-good', 'Fully collected', 'answer date')}${n('n-part', 'Partly collected', 'amount · date · why')}${n('n-bad', 'Denied', 'reason · date (04)')}${n('n-new', 'Closed, no answer', 'unresolved', 'new', true)}</span>${a}
+      <span class="branch">${n('n-new', 'Credit outcomes', 'what worked (05)', 'new', true)}${n('n-new', 'Guidance', 'before the next dispute (06)', 'new', true)}</span>
+    </div>`
+  }
+  function renderLc(v) {
+    $('#lc-box').innerHTML = lifecycle(v) + (v === 'new' ? '<p class="small muted">Dashed orange = new. Striped = removed. Every new element is Proposed; the Expired change is Newly confirmed as a direction.</p>' : '')
+    $('#pins').innerHTML = v === 'now' ? PINS.map(([k, t]) => `<li id="pin-${k}"><b>${k}</b><span>${t}</span></li>`).join('') : ''
+    $('#lc-box').querySelectorAll('[data-pin]').forEach((b) => b.addEventListener('click', () => {
+      const li = document.getElementById('pin-' + b.dataset.pin)
+      if (!li) return
+      document.querySelectorAll('.pins-list li').forEach((x) => x.classList.remove('hl'))
+      li.classList.add('hl'); li.scrollIntoView({ block: 'nearest' })
+    }))
+  }
+  document.addEventListener('toggle:lc', (e) => renderLc(e.detail))
+
+  // features + graph
+  let focus = null
+  function upstream(id, acc = new Set()) { for (const d of FEAT[id].dep) { acc.add(d); upstream(d, acc) } return acc }
+  function downstream(id, acc = new Set()) { for (const d of FEAT[id].blk) { acc.add(d); downstream(d, acc) } return acc }
+  function cls(id) {
+    if (!focus) return ''
+    if (id === focus) return 'hl'
+    if (upstream(focus).has(id)) return 'up'
+    if (downstream(focus).has(id)) return 'down'
+    return 'dim'
+  }
+  function renderFeatures() {
+    $('#fmap').innerHTML = Object.entries(FEAT).map(([id, f]) => `<article class="fcard2 ${cls(id)}" data-feat="${id}" tabindex="0">
+      <span class="num">${id}</span><h3><a href="${f.f}">${f.t}</a></h3><p class="small">${f.q}</p>
+      <div class="row" style="gap:6px">${f.tags.map((t) => TAG[t]).join('')}</div>
+      <p class="tiny muted">Needs: ${f.dep.length ? f.dep.join(', ') : 'nothing'} · Unblocks: ${f.blk.length ? f.blk.join(', ') : '—'}</p>
+      <a class="small" href="${f.f}">Open ${f.f} →</a></article>`).join('')
+    $('#fmap').querySelectorAll('[data-feat]').forEach((el) => {
+      el.addEventListener('mouseenter', () => { focus = el.dataset.feat; paint() })
+      el.addEventListener('focus', () => { focus = el.dataset.feat; paint() })
+      el.addEventListener('mouseleave', () => { focus = null; paint() })
+    })
+  }
+  function renderGraph() {
+    const W = 170, H = 54
+    const edges = []
+    for (const [id, f] of Object.entries(FEAT)) for (const b of f.blk) edges.push([id, b])
+    const path = ([a, b]) => { const A = FEAT[a], B = FEAT[b]; const x1 = A.x + W, y1 = A.y + H / 2, x2 = B.x, y2 = B.y + H / 2; const mx = (x1 + x2) / 2; return `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2 - 6},${y2}` }
+    $('#dep-svg').innerHTML = `<defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9a98b7"/></marker></defs>` +
+      edges.map((e) => `<path class="e ${focus && (e[0] === focus || e[1] === focus) ? 'on' : ''}" d="${path(e)}" marker-end="url(#ah)"/>`).join('') +
+      Object.entries(FEAT).map(([id, f]) => `<g class="gn ${cls(id)}" data-g="${id}" tabindex="0" role="button" aria-label="${id} ${f.t}"><rect x="${f.x}" y="${f.y}" width="${W}" height="${H}" rx="8"/><text x="${f.x + 12}" y="${f.y + 22}">${id} · ${f.short}</text><text class="sub" x="${f.x + 12}" y="${f.y + 40}">needs ${f.dep.length ? f.dep.join(', ') : 'nothing'}</text></g>`).join('')
+    $('#dep-svg').querySelectorAll('[data-g]').forEach((g) => {
+      g.addEventListener('click', () => { focus = focus === g.dataset.g ? null : g.dataset.g; paint() })
+      g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); focus = focus === g.dataset.g ? null : g.dataset.g; paint() } })
+    })
+  }
+  function paint() { renderFeatures(); renderGraph() }
+
+  // order lenses
+  const LENS = {
+    rec: [['01 Status model', 'Refine first: mostly decisions (C2, Q-S3, Q-S4), and four features read it.', '01-status-model.html'], ['02 Evidence', 'In parallel with 01: independent, highest UX value. Ask Q-E1/Q-E2 now — they take time.', '02-findings-evidence.html'], ['04 Outcome capture', 'Cheap, and it starts collecting the data 05 and 06 need. Every week without answer dates and reasons is lost history.', '04-outcome-capture.html'], ['05 Credit outcomes', 'Once 04 settles what is captured.', '05-credit-outcomes.html'], ['03 Ownership', 'Design alongside 04/05; build only after the business answers Q-O8 and Q-O1–O4.', '03-dispute-ownership.html'], ['06 Guidance', 'Last — only as good as 04\'s data and 05\'s definitions.', '06-historical-guidance.html']],
+    logic: [['01 Status model', 'Everything reads it'], ['04 Outcome capture', 'Needs 01\'s results and attempts'], ['03 Ownership', 'Own discussion; a "Handled by" layer on top of 01\'s statuses'], ['05 Credit outcomes', 'Needs 04\'s data, 03\'s owner'], ['06 Guidance', 'Needs 05 and 04'], ['02 Evidence', 'Independent — any time']],
+    ux: [['02 Evidence', '"One of the largest problems"'], ['05 Credit outcomes', 'A separate product problem the client named'], ['01 Status model', 'The Expired change'], ['03 Ownership', 'New path'], ['04 Outcome capture', 'Improves an existing step'], ['06 Guidance', '"Eventually"']],
+    cx: [['04 Outcome capture', 'Low–medium: extends one component'], ['01 Status model', 'Medium: logic in one file, used everywhere, many tests'], ['06 Guidance', 'Medium: wording and thresholds'], ['02 Evidence', 'Medium–high: data unknowns'], ['05 Credit outcomes', 'Medium–high: new page and aggregation'], ['03 Ownership', 'High: business process and back office']],
+  }
+  function renderOrder(v) {
+    const list = $('#order-list')
+    list.classList.toggle('lens-col', v !== 'rec')
+    list.innerHTML = LENS[v].map(([t, d, f]) => `<li><span><strong>${f ? `<a href="${f}">${t}</a>` : t}</strong><br><span class="small muted">${d}</span></span></li>`).join('')
+  }
+  document.addEventListener('toggle:lens', (e) => renderOrder(e.detail))
+
+  document.addEventListener('DOMContentLoaded', () => { paint() })
+})()
+</script>
+</body>
+</html>

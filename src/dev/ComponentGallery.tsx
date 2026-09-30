@@ -1,12 +1,14 @@
 /* Dev-only component gallery: every shared UI component rendered in
    isolation with its variants and states. Demo state stays local. */
 import { useState, type ReactNode } from 'react'
-import { ArrowDownTrayIcon, EnvelopeIcon, MagnifyingGlassIcon, PaperAirplaneIcon, PlusIcon, TrashIcon, XMarkIcon, ChevronDownIcon, CheckIcon, NoSymbolIcon, ClockIcon, ListBulletIcon } from '@heroicons/react/24/outline'
+import { ArrowDownTrayIcon, EnvelopeIcon, MagnifyingGlassIcon, PaperAirplaneIcon, PlusIcon, TrashIcon, XMarkIcon, ChevronDownIcon, CheckIcon, NoSymbolIcon, ClockIcon, ListBulletIcon, InformationCircleIcon } from '@heroicons/react/24/outline'
 import { Button, ButtonLink, IconButton } from '@/ui/Button/Button'
 import { Link } from '@/ui/Link/Link'
 import { TextField, TextArea } from '@/ui/Form/TextField'
 import { Select } from '@/ui/Form/Select'
 import { Checkbox, RadioGroup } from '@/ui/Form/Choice'
+import { Segmented } from '@/ui/Segmented/Segmented'
+import { Popover } from '@/ui/Popover/Popover'
 import { StatusChip, Tag } from '@/ui/Chip/StatusChip'
 import { Tooltip, InfoTip } from '@/ui/Tooltip/Tooltip'
 import { Menu, MenuItem, MenuSeparator, MenuLabel } from '@/ui/Menu/Menu'
@@ -25,12 +27,14 @@ const SECTIONS = [
   ['inputs', 'TextField & TextArea'],
   ['select', 'Select'],
   ['choices', 'Checkbox & RadioGroup'],
+  ['segmented', 'Segmented'],
   ['chips', 'StatusChip & Tag'],
   ['tabs', 'Tabs & ActionTab'],
   ['statistic', 'Statistic'],
   ['stepper', 'Stepper'],
   ['avatar', 'Avatar'],
   ['tooltip', 'Tooltip & InfoTip'],
+  ['popover', 'Popover'],
   ['menu', 'Menu'],
   ['banner', 'Banner'],
   ['toast', 'Toast'],
@@ -132,6 +136,8 @@ export function ComponentGallery() {
   const [modal, setModal] = useState<'medium' | 'large' | 'narrow' | null>(null)
   const [checked, setChecked] = useState(true)
   const [boxed, setBoxed] = useState(false)
+  const [seg, setSeg] = useState<'chart' | 'table'>('chart')
+  const [segSmall, setSegSmall] = useState<'typical' | 'largest'>('typical')
   const [radio, setRadio] = useState<'full' | 'partial' | 'none' | null>('partial')
   const [biller, setBiller] = useState<string | undefined>('quickbox')
   const [email, setEmail] = useState('tori@acme')
@@ -375,6 +381,13 @@ export function ComponentGallery() {
         </Example>
       </Section>
 
+      <Section id="segmented" source="src/ui/Segmented/Segmented.tsx — no Figma component yet (plan 02 `.seg`)">
+        <Example label="Medium · small">
+          <Segmented label="Show as" value={seg} onValueChange={setSeg} options={[{ value: 'chart', label: 'Chart' }, { value: 'table', label: 'Table' }]} />
+          <Segmented size="small" label="Example package" value={segSmall} onValueChange={setSegSmall} options={[{ value: 'typical', label: 'Typical' }, { value: 'largest', label: 'Largest' }]} />
+        </Example>
+      </Section>
+
       <Section
         id="chips"
         source="src/ui/Chip/StatusChip.tsx — Figma ❖ Chips (status-chip, tag-chip)"
@@ -486,6 +499,22 @@ export function ComponentGallery() {
             </Tooltip>
           ))}
           <InfoTip text="Variance is the difference between invoiced and expected charges. Tooltips wrap across several lines when the text is long." />
+        </Example>
+      </Section>
+
+      <Section id="popover" source="src/ui/Popover/Popover.tsx — Figma ❖ Popover (5760:5358), Radix Popover" note="Opens on click, 4px from its trigger with a caret; icon, title, close, text and action are optional. Named by its title for screen readers.">
+        <Example label="Full · simplest">
+          <Popover
+            title="Title"
+            icon={<InformationCircleIcon />}
+            content={<p>Description that follows the title.</p>}
+            action={<Button size="small" variant="primary">Button</Button>}
+          >
+            <Button size="small">Full popover</Button>
+          </Popover>
+          <Popover title="Title" content={null}>
+            <Button size="small">Simplest</Button>
+          </Popover>
         </Example>
       </Section>
 

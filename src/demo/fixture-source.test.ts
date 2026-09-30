@@ -75,11 +75,11 @@ describe('FixtureDataSource', () => {
 
   it('marks a finding not pursued and undoes it', async () => {
     const ds = make('dispute-prep-started')
-    await ds.setGroupNotPursued({ groupId: 'eg-base', notPursued: true })
+    await ds.setGroupNotPursued({ groupIds: ['eg-base'], notPursued: true })
     let base = (await ds.getMemoDetail('CM-2026-0630'))?.findingGroups.find((g) => g.id === 'eg-base')
     expect(base?.pursuit).toBe('excluded')
     expect((await ds.getDisputeContext('CM-2026-0630')).excludedIds).toContain('eg-base')
-    await ds.setGroupNotPursued({ groupId: 'eg-base', notPursued: false })
+    await ds.setGroupNotPursued({ groupIds: ['eg-base'], notPursued: false })
     base = (await ds.getMemoDetail('CM-2026-0630'))?.findingGroups.find((g) => g.id === 'eg-base')
     expect(base?.pursuit).toBeNull()
   })
@@ -105,7 +105,7 @@ describe('FixtureDataSource', () => {
     const rows = await ds.listOutcomeRows()
     expect(rows.find((r) => r.id === 'eg-base')).toMatchObject({ pursuit: null, prepared: true, preparedAt: DEMO_NOW.toISOString() })
     expect((await ds.getDisputeContext('CM-2026-0630')).excludedIds).toContain('eg-base')
-    await ds.setGroupNotPursued({ groupId: 'eg-base', notPursued: true })
+    await ds.setGroupNotPursued({ groupIds: ['eg-base'], notPursued: true })
     expect((await ds.getMemoDetail('CM-2026-0630'))?.findingGroups.find((g) => g.id === 'eg-base')?.pursuit).toBeNull()
 
     const again = await ds.prepareDispute({ ...PREPARE, method: 'download', body: 'Hi again' })

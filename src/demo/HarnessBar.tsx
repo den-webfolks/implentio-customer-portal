@@ -26,9 +26,10 @@ const SCENARIO_LABELS: Record<ScenarioId, string> = {
   'dispute-awaiting': 'Dispute flow — awaiting Biller response',
   'dispute-recorded': 'Dispute flow — outcomes partially recorded',
   'dispute-finalized': 'Dispute flow — dispute completed',
-  'dispute-deadline': 'Dispute flow — deadline close, one finding expired',
+  'dispute-deadline': 'Dispute flow — deadline close, others past the deadline',
   'dispute-prepared': 'Dispute flow — email prepared, not confirmed as sent',
   'dispute-prepared-late': 'Dispute flow — email prepared, deadline passed',
+  'more-findings': 'Findings — more examples (made-up): one package, other charges, zone, fuel %',
 }
 
 export default function HarnessBar({ activeScenarioId }: { activeScenarioId: string }) {
@@ -62,7 +63,14 @@ export default function HarnessBar({ activeScenarioId }: { activeScenarioId: str
       >
         Prototype Harness
       </span>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, font: '600 12px var(--imp-font-display)' }}>
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          font: '600 12px var(--imp-font-display)',
+        }}
+      >
         Demo scenario
         <select
           value={active}
@@ -103,7 +111,12 @@ export default function HarnessBar({ activeScenarioId }: { activeScenarioId: str
           }}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-            <path d="M3 12a9 9 0 1 1 3 6.7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path
+              d="M3 12a9 9 0 1 1 3 6.7"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
             <path
               d="M3 17v-5h5"
               stroke="currentColor"

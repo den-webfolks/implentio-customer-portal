@@ -1,0 +1,1432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06 · Historical guidance — Implentio planning</title>
+<style id="kit">
+/* Planning kit — shared by every prototype-planning/*.html file.
+   Inlined into each file's style block with id="kit" by sync-kit.mjs, so
+   every file stays self-contained (never write a closing style tag here). Edit here, then run:
+     node prototype-planning/_kit/sync-kit.mjs
+   Token values are copied from src/styles/tokens.css (--ds-*). */
+
+:root {
+  --ds-purple-700: #34287c; --ds-purple-600: #4535a5; --ds-purple-500: #5642ce;
+  --ds-purple-300: #bbb3eb; --ds-purple-100: #eeecfa;
+  --ds-orange-700: #913806; --ds-orange-500: #f25e0a; --ds-orange-100: #feefe6;
+  --ds-neutral-900: #10103e; --ds-neutral-800: #393863; --ds-neutral-700: #61608b;
+  --ds-neutral-600: #9a98b7; --ds-neutral-500: #bab8d1; --ds-neutral-400: #cccadc;
+  --ds-neutral-300: #e0dfec; --ds-neutral-200: #eceafa; --ds-neutral-100: #f6f4fe;
+  --ds-neutral-50: #f7f6f9; --ds-neutral-0: #ffffff;
+  --ds-red-500: #aa261b; --ds-red-100: #fbd8d6; --ds-green-500: #3a802f; --ds-green-100: #d3edce;
+  --ds-yellow-500: #9c6d11; --ds-yellow-100: #ffeac2;
+  --ds-blue-800: #1f4366; --ds-blue-500: #477db2; --ds-blue-300: #9dcaf5; --ds-blue-100: #d9ecff;
+
+  --fg: var(--ds-neutral-900); --muted: var(--ds-neutral-700); --faint: var(--ds-neutral-600);
+  --bg: var(--ds-neutral-50); --surface: var(--ds-neutral-0);
+  --line: rgba(16, 16, 62, 0.1); --line-2: rgba(16, 16, 62, 0.16); --line-3: rgba(16, 16, 62, 0.24);
+  --brand: var(--ds-purple-500); --brand-dark: var(--ds-purple-600); --brand-soft: var(--ds-purple-100);
+  --money: var(--ds-orange-700); --accent-soft: var(--ds-orange-100);
+  --focus: var(--ds-blue-300);
+
+  --t-neutral-fg: var(--ds-purple-500); --t-neutral-bg: var(--ds-purple-100);
+  --t-info-fg: var(--ds-blue-800); --t-info-bg: var(--ds-blue-100);
+  --t-success-fg: #2e6a28; --t-success-bg: var(--ds-green-100);
+  --t-attention-fg: #7f5a14; --t-attention-bg: var(--ds-yellow-100);
+  --t-danger-fg: var(--ds-red-500); --t-danger-bg: var(--ds-red-100);
+  --t-muted-fg: var(--ds-neutral-700); --t-muted-bg: var(--ds-neutral-50);
+
+  /* chart colours = the app's TONE_CHART_COLOR */
+  --c-open: var(--ds-purple-500); --c-wait: var(--ds-blue-500); --c-good: var(--ds-green-500);
+  --c-part: var(--ds-yellow-500); --c-bad: var(--ds-red-500); --c-none: var(--ds-neutral-500);
+
+  --r-s: 4px; --r-m: 6px; --r-l: 8px; --r-xl: 12px;
+  --shadow: 0 1px 0 rgba(27, 31, 35, 0.04);
+  --shadow-pop: 0 1px 0 rgba(27, 31, 35, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+  --font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* planning-layer colours (annotations, never product UI) */
+  --k-existing: #5d5c78; --k-existing-bg: #eceaf3;
+  --k-confirmed: #1f4366; --k-confirmed-bg: #d9ecff;
+  --k-proposed: #913806; --k-proposed-bg: #feefe6;
+  --k-unresolved: #7f5a14; --k-unresolved-bg: #ffeac2;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 400 14px/1.5 var(--font); letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums;
+}
+h1, h2, h3, h4 { margin: 0; letter-spacing: -0.02em; font-weight: 600; line-height: 1.25; }
+h1 { font-size: 28px; letter-spacing: -0.03em; }
+h2 { font-size: 21px; }
+h3 { font-size: 16px; }
+h4 { font-size: 14px; }
+p { margin: 0; }
+a { color: var(--brand); text-decoration: none; font-weight: 500; }
+a:hover { text-decoration: underline; }
+button { font: inherit; letter-spacing: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+ul, ol { margin: 0; padding-inline-start: 20px; }
+li + li { margin-top: 4px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
+
+/* ---------- document shell ---------- */
+.doc { max-width: 1200px; margin: 0 auto; padding: 28px 24px 96px; display: flex; flex-direction: column; gap: 40px; }
+.doc-head { display: flex; flex-direction: column; gap: 10px; }
+.crumbs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 13px; }
+.crumbs a { font-weight: 500; }
+.eyebrow { font: 600 12px/1.3 var(--font); letter-spacing: 0.05em; text-transform: uppercase; color: var(--brand); }
+.lede { font-size: 16px; color: var(--muted); max-width: 80ch; }
+.toc {
+  position: sticky; top: 0; z-index: 50; display: flex; gap: 6px; flex-wrap: wrap;
+  padding: 10px 0; margin: -10px 0 0; background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(6px); border-bottom: 1px solid var(--line);
+}
+.toc a { padding: 4px 10px; border-radius: 99px; font-size: 13px; color: var(--muted); border: 1px solid var(--line); background: var(--surface); }
+.toc a:hover { color: var(--brand); border-color: var(--ds-purple-300); text-decoration: none; }
+.sec { display: flex; flex-direction: column; gap: 16px; scroll-margin-top: 64px; }
+.sec-head { display: flex; flex-direction: column; gap: 6px; }
+.sec-num { font: 600 12px/1 var(--font); color: var(--faint); letter-spacing: 0.05em; text-transform: uppercase; }
+.sub { display: flex; flex-direction: column; gap: 12px; }
+.prose { max-width: 78ch; }
+.prose > * + * { margin-top: 8px; }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+.small { font-size: 13px; }
+.tiny { font-size: 12px; }
+.semi { font-weight: 600; }
+.medium { font-weight: 500; }
+.nowrap { white-space: nowrap; }
+.money { color: var(--money); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* layout helpers */
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.row.top { align-items: flex-start; }
+.between { justify-content: space-between; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.stack.s4 { gap: 4px; } .stack.s8 { gap: 8px; } .stack.s16 { gap: 16px; } .stack.s24 { gap: 24px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+.grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+
+/* ---------- planning layer (annotations) ---------- */
+.k { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 99px; font: 600 11px/18px var(--font); letter-spacing: 0.02em; white-space: nowrap; vertical-align: middle; }
+.k::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.k-existing { color: var(--k-existing); background: var(--k-existing-bg); }
+.k-confirmed { color: var(--k-confirmed); background: var(--k-confirmed-bg); }
+.k-proposed { color: var(--k-proposed); background: var(--k-proposed-bg); }
+.k-unresolved { color: var(--k-unresolved); background: var(--k-unresolved-bg); }
+.cx { display: inline-block; padding: 1px 7px; border-radius: var(--r-s); font: 600 11px/18px var(--font); border: 1px solid currentColor; white-space: nowrap; }
+.cx-change { color: var(--k-confirmed); }
+.cx-compat { color: var(--ds-green-500); }
+.cx-conflict { color: var(--ds-red-500); }
+.cx-verify { color: var(--k-unresolved); }
+.legend { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); }
+
+/* .note and .q are block containers: inline text inside them flows normally. */
+.note {
+  border: 1px dashed var(--line-3); border-radius: var(--r-l); background: #fffdf7;
+  padding: 12px 14px; font-size: 13px; color: var(--ds-neutral-800);
+}
+.note > .note-label { display: block; margin-bottom: 6px; font: 600 11px/1 var(--font); letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+.note > * + *:not(.note-label) { margin-top: 6px; }
+.q {
+  border-inline-start: 3px solid var(--ds-yellow-500); background: var(--k-unresolved-bg);
+  border-radius: 0 var(--r-m) var(--r-m) 0; padding: 10px 12px; font-size: 13px;
+}
+.q > b:first-child { display: block; margin-bottom: 4px; color: var(--k-unresolved); }
+.q > * + * { margin-top: 4px; }
+.problem { border-inline-start: 3px solid var(--ds-red-500); background: #fff6f5; border-radius: 0 var(--r-m) var(--r-m) 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.box.tint { background: var(--ds-neutral-100); }
+
+/* planning tables */
+.ptable { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); overflow: hidden; }
+.ptable th { text-align: start; font-weight: 600; color: var(--muted); background: var(--ds-neutral-50); padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+.ptable td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ptable tr:last-child td { border-bottom: 0; }
+.scroll-x { overflow-x: auto; border-radius: var(--r-l); }
+.d { display: inline-block; padding: 0 6px; border-radius: var(--r-s); font: 600 11px/18px var(--font); white-space: nowrap; }
+.d-have { background: var(--ds-green-100); color: #2e6a28; }
+.d-verify { background: var(--ds-yellow-100); color: #7f5a14; }
+.d-missing { background: var(--ds-red-100); color: var(--ds-red-500); }
+.d-new { background: var(--ds-blue-100); color: var(--ds-blue-800); }
+
+details.more { border: 1px solid var(--line); border-radius: var(--r-l); background: var(--surface); }
+details.more > summary { cursor: pointer; padding: 10px 14px; font-weight: 600; list-style: none; display: flex; gap: 8px; align-items: center; }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::before { content: '▸'; color: var(--faint); transition: transform 120ms; }
+details.more[open] > summary::before { transform: rotate(90deg); }
+details.more > .more-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+/* compare columns */
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; align-items: start; }
+.compare > .col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.col-head { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+
+/* segmented control & tabs (planning + app) */
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--r-l); background: var(--ds-neutral-200); flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; padding: 5px 12px; border-radius: var(--r-m); cursor: pointer; font-weight: 500; color: var(--muted); font-size: 13px; }
+.seg button[aria-pressed='true'], .seg button[aria-selected='true'] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow-pop); }
+.tabs { display: flex; gap: 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { border: 0; background: none; padding: 8px 2px 10px; cursor: pointer; color: var(--muted); font-weight: 500; font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button[aria-selected='true'] { color: var(--brand); border-bottom-color: var(--brand); }
+[data-panel][hidden] { display: none !important; }
+
+/* ---------- product UI mock (looks like the app) ---------- */
+/* Inline labels never stretch when they sit in a flex column. */
+.chip, .tag, .k, .cx, .d, .owner, .flag { width: fit-content; max-width: 100%; }
+.frame { border: 1px solid var(--line-2); border-radius: var(--r-xl); background: var(--bg); overflow: hidden; box-shadow: var(--shadow-pop); }
+.frame-bar { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--surface); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--faint); }
+.frame-bar::before { content: ''; width: 34px; height: 8px; background: radial-gradient(circle, var(--ds-neutral-400) 3.5px, transparent 4px) 0 0 / 12px 8px repeat-x; }
+.frame-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.frame.narrow { max-width: 420px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow); padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+.card.flat { box-shadow: none; }
+.card.accent { border-inline-start: 3px solid var(--brand); }
+.card.waiting { background: #f3f8fe; border-color: #d4e4f5; border-inline-start: 3px solid var(--ds-blue-500); }
+.card.warn { background: #fffaf0; border-color: #f1ddb2; border-inline-start: 3px solid var(--ds-yellow-500); }
+.card.implentio { background: #f7f5fe; border-color: #ddd8f6; border-inline-start: 3px solid var(--brand); }
+
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--r-m); font: 500 12px/20px var(--font); white-space: nowrap; background: var(--t-neutral-bg); color: var(--t-neutral-fg); vertical-align: middle; }
+.chip.lg { font-size: 14px; line-height: 24px; padding: 2px 10px; }
+.chip.info { background: var(--t-info-bg); color: var(--t-info-fg); }
+.chip.success { background: var(--t-success-bg); color: var(--t-success-fg); }
+.chip.attention { background: var(--t-attention-bg); color: var(--t-attention-fg); }
+.chip.danger { background: var(--t-danger-bg); color: var(--t-danger-fg); }
+.chip.muted { background: var(--t-muted-bg); color: var(--t-muted-fg); box-shadow: inset 0 0 0 1px var(--line); }
+.tag { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 99px; font: 500 12px/20px var(--font); border: 1px solid var(--line-2); color: var(--fg); background: var(--surface); white-space: nowrap; }
+.owner { display: inline-flex; align-items: center; gap: 5px; font: 500 12px/20px var(--font); color: var(--brand-dark); }
+.owner .dot { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--brand); color: #fff; font: 700 10px/1 var(--font); }
+.owner.you .dot { background: var(--ds-neutral-700); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 7px 12px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); color: var(--fg); font: 500 14px/1.46 var(--font); cursor: pointer; box-shadow: var(--shadow); white-space: nowrap; }
+.btn:hover { box-shadow: 0 1px 0 rgba(27, 31, 35, 0.12); }
+.btn.primary { background: var(--brand); border-color: var(--line); color: #fff; }
+.btn.primary:hover { background: var(--brand-dark); }
+.btn.sm { min-height: 32px; padding: 5px 11px; font-size: 13px; }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.lnk { border: 0; background: none; padding: 0; color: var(--brand); font-weight: 500; cursor: pointer; font-size: inherit; text-align: start; }
+.lnk:hover { text-decoration: underline; }
+.lnk.sm { font-size: 13px; }
+.lnk.bold { font-weight: 600; }
+
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat .lbl { font-size: 12px; color: var(--muted); }
+.stat .val { font-size: 18px; font-weight: 600; }
+.stat .val.big { font-size: 28px; letter-spacing: -0.03em; }
+.hero-amt { font: 600 34px/1.05 var(--font); letter-spacing: -0.03em; color: var(--money); }
+
+.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tbl th { text-align: start; color: var(--muted); font-weight: 400; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: bottom; }
+.tbl td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.tbl tbody tr:hover td { background: var(--ds-neutral-50); }
+.tbl .num, .tbl th.num { text-align: end; }
+.tbl tr.total td { font-weight: 600; background: var(--ds-neutral-50); }
+.tbl td.diff { color: var(--money); font-weight: 600; }
+.tbl tr.hl td { background: #fff8e8; }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label, .field .flabel { font-size: 13px; font-weight: 500; }
+.input, .textarea, .select { width: 100%; border: 1px solid var(--line-2); border-radius: var(--r-m); padding: 7px 10px; font: 400 14px/1.4 var(--font); background: var(--surface); color: var(--fg); }
+.textarea { min-height: 72px; resize: vertical; }
+.hint { font-size: 12px; color: var(--muted); }
+.radios { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.radios label { display: inline-flex; align-items: center; gap: 8px; padding: 5px 11px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); cursor: pointer; font-size: 14px; }
+.radios input { accent-color: var(--brand); margin: 0; }
+.radios label:has(input:checked) { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+.choice { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-l); background: var(--surface); cursor: pointer; }
+.choice input { accent-color: var(--brand); margin-top: 3px; }
+.choice:has(input:checked) { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); background: #fbfaff; }
+.check { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
+.check input { accent-color: var(--brand); width: 16px; height: 16px; margin: 0; }
+
+.banner { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--r-l); border: 1px solid var(--line); font-size: 13.5px; }
+.banner.info { background: var(--ds-blue-100); border-color: #bcd8f5; }
+.banner.warn { background: var(--ds-yellow-100); border-color: #f1d9a4; }
+.banner.good { background: var(--ds-green-100); border-color: #b9dcb2; }
+.banner.brand { background: var(--brand-soft); border-color: var(--ds-purple-300); }
+
+.stepper { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.stepper .step { display: inline-flex; align-items: center; gap: 6px; }
+.stepper .step b { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--ds-neutral-200); color: var(--muted); font-size: 11px; }
+.stepper .step.on { color: var(--fg); font-weight: 600; }
+.stepper .step.on b { background: var(--brand); color: #fff; }
+.stepper .step.done b { background: var(--ds-green-500); color: #fff; }
+.stepper .sep { width: 24px; height: 1px; background: var(--line-2); }
+
+.modal { border: 1px solid var(--line-2); border-radius: var(--r-xl); background: var(--surface); box-shadow: 0 12px 40px rgba(16, 16, 62, 0.18); display: flex; flex-direction: column; overflow: hidden; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.modal-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--line); background: var(--ds-neutral-50); flex-wrap: wrap; }
+.overlay-hint { background: rgba(16, 16, 62, 0.28); padding: 20px; border-radius: var(--r-xl); }
+
+/* bars */
+.bar { display: flex; height: 10px; border-radius: 99px; overflow: hidden; background: var(--ds-neutral-200); gap: 2px; }
+.bar > span { display: block; height: 100%; }
+.bar.thin { height: 8px; }
+.bar.tall { height: 14px; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; vertical-align: middle; margin-inline-end: 4px; }
+
+/* timeline */
+.tl { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; }
+.tl li { position: relative; padding: 0 0 14px 22px; margin: 0; }
+.tl li::before { content: ''; position: absolute; left: 4px; top: 5px; width: 9px; height: 9px; border-radius: 50%; background: var(--surface); border: 2px solid var(--line-3); }
+.tl li::after { content: ''; position: absolute; left: 8px; top: 16px; bottom: 0; width: 1px; background: var(--line-2); }
+.tl li:last-child::after { display: none; }
+.tl li.done::before { background: var(--ds-green-500); border-color: var(--ds-green-500); }
+.tl li.now::before { background: var(--brand); border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+.tl li.todo { color: var(--faint); }
+
+/* ---------- diagrams ---------- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; row-gap: 12px; }
+.flow .node { padding: 8px 12px; border-radius: var(--r-l); border: 1px solid var(--line-2); background: var(--surface); font-weight: 500; font-size: 13px; display: flex; flex-direction: column; gap: 2px; justify-content: center; min-width: 96px; }
+.flow .node small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.flow .arrow { align-self: center; color: var(--faint); padding: 0 6px; font-size: 16px; }
+.node.n-open { border-color: var(--ds-purple-300); background: var(--ds-purple-100); }
+.node.n-wait { border-color: #bcd8f5; background: var(--ds-blue-100); }
+.node.n-good { border-color: #b9dcb2; background: var(--ds-green-100); }
+.node.n-bad { border-color: #f0b8b3; background: var(--ds-red-100); }
+.node.n-part { border-color: #f1d9a4; background: var(--ds-yellow-100); }
+.node.n-muted { border-color: var(--line-2); background: var(--ds-neutral-50); color: var(--muted); }
+.node.n-new { border-style: dashed; border-color: var(--ds-orange-500); background: #fff8f3; }
+.node.n-gone { border-style: dashed; color: var(--faint); background: repeating-linear-gradient(135deg, #fff, #fff 6px, #f6f5f9 6px, #f6f5f9 12px); text-decoration: line-through; }
+
+/* print-ish */
+@media print { .toc { position: static; } body { background: #fff; } }
+@media (max-width: 640px) { .doc { padding: 16px 16px 64px; gap: 28px; } h1 { font-size: 23px; } .frame-body { padding: 14px; } }
+</style>
+<style>
+/* page-specific styles only; prefer kit classes */
+
+/* ---- product mock: finding card ---- */
+.fc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, 200px); gap: 14px 24px; }
+.fc-main { display: flex; gap: 12px; min-width: 0; }
+.fc-main > .check { align-self: flex-start; padding-top: 3px; }
+.fc-fin { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; min-width: 0; }
+.fc-title { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fc-meta { display: flex; gap: 4px 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.why { border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 14px; }
+.why-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px 20px; max-width: 520px; }
+.ex { border: 1px solid var(--line); border-radius: var(--r-s); background: var(--ds-neutral-50); padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; max-width: 78ch; }
+.mini-eyebrow { font: 600 11px/1.3 var(--font); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.flag { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--t-attention-fg); background: var(--ds-yellow-100); border-radius: var(--r-m); padding: 2px 8px; }
+.flag svg { width: 14px; height: 14px; flex: none; }
+.ctx-skel { font-size: 12.5px; color: var(--faint); border: 1px solid var(--line); border-radius: var(--r-s); padding: 8px 10px; background: var(--ds-neutral-50); }
+@media (max-width: 640px) { .fc { grid-template-columns: 1fr; } .overlay-hint { padding: 8px; } }
+
+/* ---- product mock: guidance block ---- */
+.past { border: 1px solid var(--line-2); border-radius: var(--r-l); background: var(--surface); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; max-width: 78ch; }
+.past.bare { border: 0; padding: 0; background: none; }
+.past-head { display: flex; gap: 4px 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.past-title { display: inline-flex; gap: 6px; align-items: center; font-weight: 600; font-size: 14px; }
+.ico { width: 16px; height: 16px; flex: none; color: var(--muted); }
+.src { display: inline-flex; align-items: center; gap: 5px; font: 500 12px/18px var(--font); color: var(--muted); }
+.src .ico { width: 14px; height: 14px; }
+.src.impl { color: var(--brand-dark); }
+.past-meta { display: flex; gap: 2px 8px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--muted); }
+.caveat { font-size: 12px; color: var(--faint); }
+.quote { border-inline-start: 2px solid var(--line-3); padding: 1px 0 1px 10px; font-size: 13px; display: flex; flex-direction: column; gap: 1px; }
+.quote .by { color: var(--muted); font-size: 12px; }
+.past.inote { background: #f7f5fe; border-color: #ddd8f6; border-inline-start: 3px solid var(--brand); }
+.inote-tag { display: inline-flex; align-items: center; gap: 6px; font: 600 12px/20px var(--font); color: var(--brand-dark); }
+.inote-tag .dot { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--brand); color: #fff; font: 700 10px/1 var(--font); }
+.stale { font-size: 12.5px; color: var(--t-attention-fg); background: var(--ds-yellow-100); border-radius: var(--r-s); padding: 4px 8px; width: fit-content; max-width: 100%; }
+mark.kw { background: var(--ds-yellow-100); color: inherit; border-radius: 2px; padding: 0 2px; }
+
+/* collapsed note at selection points */
+details.pn { border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); }
+details.pn > summary { cursor: pointer; list-style: none; padding: 8px 12px; display: flex; gap: 8px; align-items: center; font-size: 13.5px; font-weight: 500; }
+details.pn > summary::-webkit-details-marker { display: none; }
+details.pn > summary .chev { width: 14px; height: 14px; color: var(--muted); transition: transform 120ms; }
+details.pn[open] > summary .chev { transform: rotate(90deg); }
+details.pn > .pn-body { padding: 10px 12px 12px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; }
+
+/* ---- product mock: dialog step 1 ---- */
+.selrows { border: 1px solid var(--line); border-radius: var(--r-l); overflow: hidden; }
+.selrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 16px; padding: 9px 14px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.selrow .t { font-weight: 500; }
+.selrow .m { font-size: 12.5px; color: var(--muted); }
+.selrow .a { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-weight: 600; white-space: nowrap; }
+.seltotal { display: flex; justify-content: space-between; align-items: center; gap: 6px 12px; flex-wrap: wrap; padding: 10px 14px; background: var(--ds-neutral-50); font-size: 13.5px; }
+.dl { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; }
+.dl .ico { margin-top: 2px; }
+.modal .stepper { padding: 12px 18px 0; }
+.x-btn { border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 16px; line-height: 1; padding: 4px; }
+
+/* ---- planning pieces ---- */
+.tiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 12px; }
+.tier { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.tier-when { font: 600 12px/1.3 var(--font); color: var(--muted); }
+.tier h3 { font-size: 16px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.says { font-size: 13px; border-inline-start: 2px solid var(--line-3); padding-inline-start: 8px; color: var(--ds-neutral-800); }
+.tier .where { font-size: 12px; color: var(--muted); margin-top: auto; }
+.mx { display: inline-block; padding: 1px 8px; border-radius: 99px; font: 500 12px/20px var(--font); white-space: nowrap; }
+.mx-yes { background: var(--ds-green-100); color: #2e6a28; }
+.mx-col { background: var(--ds-blue-100); color: var(--ds-blue-800); }
+.mx-no { background: var(--ds-neutral-50); color: var(--faint); box-shadow: inset 0 0 0 1px var(--line); }
+.mx-tip { background: var(--ds-purple-100); color: var(--ds-purple-600); }
+.rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 16px; }
+.rules ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.rules li { display: flex; gap: 8px; font-size: 13.5px; }
+.rules li + li { margin-top: 0; }
+.xm, .okm { flex: none; width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; font: 700 11px/1 var(--font); margin-top: 1px; }
+.xm { background: var(--ds-red-100); color: var(--ds-red-500); }
+.okm { background: var(--ds-green-100); color: #2e6a28; }
+.dont { color: var(--ds-red-500); }
+.do { color: #2e6a28; }
+.ptable td.dont, .ptable td.do { color: var(--fg); }
+.ptable td.dont::before { content: '✕ '; color: var(--ds-red-500); font-weight: 700; }
+.ptable td.do::before { content: '✓ '; color: #2e6a28; font-weight: 700; }
+.nothing { border: 1px dashed var(--line-3); border-radius: var(--r-l); padding: 10px 12px; font-size: 13px; color: var(--muted); background: repeating-linear-gradient(135deg, transparent, transparent 6px, rgba(16, 16, 62, 0.03) 6px, rgba(16, 16, 62, 0.03) 12px); }
+.nothing b { color: var(--ds-neutral-800); }
+#compare[data-cmp='card'] [data-view='step1'], #compare[data-cmp='step1'] [data-view='card'] { display: none; }
+
+/* journey */
+.jsteps { display: flex; flex-wrap: wrap; gap: 6px; }
+.jsteps button { border: 1px solid var(--line-2); background: var(--surface); border-radius: 99px; padding: 4px 12px 4px 5px; display: inline-flex; gap: 8px; align-items: center; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--muted); }
+.jsteps button b { width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--ds-neutral-200); font-size: 11px; color: var(--muted); }
+.jsteps button[aria-selected='true'] { border-color: var(--brand); color: var(--fg); box-shadow: inset 0 0 0 1px var(--brand); }
+.jsteps button[aria-selected='true'] b { background: var(--brand); color: #fff; }
+.jgrid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.jnav { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+@media (max-width: 960px) { .jgrid { grid-template-columns: 1fr; } }
+
+/* explorer */
+.xctl { display: flex; flex-wrap: wrap; gap: 14px 28px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); }
+.xctl fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.xctl legend { font: 600 12px/1.3 var(--font); color: var(--muted); padding: 0; margin-bottom: 6px; }
+.radios.tight label { padding: 4px 10px; font-size: 13px; }
+.xgrid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .xgrid { grid-template-columns: 1fr; } }
+.rl { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.rl > b { font: 600 11px/1.3 var(--font); letter-spacing: 0.05em; text-transform: uppercase; color: var(--faint); }
+.sees { font-weight: 600; }
+
+/* anti-patterns */
+.anti-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 12px; }
+.anti { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); overflow: hidden; display: flex; flex-direction: column; }
+.anti-mock { position: relative; padding: 30px 14px 14px; background: var(--bg); border-bottom: 1px solid var(--line); min-height: 104px; display: flex; flex-direction: column; gap: 8px; justify-content: center; font-size: 13px; }
+.anti-mock::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to top right, transparent calc(50% - 1px), rgba(170, 38, 27, 0.5) 50%, transparent calc(50% + 1px)); }
+.anti-never { position: absolute; top: 7px; left: 10px; z-index: 1; font: 700 11px/18px var(--font); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ds-red-500); background: var(--ds-red-100); border-radius: 99px; padding: 0 8px; }
+.anti-why { padding: 10px 14px 12px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+</style>
+</head>
+<body>
+<main class="doc">
+  <header class="doc-head">
+    <nav class="crumbs" aria-label="Planning files"><a href="00-overview.html">← Overview</a><span>·</span><a href="../docs/client-app-prototype-plan.md">Plan document</a><span>·</span><span>Exploration 06 of 06</span></nav>
+    <div class="eyebrow">Planning exploration · not production UI</div>
+    <h1>Historical guidance</h1>
+    <p class="lede">Where “what should I know before disputing this?” appears, and how sure it sounds. Past answers become short notes with a count and a date. No recommendation engine, no forecasts, and nothing that steers which findings get disputed.</p>
+    <div class="legend"><span class="k k-existing">Existing</span><span class="k k-confirmed">Newly confirmed</span><span class="k k-proposed">Proposed</span><span class="k k-unresolved">Unresolved</span><span>· Mock data is labelled; package rows and history are synthetic.</span></div>
+  </header>
+  <nav class="toc" aria-label="Sections">
+    <a href="#problem">1 Problem</a><a href="#compare">2 Current vs proposed</a><a href="#model">3 Proposed model</a><a href="#flow">4 Main flow</a><a href="#states">5 States</a><a href="#edge">6 Edge cases</a><a href="#data">7 Data</a><a href="#questions">8 Open questions</a>
+  </nav>
+
+  <!-- ================= 1 PROBLEM ================= -->
+  <section class="sec" id="problem">
+    <div class="sec-head"><span class="sec-num">1</span><h2>Problem</h2></div>
+    <div class="grid2">
+      <div class="problem">
+        <h3>What the team learns from past disputes lives in people’s heads</h3>
+        <p>Tori knows QuickBox pushes back on remote-area fees. Sam, who joined in the spring, doesn’t. Nothing in the app answers <b>“what should I know before disputing this?”</b></p>
+        <p class="small">The only history today is Credit outcomes. It has a 12-column finding ledger with the reason hidden in an expandable row, and a Biller table whose collection rate is by amount and counts waiting disputes as failures (L5, L7). Denial reasons are optional, and the app only asks for one after <i>Denied</i> is saved (L4).</p>
+      </div>
+      <div class="box">
+        <div class="row between"><h3>What the meeting asked for</h3><span class="k k-confirmed">Newly confirmed · direction</span></div>
+        <p>Turn denial reasons and outcomes into reusable knowledge, “eventually”.</p>
+        <div class="row small" style="gap:6px 10px"><span class="cx cx-compat">Compatible addition</span><span>within one account</span><span class="cx cx-conflict">Potential conflict</span><span>across customers (C4, n347)</span></div>
+        <p class="small muted">It came with two limits: no recommendation engine, and no weak pattern presented as fact. In the recommended order (plan H), 06 comes last because it can only be as good as 04’s captured answers and 05’s definitions.</p>
+      </div>
+    </div>
+
+    <div class="sub">
+      <h3>Five ways guidance goes wrong</h3>
+      <div class="grid3">
+        <div class="box"><h4>Small samples</h4><p class="small">Most accounts have only a few answered disputes per Biller and charge type. The demo has about 4 answers across 3 Billers (plan A1), so every Biller × type pair has fewer than 3. <span class="k k-existing">Existing</span></p><p class="small muted">Answer: tiers, and nothing below 3.</p></div>
+        <div class="box"><h4>Correlation isn’t cause</h4><p class="small">“The 3 that included the rate sheet were paid” doesn’t prove the rate sheet did it. Those disputes may have been bigger, newer, or handled by someone else.</p><p class="small muted">Answer: past tense, counts, and “Past results, not a promise.”</p></div>
+        <div class="box"><h4>Stale history</h4><p class="small">Contracts, rate cards and the people at a Biller change. A 2025 denial may say nothing about 2026.</p><p class="small muted">Answer: a 12-month window and a date on every note.</p></div>
+        <div class="box"><h4>Steering people away from valid claims</h4><p class="small">The overcharge is owed whatever QuickBox did last time. A “3 of 4 denied” note next to a checkbox pushes people to untick it.</p><p class="small muted">Answer: no early signals at the points where people choose what to include (F9), and no pre-selection (D6).</p></div>
+        <div class="box"><h4>Weak inputs</h4><p class="small">The answer date is the day someone recorded it (L3). Reasons are optional and asked for late (L4). Implentio may start recording answers (C11). The system may not invent reasons (n350).</p><p class="small muted">Answer: no claims about response time, the source always named, and reasons quoted word for word.</p></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <span class="note-label">Earlier idea · 2026-09-24 improvement plan, “Later” column</span>
+      <p>“‘Usually accepted’ hints when choosing findings, e.g. ‘QuickBox credited base-freight findings 9 times out of 10’.” Principle: <b>“Recommendations only on trustworthy inputs. ‘Usually accepted’ hints only once there’s enough outcome data.”</b></p>
+      <p><b>Kept:</b> the principle, which becomes the confidence tiers below. <b>Dropped:</b> hints “when choosing findings”, a <span class="cx cx-conflict">Potential conflict</span> with D6 (no pre-selection) and with the plan review’s F9 rule. Also dropped: “9 times out of 10”, which reads as a forecast. This file uses counts with a window instead (“8 of your last 9 · Mar – Sep 2026”).</p>
+    </div>
+  </section>
+
+  <!-- ================= 2 COMPARE ================= -->
+  <section class="sec" id="compare">
+    <div class="sec-head"><span class="sec-num">2</span><h2>Current vs proposed</h2></div>
+    <div class="row between">
+      <p class="small muted">Same memo (CM-2026-0630, QuickBox), same day (Sep 17, 2026), fresh scenario. <b>History is mock.</b></p>
+      <div class="seg" role="group" aria-label="Which view to compare">
+        <button type="button" data-toggle="cmp" data-target="#compare" data-value="card" aria-pressed="true">Finding card · Show me why</button>
+        <button type="button" data-toggle="cmp" data-target="#compare" data-value="step1">Dispute with QuickBox · step 1</button>
+      </div>
+    </div>
+    <div class="compare">
+      <div class="col">
+        <div class="col-head">Today <span class="k k-existing">Existing</span></div>
+        <div class="frame">
+          <div class="frame-bar">Parcel Credit Memos › CM-2026-0630 › Summary &amp; findings</div>
+          <div class="frame-body">
+            <div data-view="card" data-mock="das" data-g="0"></div>
+            <div data-view="step1" data-mock="step1" data-g="0"></div>
+          </div>
+        </div>
+        <p class="small muted">Nothing about past disputes anywhere between the finding and the email.</p>
+      </div>
+      <div class="col">
+        <div class="col-head">Proposed <span class="k k-proposed">Proposed</span></div>
+        <div class="frame">
+          <div class="frame-bar">Parcel Credit Memos › CM-2026-0630 › Summary &amp; findings · mock history</div>
+          <div class="frame-body">
+            <div data-view="card" data-mock="das" data-g="1"></div>
+            <div data-view="step1" data-mock="step1" data-g="1"></div>
+          </div>
+        </div>
+        <p class="small" data-view="card">The card gets an <b>Early signal</b> (4 answered cases) at the end of <i>Show me why</i>, after the evidence. Layer ①, the checkbox and the status stay exactly as they are.</p>
+        <p class="small" data-view="step1">Step 1 gets only the <b>Pattern</b> note (shipping price, 9 cases), collapsed. The remote-area Early signal is <b>not</b> repeated here, because this is where people choose what to include (F9).</p>
+      </div>
+    </div>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th style="width:24%"></th><th>Today</th><th>Proposed</th></tr></thead>
+        <tbody>
+          <tr><td class="medium">Before disputing, the team knows…</td><td>What someone remembers</td><td>Past answers for this Biller and charge type, counted and dated, under <i>Show me why</i> <span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td class="medium">While choosing what to include (step 1, the past-deadline flag)</td><td>Nothing</td><td>Still nothing, unless there’s a Pattern. Then one collapsed note <span class="k k-proposed">Proposed · F9</span></td></tr>
+          <tr><td class="medium">Denial reasons</td><td>Optional, asked for after the fact, hidden in Credit outcomes’ expandable rows (L4)</td><td>Quoted in the team’s own words next to the finding they’re about, with who recorded them</td></tr>
+          <tr><td class="medium">What Implentio knows about a Biller</td><td>Emails and calls with John Yu</td><td>An “Implentio note” with author and date <span class="k k-unresolved">Only if Q-G2</span></td></tr>
+          <tr><td class="medium">How sure it sounds</td><td>—</td><td>Four tiers: None · Early signal · Mixed · Pattern <span class="k k-unresolved">Thresholds: Q-G1</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= 3 MODEL ================= -->
+  <section class="sec" id="model">
+    <div class="sec-head"><span class="sec-num">3</span><h2>Proposed model</h2></div>
+
+    <div class="sub" id="tiers">
+      <div class="row between"><h3>3a · Four confidence tiers</h3><span class="row" style="gap:6px"><span class="k k-proposed">Proposed</span><span class="k k-unresolved">Thresholds unresolved · Q-G1</span></span></div>
+      <p class="small muted" style="max-width:100ch">Counted per <b>Biller × charge type</b>, for example “fuel-charge disputes with QuickBox”. One <b>answered case</b> is one finding’s recorded answer (<i>Fully collected</i>, <i>Partly collected</i>, <i>Denied</i>, and later <i>Closed, no answer</i>) in a dispute sent in the last 12 months. Waiting disputes never count (C5). “The same way” means the same answer. These definitions come from 05.</p>
+      <div class="tiers">
+        <div class="tier">
+          <div class="tier-when">Fewer than 3 answered</div>
+          <h3>None</h3>
+          <p class="small">Work screens show nothing. Credit outcomes says “No past disputes like this yet”, or lists 1–2 cases without a summary.</p>
+          <div class="says muted">(no sentence)</div>
+          <div class="where">Credit outcomes only</div>
+        </div>
+        <div class="tier">
+          <div class="tier-when">3–5 answered</div>
+          <h3>Early signal</h3>
+          <p class="small">Counts, never percentages. Every outcome is named, not just the biggest. Past tense.</p>
+          <div class="says">“2 of your 3 fuel-charge disputes with QuickBox were paid in full; 1 was denied.”</div>
+          <div class="where">Show me why · Credit outcomes</div>
+        </div>
+        <div class="tier">
+          <div class="tier-when">6+ answered, under 75% the same way</div>
+          <h3>Mixed <span class="k k-proposed">Added in plan review</span></h3>
+          <p class="small">The counts, stated plainly, with no pattern sentence.</p>
+          <div class="says">“Of your 9 fuel-charge disputes with QuickBox: 5 were paid in full, 2 partly and 2 denied.”</div>
+          <div class="where">Show me why · Credit outcomes</div>
+        </div>
+        <div class="tier">
+          <div class="tier-when">6+ answered, at least 75% the same way</div>
+          <h3>Pattern</h3>
+          <p class="small">Still past tense, with the time window and a link to the cases.</p>
+          <div class="says">“QuickBox paid 8 of your last 9 fuel-charge disputes in full; 1 was partly paid · Mar – Sep 2026 · See the 9 disputes”</div>
+          <div class="where">Everywhere, collapsed at selection points</div>
+        </div>
+      </div>
+      <p class="small"><a href="#explorer">Try every combination in the tier explorer (5a) →</a></p>
+    </div>
+
+    <div class="sub" id="placement-rule">
+      <div class="row between"><h3>3b · Where each tier may appear</h3><span class="k k-proposed">Proposed · plan review F9</span></div>
+      <div class="note">
+        <span class="note-label">Rule · guidance never steers the selection</span>
+        <p>Step 1 of <i>Dispute with QuickBox</i> (it has <i>Change selection</i>) and the past-deadline flag are exactly where the customer decides what to include. There, <b>only a Pattern may appear, collapsed by default</b> (“Past disputes with QuickBox · 1 note ▸”). Early signals and Mixed counts appear <b>only</b> in <i>Show me why</i> and in Credit outcomes. No tier ever ticks, unticks, hides, blocks or re-orders a finding (D6).</p>
+      </div>
+      <div class="scroll-x">
+        <table class="ptable">
+          <thead><tr><th>Placement</th><th>None (&lt;3)</th><th>Early signal (3–5)</th><th>Mixed (6+, &lt;75%)</th><th>Pattern (6+, ≥75%)</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td class="medium">① Finding card, <i>Show me why</i> (layer ②)</td><td><span class="mx mx-no">—</span></td><td><span class="mx mx-yes">Shown</span></td><td><span class="mx mx-yes">Shown</span></td><td><span class="mx mx-yes">Shown</span></td><td class="small">Context, not a decision point. Placed after the evidence.</td></tr>
+            <tr><td class="medium">② <i>Dispute with QuickBox</i>, step 1</td><td><span class="mx mx-no">—</span></td><td><span class="mx mx-no">—</span></td><td><span class="mx mx-no">—</span></td><td><span class="mx mx-col">Collapsed</span></td><td class="small">Selection point: <i>Change selection</i>.</td></tr>
+            <tr><td class="medium">③ Past-deadline flag (from 01)</td><td><span class="mx mx-no">—</span></td><td><span class="mx mx-no">—</span></td><td><span class="mx mx-no">—</span></td><td><span class="mx mx-col">Collapsed</span></td><td class="small">Selection point: dispute anyway or not. Depends on Q-S1.</td></tr>
+            <tr><td class="medium">④ Implentio hand-over (from 03)</td><td><span class="mx mx-no">—</span></td><td><span class="mx mx-tip">Tips only</span></td><td><span class="mx mx-tip">Tips only</span></td><td><span class="mx mx-tip">Tips only</span></td><td class="small">Says what Implentio will add, with no outcome counts. Depends on Q-O*.</td></tr>
+            <tr><td class="medium">⑤ Credit outcomes detail (from 05)</td><td><span class="mx mx-yes">“No past disputes like this yet” / cases only</span></td><td><span class="mx mx-yes">Shown + cases</span></td><td><span class="mx mx-yes">Shown + cases</span></td><td><span class="mx mx-yes">Shown + cases</span></td><td class="small">The history page.</td></tr>
+            <tr><td class="medium">Tracker, memo header, card layer ① (except the flag)</td><td><span class="mx mx-no">—</span></td><td><span class="mx mx-no">—</span></td><td><span class="mx mx-no">—</span></td><td><span class="mx mx-no">—</span></td><td class="small">Q-06a.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted"><b>Tip</b> = a “what was missing” note (5d). It needs the same missing item named explicitly in at least 2 denial answers, for a Biller × type at Early signal or above. <span class="k k-proposed">Proposed</span> <span class="k k-unresolved">Q-G1</span></p>
+    </div>
+
+    <div class="sub" id="sources">
+      <div class="row between"><h3>3c · Sources, always labelled</h3><span class="k k-proposed">Proposed</span></div>
+      <div class="grid4">
+        <div class="box">
+          <span class="src"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>From your team’s recorded answers</span>
+          <p class="small">Every count and quote comes from answers recorded in this account (n344, n347). Each quote shows who recorded it.</p>
+          <div class="row" style="gap:6px"><span class="k k-existing">Data exists</span><span class="k k-proposed">Label</span></div>
+        </div>
+        <div class="box">
+          <span class="src">Recorded by Implentio</span>
+          <p class="small">When Implentio handles a dispute (03), Implentio may record the answer. The source line then reads “6 recorded by your team, 3 by Implentio”. n344 says outcomes are entered by the customer, and n350 says <i>Denied</i> is the customer’s report. If any answer in a count was recorded by Implentio, the note says so.</p>
+          <div class="row" style="gap:6px"><span class="cx cx-conflict">Potential conflict · C11</span><span class="k k-unresolved">Q-06g</span></div>
+        </div>
+        <div class="box">
+          <span class="inote-tag"><span class="dot">I</span>Implentio note</span>
+          <p class="small">Written by Implentio staff about one Biller, shown with author and date in a visibly separate box. A note says what the Biller asks for. It never says why a particular dispute was denied (n350).</p>
+          <div class="row" style="gap:6px"><span class="k k-unresolved">Only if Q-G2</span><span class="cx cx-verify">Needs verification · n350</span></div>
+        </div>
+        <div class="box">
+          <span class="src" style="text-decoration:line-through">Across Implentio customers</span>
+          <p class="small">Not shown. Pooling reasons across customers is forbidden (n347, Q-D3a). Pooled, anonymised outcome counts are undecided (Q-D3b). If they’re ever allowed, they get their own labelled block and are never merged into “your” sentence.</p>
+          <div class="row" style="gap:6px"><span class="cx cx-conflict">Potential conflict · C4</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub" id="rules">
+      <div class="row between"><h3>3d · Hard rules</h3><span class="k k-proposed">Proposed · extends plan F6</span></div>
+      <div class="rules">
+        <div class="box">
+          <h4 class="dont">Never</h4>
+          <ul>
+            <li><span class="xm">✕</span><span>Predictions: “likely to be approved”, “87% chance”.</span></li>
+            <li><span class="xm">✕</span><span>Percentages in guidance. Counts only (see money vs counts below).</span></li>
+            <li><span class="xm">✕</span><span>Traffic-light verdicts, risk scores, red or green chips.</span></li>
+            <li><span class="xm">✕</span><span>Hiding, blocking, re-ordering, unticking or de-selecting findings (D6).</span></li>
+            <li><span class="xm">✕</span><span>Early signals or Mixed counts at the points where people choose what to include (F9).</span></li>
+            <li><span class="xm">✕</span><span>Other customers’ data (n347), unless Q-D3b allows it as a separate, labelled source.</span></li>
+            <li><span class="xm">✕</span><span>Response time or “how often they answer”, until 04 captures the Biller’s answer date and <i>Closed, no answer</i> (plan review F4).</span></li>
+            <li><span class="xm">✕</span><span>A reason the system worked out for itself (n350). Only the team’s own words, quoted.</span></li>
+          </ul>
+        </div>
+        <div class="box">
+          <h4 class="do">Always</h4>
+          <ul>
+            <li><span class="okm">✓</span><span>The count: “3 of your 4”.</span></li>
+            <li><span class="okm">✓</span><span>Every outcome, not just the biggest one.</span></li>
+            <li><span class="okm">✓</span><span>The time window, by the month each dispute was sent.</span></li>
+            <li><span class="okm">✓</span><span>A link to the cases: “See the 4 disputes”.</span></li>
+            <li><span class="okm">✓</span><span>The source label, and who recorded each quote.</span></li>
+            <li><span class="okm">✓</span><span>Past tense, with the Biller as the subject: “QuickBox paid…”.</span></li>
+            <li><span class="okm">✓</span><span>“Past results, not a promise.” under every sentence.</span></li>
+            <li><span class="okm">✓</span><span>Plain charge names from <code>finding-copy.ts</code>, the same words as the card title.</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="box tint">
+        <div class="row between"><h4>Money vs counts: two true numbers that can seem to disagree</h4><span class="row" style="gap:6px"><span class="k k-proposed">Proposed</span><span class="k k-unresolved">Wording · Q-06i</span></span></div>
+        <p class="small">Guidance counts <b>cases</b>. Credit outcomes’ recovery rate is by <b>amount</b>: recovered ÷ amount disputed and answered (C5). Both can be true at once and still look contradictory. For example, Flowspace denied 3 of 4 fuel-charge disputes, but the one it paid was $1,050.00 of the $1,240.00 disputed, an 85% recovery rate.</p>
+        <ul class="small">
+          <li>A guidance sentence never shows a percentage, so there are never two conflicting percentages on screen.</li>
+          <li>Credit outcomes shows both side by side: “1 of 4 disputes paid · $1,050.00 of $1,240.00 recovered”.</li>
+          <li>If counts and money point opposite ways, the sentence adds one clause: “…1 was paid in full, and it was the largest ($1,050.00 of the $1,240.00 disputed).”</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sub" id="wording">
+      <div class="row between"><h3>3e · Wording: do / don’t</h3><span class="k k-proposed">Proposed</span></div>
+      <div class="scroll-x">
+        <table class="ptable">
+          <thead><tr><th style="width:31%">Don’t</th><th style="width:37%">Do</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td class="dont">“Likely to be approved”</td><td class="do">“QuickBox paid 8 of your last 9 shipping-price disputes in full; 1 was partly paid.”</td><td class="small">It says what happened, not what will happen.</td></tr>
+            <tr><td class="dont">“89% success rate”</td><td class="do">“8 of your last 9”</td><td class="small">Counts only. A percentage of 9 looks like a measured rate and would clash with the amount-based rate (C5).</td></tr>
+            <tr><td class="dont">“QuickBox usually denies remote-area fees”</td><td class="do">“QuickBox denied 3 of your 4 remote-area fee disputes; 1 was paid in full · Oct 2025 – Aug 2026”</td><td class="small">With a count, a window and every outcome, anyone can check it.</td></tr>
+            <tr><td class="dont">“Not worth disputing” · “Skip this one”</td><td class="do">Nothing about whether to dispute. “Past results, not a promise.”</td><td class="small">Guidance never steers the selection (D6, F9).</td></tr>
+            <tr><td class="dont">“QuickBox rejects these because of its contract addendum”</td><td class="do">“2 of the 3 denial answers mention a contract addendum:” then the quote and who recorded it</td><td class="small">The system never says why a Biller denied something (n350). It quotes your team.</td></tr>
+            <tr><td class="dont">“Attach the rate sheet to get paid”</td><td class="do">“In 2 denied shipping-price disputes Flowspace said the rate sheet was missing. The 3 that included it were paid.”</td><td class="small">Report what happened, don’t promise a result. Correlation isn’t cause.</td></tr>
+            <tr><td class="dont">“Brands like you recover 72% from QuickBox”</td><td class="do">“From your team’s recorded answers”</td><td class="small">Only this account’s data (n347). Pooled data is undecided (Q-D3b).</td></tr>
+            <tr><td class="dont">“QuickBox takes about 34 days to answer”</td><td class="do">Nothing, until 04 captures the Biller’s answer date</td><td class="small">Today’s date is the day your team recorded the answer (L3).</td></tr>
+            <tr><td class="dont">“High risk” · “Low confidence (n=4)”</td><td class="do">“Of your 4 …”</td><td class="small">The count is the confidence. No jargon, no scores.</td></tr>
+            <tr><td class="dont">“Your team wins most fuel disputes”</td><td class="do">“QuickBox paid …”</td><td class="small">The Biller made the decision. Don’t turn history into a score for the team.</td></tr>
+            <tr><td class="dont">“Fuel Surcharge Discrepancy: 40% collection rate”</td><td class="do">“fuel-charge disputes”</td><td class="small">Use the plain charge name. The industry term stays a tag on the card.</td></tr>
+            <tr><td class="dont">“Heads up! QuickBox denies DAS!”</td><td class="do">Heading: “Past disputes like this”</td><td class="small">Keep it calm and neutral, styled like other help text, not like a warning banner.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 4 FLOW ================= -->
+  <section class="sec" id="flow">
+    <div class="sec-head"><span class="sec-num">4</span><h2>Main flow: the same history in five places</h2></div>
+    <p class="small muted" style="max-width:100ch">The path runs from finding card to dispute step 1, the past-deadline flag, the Implentio hand-over and Credit outcomes. Each place has its own rule for what may show. Click through the steps. All history is <b>mock</b>; the current memo’s amounts come from the demo fixtures.</p>
+    <div class="stack s16" data-tabs data-journey>
+      <div class="jsteps" role="tablist" aria-label="Journey steps">
+        <button type="button" data-tab="j1" data-short="Dispute step 1" aria-selected="true"><b>1</b>Finding card · Show me why</button>
+        <button type="button" data-tab="j2" data-short="Past-deadline flag"><b>2</b>Dispute with QuickBox · step 1</button>
+        <button type="button" data-tab="j3" data-short="Implentio hand-over"><b>3</b>Past-deadline flag</button>
+        <button type="button" data-tab="j4" data-short="Credit outcomes"><b>4</b>Implentio hand-over</button>
+        <button type="button" data-tab="j5" data-short=""><b>5</b>Credit outcomes</button>
+      </div>
+
+      <div data-panel="j1" class="jgrid">
+        <div class="frame"><div class="frame-bar">CM-2026-0630 › Findings · mock history</div><div class="frame-body"><div data-mock="das" data-g="1"></div></div></div>
+        <div class="stack">
+          <div class="note">
+            <span class="note-label">Rule here</span>
+            <p><b>Allowed:</b> Early signal, Mixed, Pattern. <b>Showing:</b> an Early signal, 4 answered remote-area fee disputes with QuickBox. <span class="k k-proposed">Proposed</span></p>
+            <p>It’s the <b>last thing in <i>Show me why</i></b>, after Billed / Should have been / Difference, the example, How we worked it out and <i>See all 3 packages</i>. Evidence comes first and history second.</p>
+            <p>Layer ①, the checkbox, the status chip and <i>Won’t pursue</i> are untouched. Nothing a trainee needs in order to proceed lives in this block.</p>
+          </div>
+          <div class="note">
+            <span class="note-label">Reasons</span>
+            <p>The quote is the reason your team recorded, word for word (n350). “2 of the 3 denial answers mention a contract addendum” is a keyword match in this mock. Should a person confirm it first? <span class="k k-unresolved">Q-06b</span></p>
+            <p><i>See the 4 disputes</i> opens step 5, the Credit outcomes detail filtered to QuickBox × Remote-area fee.</p>
+          </div>
+        </div>
+      </div>
+
+      <div data-panel="j2" class="jgrid">
+        <div class="frame"><div class="frame-bar">CM-2026-0630 › Dispute with QuickBox · mock history</div><div class="frame-body"><div data-mock="step1" data-g="1" data-open="1"></div></div></div>
+        <div class="stack">
+          <div class="note">
+            <span class="note-label">Rule here · selection point</span>
+            <p><b>Allowed:</b> Pattern only, <b>collapsed by default</b> (plan review F9). Shown opened here so you can read it. <span class="k k-proposed">Proposed</span></p>
+            <p><b>Showing:</b> 1 note, shipping price (9 answered, 8 paid in full). The summary counts only ticked findings that have a Pattern.</p>
+            <p><b>Not shown:</b> the remote-area Early signal (4 cases) from step 1. It stays in <i>Show me why</i>.</p>
+          </div>
+          <div class="note">
+            <span class="note-label">Selection</span>
+            <p>Step 1 has no checkboxes. The note never changes what’s ticked. <i>Change selection</i> returns to the memo, as it does today (D6).</p>
+            <p>Should selection points show anything at all? <span class="k k-unresolved">Q-06h</span></p>
+          </div>
+        </div>
+      </div>
+
+      <div data-panel="j3" class="jgrid">
+        <div class="stack" data-tabs>
+          <div class="row between">
+            <span class="small muted">Late disputes QuickBox has answered (mock):</span>
+            <div class="seg" role="tablist" aria-label="Late disputes on record">
+              <button type="button" data-tab="l3" aria-selected="true">3 on record</button>
+              <button type="button" data-tab="l7">7 on record</button>
+            </div>
+          </div>
+          <div data-panel="l3"><div class="frame"><div class="frame-bar">CM-2026-0517 › Findings · deadline was May 15, 2026</div><div class="frame-body"><div data-mock="late" data-n="3"></div></div></div></div>
+          <div data-panel="l7"><div class="frame"><div class="frame-bar">CM-2026-0517 › Findings · deadline was May 15, 2026</div><div class="frame-body"><div data-mock="late" data-n="7"></div></div></div></div>
+        </div>
+        <div class="stack">
+          <div class="note">
+            <span class="note-label">Rule here · selection point</span>
+            <p><b>Allowed:</b> Pattern only, collapsed. With 3 late disputes on record (Early signal) <b>nothing shows</b>. With 7 (6 the same way) the collapsed note appears under the flag. <span class="k k-proposed">Proposed</span></p>
+            <p>Late disputes (<code>sentAfterDeadline</code>) are counted <b>apart</b> from the charge-type counts, so denials for lateness don’t weigh on “fuel-charge disputes”.</p>
+          </div>
+          <div class="note">
+            <span class="note-label">Depends on 01</span>
+            <p>The flag only exists if the deadline becomes a warning instead of Expired (C1). This mock follows option B. Under option C (“ask once”), the note would sit inside the “Dispute anyway or won’t pursue?” prompt, the most steering spot of all. The Pattern-only rule still applies. <span class="k k-unresolved">Q-S1</span></p>
+            <p><b>Excluded:</b> “QuickBox answered 1 of your 3 late disputes”. How often a Biller answers needs <i>Closed, no answer</i> (C9) and the Biller’s answer date (L3). <span class="k k-proposed">Plan review F4</span></p>
+          </div>
+        </div>
+      </div>
+
+      <div data-panel="j4" class="jgrid">
+        <div class="frame"><div class="frame-bar">CM-2026-0531 › Dispute with Flowspace · Implentio path (03) · mock history</div><div class="frame-body"><div data-mock="handover"></div></div></div>
+        <div class="stack">
+          <div class="note">
+            <span class="note-label">Rule here</span>
+            <p><b>Allowed:</b> “what was missing” tips only, with no outcome counts. The selection was made in step 1, and this step describes what Implentio will do. <span class="k k-proposed">Proposed</span></p>
+            <p>The tip comes from 2 denial answers that name the rate sheet (5 answered shipping-price disputes with Flowspace, an Early signal).</p>
+          </div>
+          <div class="note">
+            <span class="note-label">Unresolved</span>
+            <p>“Implentio will attach your rate sheet” is a promise Implentio has to keep. Does Implentio have the rate sheet on file (Q-E2)? What does it commit to (Q-O3)? Will the customer see what was sent (Q-O6)? <span class="k k-unresolved">Q-O3 · Q-O6 · Q-E2</span></p>
+            <p>The “CC my Implentio support team” path shows no hand-over guidance, because a CC never means Implentio owns the dispute (n326).</p>
+          </div>
+        </div>
+      </div>
+
+      <div data-panel="j5" class="jgrid">
+        <div data-mock="outcomes"></div>
+        <div class="stack">
+          <div class="note">
+            <span class="note-label">Rule here</span>
+            <p><b>Allowed:</b> every tier, with the cases listed. It uses the <b>same sentence</b> as <i>Show me why</i>, so the words match everywhere. <span class="k k-proposed">Proposed</span></p>
+            <p>Counts and money sit side by side (3d). Reasons are quoted with who recorded them. “1 denial has no reason recorded” is said out loud, not hidden.</p>
+          </div>
+          <div class="note">
+            <span class="note-label">Depends on 05</span>
+            <p>The row, panel and filters belong to 05. 06 only supplies the sentence and the rules. <i>See the 4 disputes</i> from the card lands here through a deep link, e.g. <code>/tracker/outcomes?biller=quickbox&amp;type=das</code>. <span class="k k-proposed">Proposed</span></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="jnav">
+        <button type="button" class="btn sm" data-jprev>← Back</button>
+        <span class="small muted" data-jpos>Step 1 of 5</span>
+        <button type="button" class="btn sm primary" data-jnext>Next →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 5 STATES ================= -->
+  <section class="sec" id="states">
+    <div class="sec-head"><span class="sec-num">5</span><h2>States</h2></div>
+
+    <div class="sub" id="explorer">
+      <div class="row between"><h3>5a · Tier explorer: what the guidance slot shows</h3><span class="row" style="gap:6px"><span class="k k-proposed">Proposed</span><span class="k k-unresolved">Thresholds · Q-G1</span></span></div>
+      <p class="small muted">Hypothetical: <b>fuel-charge disputes with QuickBox</b>. Change the history and the place. The slot re-renders exactly what the customer would see, including nothing at all, and the rule that fired is shown beside it.</p>
+      <div class="xctl">
+        <fieldset><legend>Answered cases</legend><div class="radios tight">
+          <label><input type="radio" name="xn" value="0">0</label><label><input type="radio" name="xn" value="2">2</label><label><input type="radio" name="xn" value="4" checked>4</label><label><input type="radio" name="xn" value="9">9</label>
+        </div></fieldset>
+        <fieldset><legend>How consistent</legend><div class="radios tight">
+          <label><input type="radio" name="xmix" value="mixed">Mixed</label><label><input type="radio" name="xmix" value="paid">Mostly paid</label><label><input type="radio" name="xmix" value="denied" checked>Mostly denied</label>
+        </div></fieldset>
+        <fieldset><legend>Newest case</legend><div class="radios tight">
+          <label><input type="radio" name="xage" value="recent" checked>Recent (Sep 2026)</label><label><input type="radio" name="xage" value="stale">14 months old</label>
+        </div></fieldset>
+        <fieldset><legend>Shown in</legend><div class="radios tight">
+          <label><input type="radio" name="xplace" value="why" checked>Show me why</label><label><input type="radio" name="xplace" value="step1">Dispute step 1 / past-deadline flag</label><label><input type="radio" name="xplace" value="outcomes">Credit outcomes</label>
+        </div></fieldset>
+      </div>
+      <div class="xgrid">
+        <div class="frame"><div class="frame-bar" id="x-bar">Finding card · Show me why</div><div class="frame-body" id="x-slot" aria-live="polite"></div></div>
+        <div class="box" id="x-rule" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="sub" id="thin">
+      <div class="row between"><h3>5b · The common case: thin data</h3><span class="row" style="gap:6px"><span class="k k-existing">Real demo data</span><span class="k k-unresolved">Q-06d</span></span></div>
+      <p class="small" style="max-width:100ch">Most accounts may rarely reach 6 answered cases for one Biller and charge type (plan review F10). In that case guidance mostly <b>says nothing</b>. That is the intended result, not an empty state that needs filling. Here is your real data today, from the demo fixtures:</p>
+      <div class="stack s8">
+        <div class="scroll-x">
+          <table class="ptable">
+            <thead><tr><th>Biller · charge type</th><th class="num">Answered</th><th>Tier</th><th>Work screens</th><th>Credit outcomes</th></tr></thead>
+            <tbody>
+              <tr><td>QuickBox · Shipping price</td><td class="num">1–2</td><td>None</td><td class="muted">nothing</td><td>the case(s), no summary</td></tr>
+              <tr><td>QuickBox · Fuel charge</td><td class="num">1–2</td><td>None</td><td class="muted">nothing</td><td>the case(s), no summary</td></tr>
+              <tr><td>QuickBox · Remote-area fee</td><td class="num">1–2</td><td>None</td><td class="muted">nothing</td><td>the case(s) and the quoted reason</td></tr>
+              <tr><td>QuickBox · Home-delivery fee</td><td class="num">0</td><td>None</td><td class="muted">nothing</td><td>“No past disputes like this yet”</td></tr>
+              <tr><td>ShipBob · every type</td><td class="num">0</td><td>None</td><td class="muted">nothing</td><td>“No past disputes like this yet” (3 waiting)</td></tr>
+              <tr><td>Flowspace · every type</td><td class="num">0</td><td>None</td><td class="muted">nothing</td><td>“No past disputes like this yet”</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tiny muted">1 answer each on CM-2026-0517 (tracker default). The golden memo’s seeded outcomes add at most 1 more per type, so no pair passes 2.</p>
+      </div>
+      <div class="jgrid">
+        <div class="frame"><div class="frame-bar">Credit outcomes › By variance type · real demo data</div><div class="frame-body">
+          <div class="card">
+            <div class="fc-title"><h3>Remote-area fee · QuickBox</h3><span class="tag">Delivery area surcharge (DAS)</span></div>
+            <p class="small muted">1 answered dispute so far. That’s too few to sum up.</p>
+            <div class="scroll-x"><table class="tbl"><thead><tr><th>Credit memo</th><th>Sent</th><th>Answer</th><th class="num">Disputed</th></tr></thead><tbody><tr><td>CM-2026-0517</td><td>Aug 20, 2026</td><td><span class="chip danger">Denied</span></td><td class="num">$1,200.00</td></tr></tbody></table></div>
+          </div>
+          <div class="card">
+            <div class="fc-title"><h3>Home-delivery fee · QuickBox</h3><span class="tag">Residential surcharge</span></div>
+            <p class="small muted">No past disputes like this yet.</p>
+          </div>
+        </div></div>
+        <div class="note"><span class="note-label">What this means</span><p>Every pair is in the None tier, so <b>every work screen looks exactly as it does today</b>. Only Credit outcomes shows anything: the cases, or “No past disputes like this yet”.</p><p>With realistic volume, 06 amounts to Early signals in <i>Show me why</i> for a few busy pairs, plus Credit outcomes. Patterns, and anything at selection points, may never appear for most accounts. Q-06d asks what volume real accounts reach before anyone invests in the Pattern tier’s placements.</p></div>
+      </div>
+    </div>
+
+    <div class="sub" id="source-states">
+      <div class="row between"><h3>5c · The same block, by source</h3><span class="k k-proposed">Proposed</span></div>
+      <div class="stack" data-tabs>
+        <div class="seg" role="tablist" aria-label="Source">
+          <button type="button" data-tab="s-team" aria-selected="true">Your team’s answers</button>
+          <button type="button" data-tab="s-impl">Some recorded by Implentio</button>
+          <button type="button" data-tab="s-note">Implentio note</button>
+          <button type="button" data-tab="s-pool">Other customers (not allowed)</button>
+        </div>
+        <div data-panel="s-team" class="jgrid"><div data-mock="src-team"></div><div class="note"><span class="note-label">Source</span><p>Every answer was recorded by someone on the team (Tori, Sam, Renee). This is today’s model: outcomes are entered by the customer (n344) and stay in this account (n347). <span class="k k-existing">Existing data</span></p></div></div>
+        <div data-panel="s-impl" class="jgrid"><div data-mock="src-impl"></div><div class="note"><span class="note-label">Source · conflict C11</span><p>With Implentio-managed disputes (03), Implentio may record the answer. n344 says outcomes are entered by the customer, and n350 says <i>Denied</i> is the customer’s report. <span class="cx cx-conflict">Potential conflict</span></p><p>Proposed: count them, and name the split in the source line. Never compare “your” results with “Implentio’s” in guidance, because 4 cases would turn it into a sales pitch. <span class="k k-unresolved">Q-06g</span></p></div></div>
+        <div data-panel="s-note" class="jgrid"><div data-mock="src-note"></div><div class="note"><span class="note-label">Source · Implentio note</span><p>Written by a person at Implentio, with author and date, in a separate box with a brand edge. It sits <b>next to</b> your history and is never blended into its sentence. <span class="k k-unresolved">Q-G2</span></p><p>A note may say what QuickBox asks for. It may not say why a specific dispute was denied (n350). “Review by” is a proposal for retiring notes. <span class="k k-unresolved">Q-06c</span></p></div></div>
+        <div data-panel="s-pool" class="jgrid"><div data-mock="src-pool"></div><div class="note"><span class="note-label">Source · other customers</span><p><b>Not shown today.</b> Pooling reasons is forbidden (n347), and this mock stays hypothetical. If pooled, anonymised outcome counts are ever approved (Q-D3b), they get their own block and label and are never added into “your” counts. <span class="cx cx-conflict">Potential conflict · C4</span></p></div></div>
+      </div>
+    </div>
+
+    <div class="sub" id="tips">
+      <div class="row between"><h3>5d · What helped / what was missing</h3><span class="row" style="gap:6px"><span class="k k-proposed">Proposed</span><span class="k k-unresolved">Q-06b</span></span></div>
+      <div class="jgrid">
+        <div class="frame"><div class="frame-bar">CM-2026-0531 › Shipping price higher than your contract rate · Show me why · mock history</div><div class="frame-body"><div data-mock="tip"></div></div></div>
+        <div class="stack">
+          <div class="note">
+            <span class="note-label">When a tip appears</span>
+            <p>Only when a denial reason <b>names</b> the missing item in plain words, and at least 2 denials name the same one. The matched words are highlighted here for planning only.</p>
+            <p>“The 3 that included it were paid” needs to know what was attached to each dispute. <code>DisputeRecord</code> keeps its attachments, but not what <i>kind</i> of file each one is. Without that, the second sentence is dropped. <span class="d d-missing">Missing</span></p>
+            <p>The caveat is always there, because correlation isn’t cause.</p>
+          </div>
+        </div>
+      </div>
+      <div class="scroll-x">
+        <table class="ptable">
+          <thead><tr><th>Recorded reason (your team’s words)</th><th>Names a missing item?</th><th>Becomes</th></tr></thead>
+          <tbody>
+            <tr><td>“Flowspace says no <mark class="kw">rate sheet</mark> was attached; resubmit with contract rates.”</td><td>Yes: rate sheet</td><td>Counts toward the “rate sheet was missing” tip</td></tr>
+            <tr><td>“<mark class="kw">Missing rate sheet</mark>.”</td><td>Yes: rate sheet</td><td>Counts toward the tip (2nd match, so the tip shows)</td></tr>
+            <tr><td>“Biller said the surcharge was applied per contract addendum and declined the request.”</td><td>No. It gives a reason, not a missing item</td><td>Quoted as a reason, no tip</td></tr>
+            <tr><td>“Declined.”</td><td>No</td><td>Counted in the outcome split only</td></tr>
+            <tr><td class="muted">(no reason recorded)</td><td>—</td><td>Counted in the split; “1 denial has no reason recorded”</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sub" id="anti">
+      <div class="row between"><h3>5e · Anti-patterns: states that must never exist</h3><span class="k k-proposed">Proposed · plan F6 “Never”</span></div>
+      <div class="anti-grid">
+        <div class="anti"><div class="anti-mock"><span class="anti-never">✕ Never</span><div class="row between" style="gap:8px"><span class="medium">Remote-area fee charged incorrectly</span><span class="chip info">87% chance QuickBox approves</span></div></div><div class="anti-why"><b>A probability</b><span class="muted">A “chance” worked out from 4 cases is a guess dressed up as a measurement. Plan F6 rules out predictions.</span></div></div>
+        <div class="anti"><div class="anti-mock"><span class="anti-never">✕ Never</span><div class="row between" style="gap:8px"><span>Shipping price higher…</span><span class="chip success">Likely win</span></div><div class="row between" style="gap:8px"><span>Remote-area fee…</span><span class="chip danger">High risk</span></div></div><div class="anti-why"><b>A red/green verdict chip</b><span class="muted">Traffic lights read as instructions and hide the count. They also reuse the colors of the status chips.</span></div></div>
+        <div class="anti"><div class="anti-mock"><span class="anti-never">✕ Never</span><div class="row between" style="gap:8px"><span class="medium">Remote-area fee… <span class="money">$4.68</span></span><button type="button" class="btn sm" tabindex="-1">Don’t dispute this</button></div></div><div class="anti-why"><b>A “Don’t dispute this” button</b><span class="muted">It steers the selection, and the overcharge is still owed (D6, F9).</span></div></div>
+        <div class="anti"><div class="anti-mock"><span class="anti-never">✕ Never</span><label class="check"><input type="checkbox" tabindex="-1"><span>Remote-area fee charged incorrectly</span></label><span class="tiny muted">Unticked for you: QuickBox usually denies these</span></div><div class="anti-why"><b>An auto-unticked finding</b><span class="muted">There is no pre-selection (D6), and guidance never changes what’s ticked.</span></div></div>
+        <div class="anti"><div class="anti-mock"><span class="anti-never">✕ Never</span><p>QuickBox usually denies remote-area fees.</p></div><div class="anti-why"><b>An undated “usually denied”</b><span class="muted">No count, no window and no link. It could rest on 2 cases from 2024.</span></div></div>
+        <div class="anti"><div class="anti-mock"><span class="anti-never">✕ Never</span><p>Brands like you recover 72% from QuickBox.</p></div><div class="anti-why"><b>Pooled data with no label</b><span class="muted">Other customers’ data (n347, C4). If Q-D3b ever allows it, it becomes a separate, labelled source.</span></div></div>
+        <div class="anti"><div class="anti-mock"><span class="anti-never">✕ Never</span><p>QuickBox usually answers in about 34 days.</p></div><div class="anti-why"><b>Response time from recording dates</b><span class="muted">It measures when your team logged the answer (L3), and there’s no <i>Closed, no answer</i> result yet (C9). Excluded until 04 ships (plan review F4).</span></div></div>
+        <div class="anti"><div class="anti-mock"><span class="anti-never">✕ Never</span><div class="row" style="gap:8px"><span class="small muted">Sort</span><span class="tag">Most likely to be paid ▾</span></div></div><div class="anti-why"><b>Sorting by “chance”</b><span class="muted">Findings are listed biggest first (D6). Guidance never re-orders them.</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 6 EDGE ================= -->
+  <section class="sec" id="edge">
+    <div class="sec-head"><span class="sec-num">6</span><h2>Edge cases</h2></div>
+    <div class="stack" data-tabs>
+      <div class="seg" role="tablist" aria-label="Edge case mocks">
+        <button type="button" data-tab="e-money" aria-selected="true">Money vs count</button>
+        <button type="button" data-tab="e-flip">A pattern that flips</button>
+        <button type="button" data-tab="e-conflict">Conflicting signals</button>
+      </div>
+      <div data-panel="e-money" class="grid2">
+        <div class="stack s8"><span class="small medium dont">Without the clause, the sentence and the rate seem to contradict each other</span><div class="past"><div class="past-head"><span class="past-title">Past disputes like this</span></div><p>Flowspace denied 3 of your 4 fuel-charge disputes; 1 was paid in full.</p><div class="past-meta"><span>Feb – Aug 2026</span><span>·</span><button type="button" class="lnk sm">See the 4 disputes</button></div></div><span class="small muted">…while Credit outcomes shows <b>Recovery rate 85%</b> for the same row.</span></div>
+        <div class="stack s8"><span class="small medium do">With the clause <span class="k k-proposed">Proposed</span></span><div class="past"><div class="past-head"><span class="past-title">Past disputes like this</span></div><p>Flowspace denied 3 of your 4 fuel-charge disputes; 1 was paid in full, and it was the largest ($1,050.00 of the $1,240.00 disputed).</p><div class="past-meta"><span>Feb – Aug 2026</span><span>·</span><button type="button" class="lnk sm">See the 4 disputes</button></div><p class="caveat">Past results, not a promise.</p></div><span class="small muted">The clause is added only when the majority by count and the majority by money point opposite ways. <span class="k k-unresolved">Q-06i</span></span></div>
+      </div>
+      <div data-panel="e-flip" class="grid2">
+        <div class="stack s8"><span class="small medium">June 2026: Pattern</span><div class="past"><p>QuickBox paid 8 of your last 9 shipping-price disputes in full; 1 was partly paid.</p><div class="past-meta"><span>Oct 2025 – Jun 2026</span><span>·</span><button type="button" class="lnk sm">See the 9 disputes</button></div></div></div>
+        <div class="stack s8"><span class="small medium">September 2026: 3 fresh denials, so it drops to Mixed <span class="k k-proposed">Proposed</span></span><div class="past"><p>Of your last 12 shipping-price disputes with QuickBox: 8 were paid in full, 1 partly and 3 denied. <b>The 3 most recent (Jul – Aug 2026) were denied.</b></p><div class="past-meta"><span>Oct 2025 – Aug 2026</span><span>·</span><button type="button" class="lnk sm">See the 12 disputes</button></div><p class="caveat">Past results, not a promise.</p></div><span class="small muted">A recency clause is added when the latest 3 in a row go the other way. At the selection points the note disappears, because it’s no longer a Pattern. <span class="k k-unresolved">Threshold · Q-G1</span></span></div>
+      </div>
+      <div data-panel="e-conflict" class="grid2">
+        <div class="stack s8"><span class="small medium dont">Don’t: the type-wide view on a QuickBox card</span><div class="past"><p>Remote-area fees were paid in 7 of your 9 disputes.</p></div><span class="small muted">That’s true across ShipBob and Flowspace, but misleading next to a QuickBox finding.</span></div>
+        <div class="stack s8"><span class="small medium do">Do: only the Biller × type pair the finding belongs to <span class="k k-proposed">Proposed</span></span><div class="past"><p>QuickBox denied 3 of your 4 remote-area fee disputes; 1 was paid in full.</p><div class="past-meta"><span>Oct 2025 – Aug 2026</span><span>·</span><button type="button" class="lnk sm">See the 4 disputes</button></div></div><span class="small muted">The type-wide and Biller-wide views live in Credit outcomes (05), where each is labelled.</span></div>
+      </div>
+    </div>
+
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th style="width:18%">Case</th><th style="width:28%">What could go wrong</th><th>Proposed handling</th><th style="width:14%">Status</th></tr></thead>
+        <tbody>
+          <tr><td class="medium">Conflicting signals</td><td>The charge type goes well overall, but this Biller denies it</td><td>Work screens use only the Biller × type pair. Wider views live in Credit outcomes.</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td class="medium">Stale history</td><td>A 2025 pattern shown as current</td><td>Newest case over 12 months old: dropped from work screens. Credit outcomes shows it with the date first and “QuickBox’s terms may have changed since.” The alternative is to keep it on work screens with the date prominent. Should a new contract or rate card reset the history?</td><td><span class="k k-unresolved">Q-06e</span></td></tr>
+          <tr><td class="medium">One huge answer dominates the money</td><td>“1 of 4 paid” next to “85% recovered”</td><td>Sentences count cases and add a money clause when counts and money point opposite ways. Credit outcomes shows both.</td><td><span class="k k-proposed">Proposed</span> <span class="k k-unresolved">Q-06i</span></td></tr>
+          <tr><td class="medium">Changed answers</td><td>A tier rests on an answer that was later corrected (<i>Change</i>, n345)</td><td>The latest answer counts and the history is kept. Tiers recompute quietly, with no alert.</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td class="medium">Implentio-handled vs self-handled results differ</td><td>“Implentio’s disputes get paid” becomes a sales pitch built on 4 cases. Recording source conflict C11</td><td>Count both together and name the source split. Credit outcomes can filter by who handled the dispute (03/05). Guidance never compares the two.</td><td><span class="k k-unresolved">Q-06g</span></td></tr>
+          <tr><td class="medium">New Biller, no history</td><td>Pressure to fill the gap with pooled data</td><td>Nothing on work screens. Credit outcomes says “No past disputes like this yet”. No pooled data to fill the gap.</td><td><span class="k k-proposed">Proposed</span> <span class="k k-unresolved">Q-D3b</span></td></tr>
+          <tr><td class="medium">A pattern that flips</td><td>“Paid 8 of 9” stays up after 3 fresh denials</td><td>The window recounts, and a recency clause is added when the latest 3 in a row go the other way. The tier may drop to Mixed and leave the selection points.</td><td><span class="k k-proposed">Proposed</span> <span class="k k-unresolved">Q-G1</span></td></tr>
+          <tr><td class="medium">Disputes sent after the deadline</td><td>Denials for lateness drag down the charge-type counts</td><td>Counted apart and shown only as their own line at the past-deadline flag, as a Pattern. Depends on 01.</td><td><span class="k k-unresolved">Q-S1 · Q-06f</span></td></tr>
+          <tr><td class="medium">Whole-memo disputes</td><td>The answer can’t be tied to a charge type (<code>findingsUnavailable</code>)</td><td>Counted at Biller level in Credit outcomes only, never in charge-type guidance.</td><td><span class="k k-proposed">Proposed</span> <span class="k k-unresolved">Q-06f</span></td></tr>
+          <tr><td class="medium">Weak evidence (see <a href="02-findings-evidence.html">02</a>)</td><td>A “paid 8 of 9” note makes a finding with no package data, or with records Implentio couldn’t check, feel safer than its evidence</td><td>Guidance always comes after the evidence and never replaces it. The block stays in the same place when 02 shows “not available”. A “mostly paid” note never upgrades a finding.</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td class="medium">Partly collected</td><td>Does “8 paid” include partly paid?</td><td>“The same way” means the same answer, so <i>Partly collected</i> is always named separately.</td><td><span class="k k-unresolved">Q-06f</span></td></tr>
+          <tr><td class="medium">One reason, several findings</td><td>“Use the same reason for the other denied findings” (04) makes one sentence count as many</td><td>Each finding’s answer is one case. A reason shared across findings in one dispute counts once toward a tip.</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td class="medium">Waiting, or never answered</td><td>Waiting counted as a failure, or response time worked out from recording dates</td><td>Waiting never counts (C5). No claims about response time until 04 captures the answer date and <i>Closed, no answer</i>.</td><td><span class="k k-proposed">Plan review F4</span> <span class="k k-unresolved">Q-S3 · Q-D2</span></td></tr>
+          <tr><td class="medium">Blunt or personal reason text</td><td>Names, emails or rude wording quoted on a work screen</td><td>Quoted as entered (n350), shortened after about 140 characters with “more”. Only this account sees it (n347).</td><td><span class="k k-proposed">Proposed</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= 7 DATA ================= -->
+  <section class="sec" id="data">
+    <div class="sec-head"><span class="sec-num">7</span><h2>Data</h2></div>
+    <p class="small" style="max-width:100ch">06 stores almost nothing itself. It reads what 05 derives from what 04 captures. Plan G row 06: <i>Have</i> = whatever 05 derives · <i>Verify</i> = Implentio-authored Biller notes · <i>Missing</i> = pooled benchmarks (n347) · <i>New</i> = <code>billerNotes[]</code>, only if Q-G2 = yes.</p>
+    <div class="flow" aria-label="Where guidance data comes from">
+      <div class="node n-open">04 Outcome capture<small>answer · date · reason · recorded by</small></div><span class="arrow">→</span>
+      <div class="node n-wait">05 Definitions<small>answered case · window · sample size · rate by amount</small></div><span class="arrow">→</span>
+      <div class="node n-new">06 Rules<small>tiers · placement · tips · thresholds config</small></div><span class="arrow">→</span>
+      <div class="node">Placements<small>Show me why · step 1 · flag · hand-over · Credit outcomes</small></div>
+    </div>
+    <div class="problem">
+      <b>Excluded until 04 ships (plan review F4)</b>
+      <p class="small">Anything about <b>response time</b> or <b>how often a Biller answers</b>. Today the answer date is the day it was recorded (L3), and there is no <i>Closed, no answer</i> result (C9). “QuickBox takes 34 days to answer” would measure how late your team logged it. The window uses the date each dispute was <b>sent</b> (<code>sentAt</code>, which exists today) so it doesn’t depend on L3.</p>
+    </div>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th style="width:24%">Guidance element</th><th style="width:30%">Reads</th><th style="width:13%">Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Tier (answered cases per Biller × type)</td><td><code>collection.status</code>, <code>chargeKey</code>, the memo’s Biller: derived in 05</td><td><span class="d d-have">Have</span></td><td>Waiting never counts. Sample size = the count.</td></tr>
+          <tr><td>Outcome split in the sentence</td><td><code>collection.status</code> (full / partial / not_issued)</td><td><span class="d d-have">Have</span> <span class="d d-new">+ no_answer</span></td><td><i>Closed, no answer</i> depends on 01/04 (C9, Q-S3).</td></tr>
+          <tr><td>Time window, “your last N”, staleness</td><td><code>DisputeRecord.sentAt</code> + the clock (<code>DEMO_NOW</code> in fixtures)</td><td><span class="d d-have">Have</span></td><td>Uses the send date, not the answer date.</td></tr>
+          <tr><td>Contract change resets history</td><td>Rate card version and effective date</td><td><span class="d d-verify">Verify</span></td><td>Q-E2 (from 02). Needed for Q-06e.</td></tr>
+          <tr><td>Quoted denial reasons</td><td><code>collection.reason</code> (entered by the customer)</td><td><span class="d d-have">Have</span> <span class="d d-new">04 asks at denial</span></td><td>Optional and asked for late today (L4). 04 asks at the moment of denial.</td></tr>
+          <tr><td>Partial-answer reasons</td><td><code>collection.reason</code> on partial</td><td><span class="d d-missing">Missing UI</span></td><td>The field exists but nothing fills it (L4). 04 adds it.</td></tr>
+          <tr><td>Source label, “Recorded by”</td><td><code>collection.changedBy</code>; <code>collection.recordedBy {type}</code></td><td><span class="d d-have">Have</span> <span class="d d-new">New</span></td><td>The type (person / Implentio) comes from 04. Conflict C11.</td></tr>
+          <tr><td>Handled by (you or Implentio)</td><td><code>DisputeRecord.handledBy</code></td><td><span class="d d-new">New</span></td><td>From 03. Used for the source split and the Credit outcomes filter.</td></tr>
+          <tr><td>Late disputes line</td><td><code>sentAfterDeadline</code></td><td><span class="d d-have">Have</span></td><td>The flag itself depends on 01 (C1, Q-S1).</td></tr>
+          <tr><td>“The 3 that included it were paid”</td><td>Dispute attachments + what kind each is</td><td><span class="d d-have">Have</span> <span class="d d-missing">kind missing</span></td><td>Proposed new field <code>attachments[].kind</code> (e.g. <code>rate_sheet</code>). Without it, that sentence is dropped.</td></tr>
+          <tr><td>Reason grouping (“2 mention a contract addendum”)</td><td>Keyword match in the mock; <code>reasonTag</code> later (05)</td><td><span class="d d-new">Optional</span></td><td>Must quote, never paraphrase (n350). Human review? Q-06b.</td></tr>
+          <tr><td>Money clause</td><td><code>varN</code>, <code>collection.amountN</code></td><td><span class="d d-have">Have</span></td><td>Same numbers as 05’s recovery rate (C5).</td></tr>
+          <tr><td>Implentio notes</td><td><code>billerNotes[] {biller, text, author, updatedAt}</code></td><td><span class="d d-verify">Verify</span> <span class="d d-new">New</span></td><td>Only if Q-G2 = yes. Proposed extra field: <code>reviewBy</code> (Q-06c).</td></tr>
+          <tr><td>Thresholds</td><td>Config: <code>{earlySignalMin: 3, patternMin: 6, patternShare: 0.75, windowMonths: 12, tipMinDenials: 2}</code></td><td><span class="d d-new">New</span></td><td>One global config, not per account. Values from Q-G1.</td></tr>
+          <tr><td>Response time, answer rate</td><td><code>collection.answeredOn</code>, no_answer</td><td><span class="d d-missing">Missing</span></td><td>Excluded from guidance until 04 (F4).</td></tr>
+          <tr><td>Pooled benchmarks</td><td>Other accounts’ outcomes</td><td><span class="d d-missing">Missing</span></td><td>Reasons are forbidden (n347). Outcome counts undecided (Q-D3b).</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= 8 QUESTIONS ================= -->
+  <section class="sec" id="questions">
+    <div class="sec-head"><span class="sec-num">8</span><h2>Open questions</h2></div>
+    <p class="small muted">None of these are answered here. Dependencies from other files: Q-S1 (past-deadline flag), Q-S3 and Q-D2 (no-answer result), Q-O3 and Q-O6 (hand-over promise), Q-E2 (rate card on file).</p>
+    <div class="grid2">
+      <div class="q"><b>Q-G1 · Minimum sample for any guidance</b><p>Proposed: 3 for an Early signal, 6 and 75% the same way for a Pattern, a 12-month window, and 2 matching denials for a tip. Is 6 ever reached (see Q-06d)? Should selection points need more than 6?</p></div>
+      <div class="q"><b>Q-G2 · Implentio-written Biller notes</b><p>Can Implentio staff write Biller notes (“QuickBox asks for the rate sheet”)? Who keeps them current? Given n350, can a note describe what a Biller asks for without implying why a dispute was denied?</p></div>
+      <div class="q"><b>Q-D3a · Pooled denial reasons (split from Q-D3)</b><p>n347 forbids rolling up rejection reasons across customers. Confirm that this stays forbidden for guidance.</p></div>
+      <div class="q"><b>Q-D3b · Pooled, anonymised outcome counts (split from Q-D3)</b><p>Are Implentio-wide outcome counts per Biller allowed? If so: as a separate labelled source, with a minimum number of accounts, and never added into “your” counts.</p></div>
+      <div class="q"><b>Q-06a · Guidance on the tracker?</b><p>Should guidance ever appear on the tracker (memo list or finding rows)? Proposed: no. It belongs with the evidence and in Credit outcomes.</p></div>
+      <div class="q"><b>Q-06b · Human review of generated tips</b><p>Should Implentio staff review generated groupings (“2 of the denials mention a contract addendum”, “rate sheet was missing”) before customers see them? n350 bars system-inferred reasons.</p></div>
+      <div class="q"><b>Q-06c · Retiring outdated notes</b><p>How are Implentio notes retired: a review-by date, an expiry, or when the Biller contract changes? What shows when a note is past its review date?</p></div>
+      <div class="q"><b>Q-06d · What volume do typical accounts reach?</b><p>How many answered disputes per Biller × charge type does an account reach in 12 months? If most never reach 6, the Pattern tier, and so every note at selection points, never appears (plan review F10).</p></div>
+      <div class="q"><b>Q-06e · Stale history</b><p>After 12 months, drop it from work screens (proposed) or show it with the date prominent? Does a new contract or rate card reset the history?</p></div>
+      <div class="q"><b>Q-06f · Counting rules</b><p>Is <i>Partly collected</i> “the same way” as <i>Fully collected</i>? Should late disputes and whole-memo disputes stay out of charge-type counts (proposed)?</p></div>
+      <div class="q"><b>Q-06g · Answers recorded by Implentio</b><p>Count them together with your team’s answers and label the source (proposed), or keep them apart? Relates to C11, n344 and n350.</p></div>
+      <div class="q"><b>Q-06h · Anything at selection points?</b><p>Step 1 and the past-deadline flag: show a collapsed Pattern (proposed, F9), or nothing at all?</p></div>
+      <div class="q"><b>Q-06i · When money and counts disagree</b><p>Add a money clause to the sentence (proposed), or leave money to Credit outcomes only?</p></div>
+    </div>
+  </section>
+</main>
+<script id="kit">
+/* Planning kit behaviour — inlined into each file's script block with
+   id="kit" by sync-kit.mjs (never write a closing script tag in this file).
+
+   [data-tabs]          container; its [data-tab="x"] buttons show the matching
+                        [data-panel="x"] inside the same container (nearest).
+   [data-toggle="grp"]  buttons with data-value; sets data-<grp>="value" on the
+                        element named by data-target (default: <body>) and
+                        aria-pressed on the buttons. CSS/JS react to it.
+   window.kit.money(n)  "$1,234.56"
+*/
+(function () {
+  const money = (n) =>
+    (n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  function initTabs(root) {
+    root.querySelectorAll('[data-tabs]').forEach((box) => {
+      const own = (el) => el.closest('[data-tabs]') === box
+      const tabs = [...box.querySelectorAll('[data-tab]')].filter(own)
+      const panels = [...box.querySelectorAll('[data-panel]')].filter(own)
+      const show = (key) => {
+        tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === key)))
+        panels.forEach((p) => (p.hidden = p.dataset.panel !== key))
+        box.dispatchEvent(new CustomEvent('tabchange', { detail: key }))
+      }
+      tabs.forEach((t) => {
+        t.setAttribute('role', 'tab')
+        t.addEventListener('click', () => show(t.dataset.tab))
+      })
+      const first = tabs.find((t) => t.getAttribute('aria-selected') === 'true') ?? tabs[0]
+      if (first) show(first.dataset.tab)
+    })
+  }
+
+  function initToggles(root) {
+    const groups = new Map()
+    root.querySelectorAll('[data-toggle]').forEach((b) => {
+      const g = b.dataset.toggle
+      if (!groups.has(g)) groups.set(g, [])
+      groups.get(g).push(b)
+    })
+    groups.forEach((btns, g) => {
+      const set = (v) => {
+        btns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === v)))
+        const targetSel = btns[0].dataset.target
+        const target = targetSel ? document.querySelector(targetSel) : document.body
+        if (target) target.dataset[g] = v
+        document.dispatchEvent(new CustomEvent('toggle:' + g, { detail: v }))
+      }
+      btns.forEach((b) => b.addEventListener('click', () => set(b.dataset.value)))
+      const first = btns.find((b) => b.getAttribute('aria-pressed') === 'true') ?? btns[0]
+      set(first.dataset.value)
+    })
+  }
+
+  window.kit = { money, initTabs, initToggles }
+  document.addEventListener('DOMContentLoaded', () => {
+    initTabs(document)
+    initToggles(document)
+  })
+})()
+</script>
+<script>
+/* page-specific behaviour (vanilla JS, no libraries) */
+(function () {
+  const svg = (d, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="${d}"/></svg>`
+  const I = {
+    clock: svg('M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'),
+    users: svg('M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z'),
+    warn: svg('M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z', ''),
+    chev: svg('m8.25 4.5 7.5 7.5-7.5 7.5', 'chev'),
+    up: svg('m4.5 15.75 7.5-7.5 7.5 7.5', 'ico'),
+    down: svg('m19.5 8.25-7.5 7.5-7.5-7.5', 'ico'),
+  }
+  const TEAM = `<span class="src">${I.users}From your team’s recorded answers</span>`
+  const CAVEAT = '<p class="caveat">Past results, not a promise.</p>'
+  const see = (n) => `<button type="button" class="lnk sm">See the ${n} disputes</button>`
+  const meta = (...parts) => `<div class="past-meta">${parts.filter(Boolean).join('<span aria-hidden="true">·</span>')}</div>`
+  const past = (body, { title = 'Past disputes like this', src = TEAM, cls = '' } = {}) =>
+    `<div class="past ${cls}"><div class="past-head"><span class="past-title">${I.clock}${title}</span>${src}</div>${body}</div>`
+  const stat = (lbl, val, money) => `<div class="stat"><span class="lbl">${lbl}</span><span class="val${money ? ' money' : ''}">${val}</span></div>`
+
+  /* ---------- mocks ---------- */
+  const dasPast = () =>
+    past(
+      `<p>QuickBox denied 3 of your 4 remote-area fee disputes; 1 was paid in full.</p>
+       <p class="small">2 of the 3 denial answers mention a contract addendum:</p>
+       <div class="quote"><span>“Biller said the surcharge was applied per contract addendum and declined the request.”</span><span class="by">Recorded by Tori Matthews · Sep 3, 2026</span></div>
+       ${meta('<span>Oct 2025 – Aug 2026</span>', see(4))}${CAVEAT}`,
+    )
+
+  function dasCard(g) {
+    return `<div class="card">
+      <div class="fc">
+        <div class="fc-main">
+          <label class="check"><input type="checkbox" aria-label="Include in dispute: Remote-area fee charged incorrectly"></label>
+          <div class="stack s8" style="min-width:0">
+            <div class="fc-title"><h3>Remote-area fee charged incorrectly</h3><span class="tag">Delivery area surcharge (DAS)</span></div>
+            <div class="fc-meta"><span>OSM</span><span>3 packages</span><span>3 invoices</span></div>
+            <p>e.g. one package was billed $14.78; under your contract it should have been $13.22</p>
+            <button type="button" class="lnk bold row" style="gap:4px" aria-expanded="true">Hide why ${I.up}</button>
+          </div>
+        </div>
+        <div class="fc-fin">
+          <div class="stat"><span class="lbl">Overcharged</span><span class="val big money">$4.68</span></div>
+          <span class="chip">Ready to dispute</span>
+          <span class="small muted">Dispute by Sep 20, 2026 · 3 days remaining</span>
+          <button type="button" class="lnk sm bold">Won’t pursue</button>
+        </div>
+      </div>
+      <div class="why">
+        <div class="why-stats">${stat('Billed', '$46.99')}${stat('Should have been', '$42.31')}${stat('Difference', '$4.68', true)}</div>
+        <div class="ex"><span class="mini-eyebrow">One example</span><p>One package was billed $14.78; under your contract it should have been $13.22.</p><p class="small muted">A Zone 7, 5 lb, Premium package on invoice INV-DEMO-0899 was billed $14.78 against $13.22 expected — a $1.56 net variance made up of delivery area surcharge $1.56 unfavourable.</p></div>
+        <div><div class="medium">How we worked it out</div><p class="small muted">The expected amount reflects the delivery area surcharge supported by each destination ZIP code on the package’s ship date.</p></div>
+        <button type="button" class="btn sm" style="align-self:flex-start">See all 3 packages</button>
+        ${g ? dasPast() : ''}
+      </div>
+    </div>`
+  }
+
+  const stepper = (steps, on, done = -1) =>
+    `<div class="stepper">${steps.map((s, i) => `${i ? '<span class="sep"></span>' : ''}<span class="step${i === on ? ' on' : ''}${i <= done ? ' done' : ''}"><b>${i <= done ? '✓' : i + 1}</b>${s}</span>`).join('')}</div>`
+  const selrow = (t, m, a) => `<div class="selrow"><span class="t">${t}</span>${m ? `<span class="m">${m}</span>` : ''}<span class="a">${a}</span></div>`
+  const modal = (title, step, body, foot) =>
+    `<div class="overlay-hint"><div class="modal" role="group" aria-label="${title} (mock)">
+      <div class="modal-head"><h3>${title}</h3><button type="button" class="x-btn" aria-label="Close">✕</button></div>
+      ${step}<div class="modal-body">${body}</div><div class="modal-foot">${foot}</div></div></div>`
+
+  const step1Note = (open) =>
+    `<details class="pn"${open ? ' open' : ''}>
+      <summary>${I.clock}<span>Past disputes with QuickBox · 1 note</span>${I.chev}</summary>
+      <div class="pn-body">
+        <span class="medium">Shipping price higher than your contract rate</span>
+        <p>QuickBox paid 8 of your last 9 shipping-price disputes in full; 1 was partly paid.</p>
+        ${meta('<span>Mar – Aug 2026</span>', TEAM, see(9))}${CAVEAT}
+      </div>
+    </details>`
+
+  function step1(g, open) {
+    return modal(
+      'Dispute with QuickBox',
+      stepper(['What you’re disputing', 'Check the email', 'Review &amp; send'], 0),
+      `<h4>What you’re disputing</h4>
+       <div class="selrows">
+         ${selrow('Shipping price higher than your contract rate', '510 packages · 8 invoices · OSM, UPS', '$9,322.20')}
+         ${selrow('Fuel charge higher than your contract allows', '172 packages · 6 invoices · DHL, UPS', '$35.10')}
+         ${selrow('Remote-area fee charged incorrectly', '3 packages · 3 invoices · OSM', '$4.68')}
+         ${selrow('Shipping price and fuel charge both too high', '154 packages · 13 invoices · OSM', '$3.08')}
+         <div class="seltotal"><span><b>Total you’re claiming: $9,365.06</b> <span class="muted">· 839 packages on 16 invoices</span></span><button type="button" class="lnk sm bold">Change selection</button></div>
+       </div>
+       <p class="dl">${I.clock}<span>Dispute by September 20, 2026 (3 days left). 1 other finding ($22.64) is not included. It stays open until then.</span></p>
+       ${g ? step1Note(open) : ''}`,
+      '<button type="button" class="btn sm">Cancel</button><button type="button" class="btn sm primary">Next: check the email</button>',
+    )
+  }
+
+  function lateCard(n) {
+    const note =
+      n === 7
+        ? `<details class="pn">
+            <summary>${I.clock}<span>Past disputes with QuickBox · 1 note</span>${I.chev}</summary>
+            <div class="pn-body">
+              <span class="medium">Disputes sent after the deadline</span>
+              <p>QuickBox denied 6 of your last 7 disputes sent after the deadline; 1 was paid in full.</p>
+              ${meta('<span>Nov 2025 – Aug 2026</span>', TEAM, see(7))}${CAVEAT}
+            </div>
+          </details>`
+        : '<div class="nothing"><b>Nothing shown.</b> 3 late disputes on record is an Early signal. Selection points show Patterns only (F9).</div>'
+    return `<div class="card">
+      <div class="fc">
+        <div class="fc-main">
+          <label class="check"><input type="checkbox" aria-label="Include in dispute: Home-delivery fee charged incorrectly"></label>
+          <div class="stack s8" style="min-width:0">
+            <div class="fc-title"><h3>Home-delivery fee charged incorrectly</h3><span class="tag">Residential surcharge</span></div>
+            <p class="small muted">Package details aren’t available for this memo.</p>
+            <button type="button" class="lnk bold row" style="gap:4px" aria-expanded="false">Show me why ${I.down}</button>
+          </div>
+        </div>
+        <div class="fc-fin">
+          <div class="stat"><span class="lbl">Overcharged</span><span class="val big money">$3,200.00</span></div>
+          <span class="row" style="gap:6px"><span class="chip">Ready to dispute</span><span class="flag">${I.warn}Past deadline</span></span>
+          <span class="small muted">Deadline was May 15, 2026 · can still be disputed</span>
+          <button type="button" class="lnk sm bold">Won’t pursue</button>
+        </div>
+      </div>
+      ${note}
+    </div>`
+  }
+
+  function handover() {
+    return modal(
+      'Dispute with Flowspace',
+      stepper(['What you’re disputing', 'What Implentio will do', 'Hand over to Implentio'], 1, 0),
+      `<h4>What Implentio will do</h4>
+       <p class="small">Implentio will send this claim to Flowspace’s billing team and record Flowspace’s answers here. You’ll see each step on the dispute card.</p>
+       <div class="selrows">
+         ${selrow('Shipping price higher than your contract rate', '', '$3,900.00')}
+         ${selrow('Fuel charge higher than your contract allows', '', '$1,402.78')}
+         ${selrow('Home-delivery fee charged incorrectly', '', '$500.00')}
+         <div class="seltotal"><b>Total Implentio will claim: $5,802.78</b></div>
+       </div>
+       ${past(
+         `<p>In 2 of your 5 shipping-price disputes, Flowspace said the rate sheet was missing. <b>Implentio will attach your rate sheet.</b></p>${meta('<span>Jan – Aug 2026</span>', see(5))}`,
+         { title: 'From past disputes with Flowspace' },
+       )}
+       <div class="field"><label for="ho-note">Note for Implentio <span class="muted">(optional)</span></label><textarea id="ho-note" class="textarea" placeholder="Anything Implentio should know, e.g. a contact at Flowspace"></textarea></div>`,
+      '<button type="button" class="btn sm">Back</button><button type="button" class="btn sm primary">Next: hand over</button>',
+    )
+  }
+
+  const chip = (a) => (a === 'Denied' ? '<span class="chip danger">Denied</span>' : a === 'Partly collected' ? '<span class="chip attention">Partly collected</span>' : '<span class="chip success">Fully collected</span>')
+  function outcomes() {
+    const rows = [
+      ['CM-2026-0517', 'Aug 20, 2026', 'Denied', '$1,200.00', '$0.00', 'Tori Matthews'],
+      ['CM-2026-0215', 'Mar 2, 2026', 'Denied', '$640.00', '$0.00', 'Sam Okafor'],
+      ['CM-2025-1130', 'Dec 15, 2025', 'Denied', '$310.00', '$0.00', 'Renee Alvarez'],
+      ['CM-2025-0930', 'Oct 21, 2025', 'Fully collected', '$180.00', '$180.00', 'Tori Matthews'],
+    ]
+    return `<div class="frame"><div class="frame-bar">Parcel Credit Tracker › Credit outcomes › By variance type · mock history</div><div class="frame-body">
+      <div class="card">
+        <div class="row between top">
+          <div class="stack s4"><div class="fc-title"><h3>Remote-area fee · QuickBox</h3><span class="tag">Delivery area surcharge (DAS)</span></div><span class="small muted">4 answered · none waiting · sent Oct 2025 – Aug 2026</span></div>
+          <button type="button" class="lnk sm">Close</button>
+        </div>
+        <div class="stack s8">
+          <p class="medium">QuickBox denied 3 of your 4 remote-area fee disputes; 1 was paid in full.</p>
+          <p class="small muted">By amount: $180.00 recovered of $2,330.00 disputed and answered.</p>
+          <div class="row" style="gap:10px">${TEAM}</div>
+          ${CAVEAT}
+        </div>
+        <div class="stack s8">
+          <h4>What QuickBox said, in your team’s words</h4>
+          <div class="quote"><span>“Biller said the surcharge was applied per contract addendum and declined the request.”</span><span class="by">Tori Matthews · CM-2026-0517 · Sep 3, 2026</span></div>
+          <div class="quote"><span>“Applied per contract addendum, no credit.”</span><span class="by">Sam Okafor · CM-2026-0215 · Mar 30, 2026</span></div>
+          <p class="small muted">1 denial has no reason recorded.</p>
+        </div>
+        <div class="scroll-x"><table class="tbl">
+          <thead><tr><th>Credit memo</th><th>Sent</th><th>Answer</th><th class="num">Disputed</th><th class="num">Recovered</th><th>Recorded by</th></tr></thead>
+          <tbody>${rows.map((r) => `<tr><td class="nowrap"><button type="button" class="lnk">${r[0]}</button></td><td class="nowrap">${r[1]}</td><td>${chip(r[2])}</td><td class="num">${r[3]}</td><td class="num">${r[4]}</td><td class="nowrap">${r[5]}</td></tr>`).join('')}
+          <tr class="total"><td>Total</td><td></td><td></td><td class="num">$2,330.00</td><td class="num">$180.00</td><td></td></tr></tbody>
+        </table></div>
+      </div>
+    </div></div>`
+  }
+
+  const srcTeam = () => past(`<p>QuickBox paid 8 of your last 9 shipping-price disputes in full; 1 was partly paid.</p>${meta('<span>Mar – Aug 2026</span>', see(9))}${CAVEAT}`)
+  const srcImpl = () =>
+    past(`<p>QuickBox paid 8 of your last 9 shipping-price disputes in full; 1 was partly paid.</p>${meta('<span>Mar – Aug 2026</span>', see(9))}${CAVEAT}`, {
+      src: `<span class="src">${I.users}From recorded answers · 6 by your team, 3 by Implentio</span>`,
+    })
+  const srcNote = () =>
+    `<div class="stack s8">${past(`<p>QuickBox denied 3 of your 4 remote-area fee disputes; 1 was paid in full.</p>${meta('<span>Oct 2025 – Aug 2026</span>', see(4))}${CAVEAT}`)}
+     <div class="past inote"><div class="past-head"><span class="inote-tag"><span class="dot">I</span>Implentio note</span><span class="src impl">John Yu, Implentio · Updated Aug 12, 2026</span></div>
+       <p>QuickBox checks remote-area fee disputes against its contract addendum. Include the destination ZIP codes and the date of the DAS list used.</p>
+       <p class="tiny muted">Review by Feb 2027</p></div></div>`
+  const srcPool = () =>
+    `<div class="stack s8">${past(`<p>QuickBox denied 3 of your 4 remote-area fee disputes; 1 was paid in full.</p>${meta('<span>Oct 2025 – Aug 2026</span>', see(4))}`)}
+     <div class="past" style="opacity:.55;border-style:dashed"><div class="past-head"><span class="past-title">Across Implentio customers · anonymised</span><span class="k k-unresolved">Hypothetical · Q-D3b</span></div>
+       <p>QuickBox paid 212 of 340 remote-area fee disputes in 2026 across 18 accounts.</p><p class="tiny muted">Not allowed today (n347 for reasons; outcome counts undecided).</p></div></div>`
+
+  const tip = () =>
+    `<div class="card"><div class="fc-title"><h3>Shipping price higher than your contract rate</h3><span class="tag">Base freight</span></div>
+      <div class="why">
+        <div class="ctx-skel">Evidence as today: Billed · Should have been · Difference · How we worked it out (package details aren’t available for this memo)</div>
+        ${past(
+          `<p>Flowspace paid 3 of your 5 shipping-price disputes in full; 2 were denied.</p>
+           <p><b>What was missing:</b> in 2 denied shipping-price disputes Flowspace said the rate sheet was missing. The 3 that included it were paid.</p>
+           <div class="quote"><span>“Flowspace says no <mark class="kw">rate sheet</mark> was attached; resubmit with contract rates.”</span><span class="by">Recorded by Renee Alvarez · Jun 4, 2026</span></div>
+           <div class="quote"><span>“<mark class="kw">Missing rate sheet</mark>.”</span><span class="by">Recorded by Sam Okafor · Mar 19, 2026</span></div>
+           ${meta('<span>Jan – Aug 2026</span>', see(5))}${CAVEAT}`,
+        )}
+        <div class="past inote"><div class="past-head"><span class="inote-tag"><span class="dot">I</span>Implentio note</span><span class="src impl">John Yu, Implentio · Updated Aug 12, 2026</span></div>
+          <p>Flowspace’s billing team asks for the rate sheet with every shipping-price dispute.</p><p class="tiny muted">Review by Feb 2027</p></div>
+      </div></div>`
+
+  const MOCKS = {
+    das: (el) => dasCard(el.dataset.g === '1'),
+    step1: (el) => step1(el.dataset.g === '1', el.dataset.open === '1'),
+    late: (el) => lateCard(Number(el.dataset.n)),
+    handover,
+    outcomes,
+    'src-team': srcTeam,
+    'src-impl': srcImpl,
+    'src-note': srcNote,
+    'src-pool': srcPool,
+    tip,
+  }
+  // Filled synchronously (the script sits at the end of <body>), before the kit's tabs initialise.
+  document.querySelectorAll('[data-mock]').forEach((el) => (el.innerHTML = MOCKS[el.dataset.mock](el)))
+
+  /* ---------- tier explorer ---------- */
+  const SPLIT = { 2: { mixed: [1, 0, 1], paid: [2, 0, 0], denied: [0, 0, 2] }, 4: { mixed: [2, 1, 1], paid: [3, 0, 1], denied: [1, 0, 3] }, 9: { mixed: [5, 2, 2], paid: [8, 1, 0], denied: [1, 1, 7] } }
+  const SENT = {
+    4: {
+      mixed: 'Of your 4 fuel-charge disputes with QuickBox, 2 were paid in full, 1 partly and 1 denied.',
+      paid: 'QuickBox paid 3 of your 4 fuel-charge disputes in full; 1 was denied.',
+      denied: 'QuickBox denied 3 of your 4 fuel-charge disputes; 1 was paid in full.',
+    },
+    9: {
+      mixed: 'Of your last 9 fuel-charge disputes with QuickBox: 5 were paid in full, 2 partly and 2 denied.',
+      paid: 'QuickBox paid 8 of your last 9 fuel-charge disputes in full; 1 was partly paid.',
+      denied: 'QuickBox denied 7 of your last 9 fuel-charge disputes; 1 was partly paid and 1 paid in full.',
+    },
+  }
+  const WIN = { recent: { 2: 'Aug – Sep 2026', 4: 'May – Sep 2026', 9: 'Mar – Sep 2026' }, stale: { 2: 'Jun – Jul 2025', 4: 'Mar – Jul 2025', 9: 'Oct 2024 – Jul 2025' } }
+  const MONTHS = { recent: ['Sep 2026', 'Aug 2026'], stale: ['Jul 2025', 'Jun 2025'] }
+  const ANSWERS = ['Fully collected', 'Partly collected', 'Denied']
+  const PLACES = { why: 'Finding card · Show me why', step1: 'Dispute with QuickBox · step 1 (same rule at the past-deadline flag)', outcomes: 'Credit outcomes › Fuel charge · QuickBox' }
+  const K = { p: '<span class="k k-proposed">Proposed</span>', u: (t) => `<span class="k k-unresolved">${t}</span>` }
+
+  function ctx(place, slot) {
+    if (place === 'why')
+      return `<div class="card"><div class="fc-title"><h3>Fuel charge higher than your contract allows</h3><span class="tag">Fuel surcharge</span></div>
+        <div class="fc-meta"><span>DHL, UPS</span><span>172 packages</span><span>6 invoices</span><span class="money">$35.10</span></div>
+        <div class="why"><div class="ctx-skel">Evidence as today: Billed $5,064.68 · Should have been $5,029.58 · Difference $35.10 · One example · How we worked it out · See all 172 packages</div>${slot}</div></div>`
+    if (place === 'step1')
+      return `<div class="modal"><div class="modal-head"><h3>Dispute with QuickBox</h3></div><div class="modal-body"><h4>What you’re disputing</h4>
+        <div class="selrows">${selrow('Fuel charge higher than your contract allows', '172 packages · 6 invoices · DHL, UPS', '$35.10')}<div class="seltotal"><b>Total you’re claiming: $35.10</b><button type="button" class="lnk sm bold">Change selection</button></div></div>${slot}</div></div>`
+    return `<div class="card"><div class="fc-title"><h3>Fuel charge · QuickBox</h3><span class="tag">Fuel surcharge</span></div>${slot}</div>`
+  }
+
+  function renderExplorer() {
+    const val = (name) => document.querySelector(`input[name="${name}"]:checked`).value
+    const n = Number(val('xn')), mix = val('xmix'), age = val('xage'), place = val('xplace')
+    const split = n ? SPLIT[n][mix] : [0, 0, 0]
+    const top = Math.max(...split)
+    const tier = n < 3 ? 'none' : n < 6 ? 'early' : top / n >= 0.75 ? 'pattern' : 'mixed'
+    const stale = age === 'stale'
+    const win = n ? WIN[age][n] : ''
+    let slot, sees, where, tierLine, fresh
+
+    tierLine = {
+      none: n === 0 ? 'None: no answered cases.' : `None: ${n} answered, fewer than 3.`,
+      early: `Early signal: ${n} answered (3–5). Counts, never percentages, and every outcome named. ${K.p}`,
+      mixed: `Mixed: ${n} answered, but only ${top} the same way (${Math.round((top / n) * 100)}%, under 75%). Counts only, no pattern sentence. ${K.p}`,
+      pattern: `Pattern: ${n} answered and ${top} the same way (${Math.round((top / n) * 100)}%, at least 75%). Past tense, window, link. ${K.p}`,
+    }[tier]
+    where = {
+      why: 'Show me why is context, not a decision point. Early signal, Mixed and Pattern may show here, after the evidence.',
+      step1: 'This is where the customer chooses what to include (Change selection). Only a Pattern may show, collapsed by default (plan review F9). Early signals and Mixed counts stay in Show me why.',
+      outcomes: 'Credit outcomes is the history page. Every tier shows here, with the cases listed.',
+    }[place]
+    fresh = !n
+      ? '—'
+      : tier === 'none'
+        ? `Newest case ${stale ? 'Jul 2025, 14 months ago' : 'Sep 2026'}. Doesn’t matter here: below 3 cases nothing is summed up.`
+        : stale
+        ? `Newest case Jul 2025, 14 months ago, outside the 12-month window. ${place === 'outcomes' ? 'Shown here with the date first and a note about staleness.' : 'Hidden on work screens.'} ${K.u('Q-06e: or show it with the date prominent')}`
+        : 'Newest case Sep 2026, inside the 12-month window.'
+
+    const sentence = n >= 3 ? (stale ? SENT[n][mix].replace('your last', 'your') : SENT[n][mix]) : ''
+    const nothing = (why) => `<div class="nothing"><b>Nothing shown.</b> ${why} The customer sees this view exactly as today.</div>`
+
+    if (tier === 'none') {
+      if (place !== 'outcomes') {
+        slot = nothing(n ? 'Fewer than 3 answered cases.' : 'No answered cases.')
+        sees = 'Nothing'
+      } else if (n === 0) {
+        slot = '<p class="small muted">No past disputes like this yet.</p>'
+        sees = '“No past disputes like this yet.”'
+      } else {
+        const rows = split.flatMap((c, i) => Array(c).fill(ANSWERS[i]))
+        slot = `<p class="small muted">${n} answered disputes so far. That’s too few to sum up.</p>
+          <div class="scroll-x"><table class="tbl"><thead><tr><th>Sent</th><th>Answer</th></tr></thead><tbody>${rows.map((a, i) => `<tr><td>${MONTHS[age][i]}</td><td>${chip(a)}</td></tr>`).join('')}</tbody></table></div>`
+        sees = 'The cases, with no summary sentence'
+      }
+    } else if (stale && place !== 'outcomes') {
+      slot = nothing('The newest case is 14 months old.')
+      sees = 'Nothing (stale)'
+    } else if (place === 'step1' && tier !== 'pattern') {
+      slot = nothing(`${tier === 'early' ? 'An Early signal' : 'Mixed counts'} never shows where the customer chooses what to include.`)
+      sees = 'Nothing (selection point)'
+    } else if (place === 'step1') {
+      slot = `<details class="pn"><summary>${I.clock}<span>Past disputes with QuickBox · 1 note</span>${I.chev}</summary>
+        <div class="pn-body"><span class="medium">Fuel charge higher than your contract allows</span><p>${sentence}</p>${meta(`<span>${win}</span>`, TEAM, see(n))}${CAVEAT}</div></details>`
+      sees = 'One collapsed note (click it to open)'
+    } else if (place === 'why') {
+      slot = past(`<p>${sentence}</p>${meta(`<span>${win}</span>`, see(n))}${CAVEAT}`)
+      sees = tier === 'pattern' ? 'A Pattern sentence' : tier === 'mixed' ? 'The counts, with no pattern sentence' : 'A counts sentence'
+    } else {
+      slot = `<div class="stack s8">${stale ? '<span class="stale">Newest case: Jul 2025, 14 months ago. QuickBox’s terms may have changed since.</span>' : ''}<p class="medium">${sentence}</p>${meta(`<span>${win}</span>`, TEAM, see(n))}${CAVEAT}</div>`
+      sees = stale ? 'The sentence, with a staleness line' : 'The same sentence as in Show me why, plus the cases'
+    }
+
+    document.getElementById('x-bar').textContent = PLACES[place] + ' · hypothetical history'
+    document.getElementById('x-slot').innerHTML = ctx(place, slot)
+    document.getElementById('x-rule').innerHTML = `<span class="mini-eyebrow">Rule that fired</span>
+      <div class="rl"><b>Tier</b><span>${tierLine}</span></div>
+      <div class="rl"><b>Placement</b><span>${where}</span></div>
+      <div class="rl"><b>Freshness</b><span>${fresh}</span></div>
+      <div class="rl"><b>Customer sees</b><span class="sees">${sees}</span></div>
+      <p class="tiny muted">Thresholds (3 / 6 / 75% / 12 months) are proposals. ${K.u('Q-G1')}</p>`
+  }
+  document.querySelectorAll('.xctl input').forEach((i) => i.addEventListener('change', renderExplorer))
+  renderExplorer()
+
+  /* ---------- journey back / next (after the kit's tabs initialise) ---------- */
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-journey]').forEach((box) => {
+      const tabs = [...box.querySelectorAll('.jsteps [data-tab]')]
+      const prev = box.querySelector('[data-jprev]')
+      const next = box.querySelector('[data-jnext]')
+      const pos = box.querySelector('[data-jpos]')
+      const cur = () => tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true')
+      const sync = () => {
+        const i = cur()
+        prev.disabled = i <= 0
+        next.disabled = i >= tabs.length - 1
+        next.textContent = i < tabs.length - 1 ? `Next: ${tabs[i].dataset.short} →` : 'End of the journey'
+        pos.textContent = `Step ${i + 1} of ${tabs.length}`
+      }
+      prev.addEventListener('click', () => tabs[cur() - 1]?.click())
+      next.addEventListener('click', () => tabs[cur() + 1]?.click())
+      box.addEventListener('tabchange', sync)
+      sync()
+    })
+  })
+})()
+</script>
+</body>
+</html>

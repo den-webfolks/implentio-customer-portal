@@ -121,6 +121,8 @@ Missing but required · Duplicate · Figma only / out of scope · Unclear.
 - **Spinner / loading** — 16px spinner ×2, 44px ×1. Keep a `Spinner` on tokens.
 - **Donut chart** (Summary, Outcomes) — Figma: "we don't focus on the design for graph". Keep.
 - **Key-value rows**, **section eyebrows** — typography tokens only.
+- **Segmented** (`src/ui/Segmented`) — two or three views of one thing (Chart / Table, Typical /
+  Largest), from plan 02. Closest Figma item is the unbuilt *Toggle*; recreate in Figma on request.
 
 ## Available in Figma — not currently required
 
@@ -152,7 +154,7 @@ stepper presets `errors|tags|email` (request-credit flow).
 | Toast | `src/ui/Toast` | Migrated — ok→positive, warn→danger |
 | Banner | `src/ui/Banner` | Migrated — simple notices; bespoke cards restyled with tokens |
 | Table primitives | `src/ui/Table` | Migrated — one sort cycle, sticky header on invoices |
-| Popover | — | Built, then removed: no screen needed it (menus cover every overlay) |
+| Popover | `src/ui/Popover` | Rebuilt 2026-09-30 for words that explain themselves (plan 02); Figma 5760:5358, Radix, gallery section |
 
 Removed: `FilterPanel`, `UnderlineTabs`/`SecNav`, old `InfoTip`, `/dev/tokens`, Sora/Montserrat
 fonts, and every unused prototype class (`proto.css` now holds only layout helpers for 2b).
@@ -577,6 +579,171 @@ prepared email* (new finding status); *Request submitted* (connected) / *Sent an
 "Did you send your QuickBox dispute?" email, real .xlsx per finding and the designed summary PDF,
 send failures on the connected route (the demo can't fail).
 
+## Status model: the calendar no longer closes findings (2026-09-29)
+
+Client meeting 2026-09-28 + `prototype-planning/01-status-model.html`; user decisions 2026-09-29
+(option D, no *Closed, no answer*, no dispute-again, Undo any time, "Won't pursue the rest"
+scoped to past-deadline findings). Supersedes the *Expired* rules in "Parcel dispute flow —
+Phase 1" and "Deadlines: only what the prototype had" (notes 342, 349, 360, 364 no longer hold).
+- **Expired is gone.** An unsent finding past its deadline stays *Ready to dispute* (still
+  selectable, still *Won't pursue*-able) with a warning line instead of the countdown: "Past the
+  dispute deadline ({date}) · {Biller} may refuse it" (amber, warning icon, linked to the checkbox
+  with `aria-describedby`). A finding in a prepared email says "Deadline was {date}" with no
+  warning — it may have gone on time.
+- **Money:** past-deadline money stays *Left to dispute*; *Not disputed* is only what the team
+  chose not to pursue. Tracker row: "of $X overcharged · all past the deadline" / "· $Y past the
+  deadline"; status line "Past the dispute deadline ({date})" or "Still to dispute: past the dispute
+  deadline ({date})". Tracker card: "$Y of it is past the dispute deadline (N credit memos)." Credit
+  outcomes: "Past the deadline" under the date; the *Expired* status filter is removed.
+- **Sorting (option D):** in both sorts, memos with open money on time come first, then memos
+  waiting on the Biller, then memos whose only open money is past its deadline. "Check details" on
+  such a memo lands on answers to record before past-deadline findings.
+- **Memo page:** header note "N findings past the dispute deadline"; the summary sentence adds
+  "N findings are past the dispute deadline — {Biller} may refuse them." The selection bar and
+  Review & send step 1 show the earliest *ticked* deadline, and "Past the dispute deadline ({date}).
+  {Biller} may refuse disputes sent after it." when it has passed. Sending late was already
+  recorded as "sent after the deadline".
+- **Won't pursue:** Undo is always offered. New **"Won't pursue the rest (N findings · $X)"**
+  button beside Filter (short enough for a phone; the confirm title says "past the deadline"), shown when an unticked, undecided, unreserved finding is
+  past its deadline; it confirms with the list and amount and marks only those findings (not ticked
+  ones, not ones still on time), whatever the filters show. One activity entry names them; focus
+  then moves to the Findings heading.
+- **Only a decision closes an undisputed memo:** "Closed, not disputed" now always reads "Your team
+  chose not to dispute"; the memo summary's all-skipped sentence is "Nothing left to dispute: your
+  team chose not to pursue these findings."
+- Discarding a prepared email after the deadline: "… become selectable again, marked past the
+  dispute deadline." Step 1's "They stay open until then" is now "They stay open".
+- Demo: scenario `dispute-deadline` is now "deadline close / past deadline".
+
+## Show me why (plan 02, 2026-09-30)
+
+`prototype-planning/02-findings-evidence.html`, at the user's request ("implement this plan").
+Built in code with **no Figma frames**; only `src/ui` components and `--ds-*` tokens. Copy is
+plain language, **pending PM** (`src/domain/finding-copy.ts`: new `method` and `meaning` per
+charge). Logic lives in `src/domain/evidence.ts`; UI in `src/features/memo/evidence/`.
+
+- **Drawn as the plan (2026-09-30, user request "match the document"):** the card, the panel and
+  their phone layout follow the plan's own markup and CSS (`.fc`, `.sc`, `.dv`, `.hg`, `.pkg`,
+  `.srcs2`), mapped onto `--ds-*` tokens (`src/features/memo/evidence/Evidence.module.css`). The
+  switches are a new shared **`Segmented`** (`src/ui/Segmented`, gallery section; no Figma
+  component yet — Figma's *Toggle* is unbuilt). The checkbox stays the DS bordered `Checkbox`.
+- **Step 1, the card:** title; an inline meta line Carrier · Service level (first two, "+N") ·
+  Charge type (the industry term, replacing the tag); the amount right-aligned with "N invoices · N
+  packages"; one action row — **Include in dispute** (not the plan's "dispute package": "package"
+  means one box on this screen) and **Show why / Hide why** (was *Show me why*) — with the status on
+  the right. An open finding shows its deadline as an attention chip, "Dispute by Sep 20 · 3 days
+  left" (past it: a wrapping warning line with an icon, "Past the dispute deadline (Sep 15) ·
+  QuickBox may refuse it" — a chip would cut it off on a phone), and **no longer shows a *Ready to
+  dispute* chip** on the card (its checkbox says it; with no deadline the words show as plain text;
+  the summary table and the Status filter keep the label). The meta line stacks when the card is
+  620px or narrower; the panel fades in (off with reduced motion). Sent, collected, denied, prepared and
+  *Won't pursue* findings show their status chip with its line beside it; *Won't pursue* / *Undo*
+  sits left of the chip. The "e.g. one package was billed…" line is gone. When Implentio marks a
+  finding's name as not matching the money (`driverConfirmed: false`), the card says where it came
+  from before anyone ticks it (note 136). A ticked card takes a brand border. Phones: meta stacked,
+  amount under the title, status above full-width actions.
+- **Step 2, "Show why" in place:** a grey well under the card with section cards (icon, title, a
+  switch on the right). *What makes up the overcharge*: Billed − Your contract = Overcharged in a
+  tinted box, one sentence with the charge in bold ("Almost all of it is the **shipping price**
+  (97%)"; the share only while it can't pass 100%), and every charge on one zero line with round
+  axis ticks — above contract orange to the right, below contract blue to the left — or its table.
+  The plan's legend totals ("adds $10,330.96 · comes off $1,008.76") are **left out**: the plan's own
+  rule (note 3) never totals what was billed below contract. At most one link to another finding
+  carrying ≥10% of the money, plain text if it's filtered out. *Overcharge per package*: one
+  sentence ("Half the packages were **$15–$20 over**. The largest was $106.11." — the plan's
+  "Most" read the middle half, so it says "Half"), and above 25 packages the histogram **shown
+  directly** as in the plan's demo (tallest bucket orange with its count and share, "Top 10%"
+  bracket), or its table. **Fixed 2×2** (user request, 2026-09-30 — was: breakdown/spread paired
+  only when both were charts): breakdown and the example package (*How one package was priced*) on
+  the first row, the spread and how we checked on the second (swapped at the user's request), always, at ≥720px of the panel's own width; each card is its own
+  container (`sc`), so a doc-tile pair or a wide chart only appears once that half-width card has
+  room, not once the whole panel does. *How one package was priced* is a package slip (dashed tear
+  line, "Example package" tag, tracking and invoice, specs with dividers, the charge table with
+  "?" marks): a real **typical** package first
+  — nearest the lower median among packages whose own charge was billed above contract — and
+  *Largest* one tap away; details explain themselves (see *One explanation, everywhere*). **Every charge explains itself the same way** (user request 2026-09-30, modelled on the
+  fuel one): a *Your contract* / *Billed* bar pair on one scale (contract purple, billed orange above
+  or green below, an empty dashed outline for $0.00, amounts at the bar ends), then what the charge is,
+  this package's contract amount against what was billed ("— $20.55 more, about 2× your contract"),
+  and why where the data says so. Fuel shows the shipping price under each bar and says which moved:
+  "It came out $3.08 higher because it was worked out on the overcharged shipping price ($41.10
+  instead of $20.55) — even though the percentage used was lower (20.3% instead of 25.5%)";
+  percentages under half a point apart read "about the same" (`fuelReason`, domain/evidence.ts). The
+  package list's row detail uses the same explained charge table (`ExplainedChargeTable`);
+  **words that need explaining elsewhere open a popover** (user request 2026-09-30, the plan's own
+  glossary "lives where each word is used"), with a dotted underline. The **"?" mark only in
+  tables and on complex labels** (user feedback 2026-09-30: on the card it's visual noise). On the
+  card, underline only: *Service level* and the charge type (e.g. *Base freight*: what it is, your
+  contract against what was billed summed over the finding's packages, the same bar pair, "On your
+  invoice"). With "?": in *What makes up the overcharge* each charge in the chart and its table,
+  and *Billed below your contract*; in the package list *Service level*, *Charges that differ*,
+  and in the full breakdown *Billed weight* and *Zone*. **Obvious words aren't explained**
+  (*Billed*, *Your contract*, *Overcharged* — user feedback 2026-09-30). Wording in `glossary()` (finding-copy.ts, pending PM). The
+  panel's summary bar is now solid (see-through text over scrolling content failed contrast); a fact we can't read stays plain text; on a
+  home-delivery finding home/business isn't offered (the service name is the Biller's claim); the
+  contract zone comes first, the billed one only if different. *How we checked*: the plain method,
+  document tiles with honest states, the invoices matched, the reviewer only when recorded, and the
+  CSM's address shown in full. Footer: *See all N packages* (not for one package) and *Download
+  packages (.csv)* (same name and file as in the package list). On desktop a translucent bar with the title, amount and *Hide why* stays at the
+  top of the well while it scrolls; phones skip it (top bar + selection bar already stack).
+- **Refinements (2026-09-30, user feedback):** the per-package spread sits in the same tinted
+  box as Billed − Your contract (*Half the packages* **$15–$20 over** · *The largest* **$106.11
+  over**; `spreadSummary`); the *Example package* tag is orange (`--ds-orange-100` /
+  `--ds-fg-accent-text`); a ticked card has a 2px brand outline (border + 1px ring, no layout
+  shift), a popover shadow and a light brand tint on its head. The spread chart's axis reads cents
+  only below a dollar ("50¢–$1", "$2–2.5"), and *Top 10%* is marked only on a real tail (the
+  marked buckets hold at most ~20% of packages).
+- **One explanation, everywhere, in one popover** (user feedback 2026-09-30: the same word was
+  explained two ways, in a popover and in place; then "re-use the tooltip design in all places").
+  Every helper — charges (chart, table, card, example package, package-list row detail), package
+  details, glossary words — opens the same `Popover` (`ExplainTerm`) showing one `Explanation`
+  (`ExplanationView`, Explain.tsx); nothing expands in place any more: the word; what
+  it is **in general** (the same sentence wherever it appears: `CHARGE_COPY.meaning` or
+  `glossary()`); then **in your case**, labelled *On this package* / *Across these N packages* /
+  *In this finding*, with the same picture for the same word (charges: the contract-vs-billed bars,
+  fuel with the shipping price under it and `fuelReason` at either scope via `findingTotals`;
+  details: the speed/address/zone drawings) and why it's like that here; then *On your invoice*.
+  Package details keep just the dotted underline (no "?"). Package-list headers explain
+  these packages (service levels with counts, which charges differ on how many packages, the weight
+  and zone ranges); the card's *Service level* lists every level, including the ones behind "+N";
+  *Billed below your contract* lists those charges one by one (never a total). A package whose
+  billed zone differs says both ("On the invoice it's zone 007, but your contract prices it as
+  zone 005").
+- **More example findings** (demo scenario `more-findings`, "Findings — more examples (made-up)";
+  `src/demo/extra-findings.ts`): four made-up findings for what the real memo can't show — one
+  package (*Home-delivery fee charged on a business address*, the plan's example), *Other charges*
+  (address corrections, extra handling; 9 packages), *Shipping price charged for a farther zone*
+  (40 packages, billed zone ≠ contract zone, fuel follows) and *Fuel percentage higher than your
+  contract allows* (30 DHL packages, shipping price right). The golden memo's totals grow with them
+  so the summary adds up; its invoice list doesn't. Findings can carry a specific name
+  (`FindingGroup.problem`), used by the card, the tables and the dispute email.
+- **Step 3 stays the pop-up** (plan option A; Q-E1 open). ≤25 packages: a plain table, no search,
+  filters or pages. Otherwise search, service level, **"Only where <charge> differs"** (replaces
+  the *Highlight charge* select and its banner), Differences only / Full breakdown (both read Billed · Your contract · Difference), 25 per page with
+  Previous/Next (was "Show more"). Differences only = Tracking · Invoice · Service · Billed · Your
+  contract · Difference · **Charges that differ** ("Fuel charge −$1.47 (below contract)"); Order
+  and ship date moved into the row. A tracking number opens *How this package was priced* (the same
+  charge table as step 2). Empty state with *Clear search and filters*; "Filtered view. The
+  finding's total stays $X."; a note when rows round a few cents away from the amount. Phones: the
+  pop-up fills the screen and the list is stacked (tracking, billed · contract · difference).
+  "Should have been" / "Expected" / "Invoiced" read **Your contract** / **Billed** throughout.
+- **One per-finding file everywhere** (user decision 2026-09-30): the email attachment, *Download
+  packages* and the pop-up's download all write Tracking · Invoice · Billed · Contract · Difference
+  from **whole-package** amounts, so the file adds up to the finding. The email example says
+  "tracking X was billed $51.62 in total; our contract says $46.89" (it used to put the package
+  total under the charge's name, e.g. "for home delivery", which was false for home-delivery
+  findings). When Implentio marks a finding's name as not matching its money, the email's claim line
+  doesn't name the charge ("13 packages were charged more than our contract allows"). The pop-up's
+  *Export* (whole memo workbook) is replaced by this file; the workbook
+  stays on *Download credit memo*.
+- **Overrides:** product note 141 (explanation and evidence never open together) and note 175 (no
+  per-package expand, no pop-up for charge detail) no longer hold for this page — plan 02 puts the
+  evidence in one panel and a per-package expand in the package list.
+- **Data:** `FindingGroup.sources?` (kind, status, name, detail, role, fileUrl) and
+  `reviewedBy?/reviewedAt?` are new and **not seeded**: the demo has no real documents (Q-E2) and no
+  review record (Q-E6), so "How we checked" says the documents aren't published yet.
+- "How findings are calculated" no longer promises links to "the rates used".
+
 ## Follow-ups
 
 - Reverted at user request: "View affected packages", the tracker card CTA, and "Review summary"
@@ -593,13 +760,21 @@ send failures on the connected route (the demo can't fail).
 - Whole-memo disputes have no deadline (`disputeDeadline: null` in `listOutcomeRows`), so they
   never show urgency — tied to the open question of who sets deadlines.
 - "New" means "not downloaded"; consider clearing it on the first memo page visit.
-- A memo whose open findings are all "Won't pursue" sits in Done while Undo is still possible.
+- A memo whose open findings are all "Won't pursue" sits in Done while Undo is still possible
+  (Undo now works any time and moves the memo back out of Done).
+- **Open (status model, decide with the client before Phase 3):** real data will reopen every
+  finding that is *Expired* today as *Ready to dispute* past its deadline, so *Left to dispute*
+  jumps for every customer. Options: reopen as-is, or migrate old Expired findings to *Won't pursue*
+  (undoable) at cutover. Also open: whether a tracker-level "Won't pursue" for old memos is needed.
+- Status model (deferred, review 2026-09-29): an Undo action on the "Won't pursue the rest" toast
+  needs an action slot on the shared Toast (not in Figma); a *Past the deadline* option for the
+  findings Status filter; "sent after the deadline" is flagged per dispute, not per finding.
+- CM-2026-0517 (the planning file's example) has no detail data, so its past-deadline findings
+  can't be closed in the demo; its row stays "all past the deadline".
 - The tracker's "Reporting period" filter is still the prototype's demo cut (newest N memos).
 - Review & send: the IT-approval connection state (note 314) has no demo trigger and isn't built;
   Gmail's and Outlook's compose links should be checked with CC and a five-finding message on both
   Outlook hosts (the clipboard fallback covers a failure); the per-memo draft lives in memory only.
-- A finding whose prepared email is discarded after its deadline becomes Expired at once, with no
-  "you could still try" message.
 - Review & send: *Restore the original* discards evidence edits with no undo (deferred, review of
   the 2026-09-25 fixes). Product question: edited evidence never changes what's recorded, reserved
   or attached — leaving an item out is done by changing the selection.
@@ -607,6 +782,16 @@ send failures on the connected route (the demo can't fail).
   get back (recipients, subject and evidence now land on the field one Next away).
 
 - Tracker (and the app): row buttons are the DS small size (32px); the phone touch-target rule (44px) belongs in `Button` / `IconButton`, not per page (deferred, design-skills review 2026-09-25).
+
+- Show me why (plan 02), open with the client: where the package list opens (Q-E1, options B–E);
+  which documents Implentio can attach (Q-E2) — the attached/named/missing tiles have no demo data;
+  **bills Implentio couldn't check** (Q-E3, user decision 2026-09-30: not shown yet — the fixture's
+  6 bills are 4 packages, two tracking numbers appear on two invoices each at the same amount, so
+  count packages and bills separately if they ship); the reviewer badge (Q-E6); the true rule for
+  which finding a package goes in (Q-E8); regrouping name-vs-money findings (Q-E7); whether the
+  spread chart earns its place (Q-02a). Every demo finding has packages, so the one-package
+  wording (built) is never seen and a "no package details" state isn't built; per-finding .xlsx
+  from the backend is not built.
 
 ## Decisions
 

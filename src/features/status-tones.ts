@@ -3,7 +3,7 @@
  * prototype's per-screen colours; agreed in DESIGN-SYSTEM.md):
  * eligible = neutral, awaiting = info, partial = attention,
  * collected = success, declined / not issued = danger,
- * superseded / expired / historical / not pursued = muted.
+ * superseded / historical / not pursued = muted.
  */
 import type { StatusTone } from '@/ui/Chip/StatusChip'
 import type { CollectionStatus } from '@/domain/types'
@@ -23,7 +23,6 @@ export const GROUP_STATUS_TONE: Record<GroupStatusKey, StatusTone> = {
   fully_collected: 'success',
   declined: 'danger',
   not_pursued: 'muted',
-  expired: 'muted',
   prepared: 'attention',
 }
 

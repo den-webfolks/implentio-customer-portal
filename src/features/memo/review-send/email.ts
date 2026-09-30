@@ -81,10 +81,19 @@ export interface BuildOptions {
 
 /** The Biller's dispute contact, or any contact for that Biller. */
 export function billerContact(account: AccountSettings, provider: string) {
-  return account.billerContacts.find((c) => c.biller === provider && c.dispute) ?? account.billerContacts.find((c) => c.biller === provider) ?? null
+  return (
+    account.billerContacts.find((c) => c.biller === provider && c.dispute) ??
+    account.billerContacts.find((c) => c.biller === provider) ??
+    null
+  )
 }
 
-export function buildEmailModel({ detail, groups, account, includeComplete }: BuildOptions): DisputeEmailModel {
+export function buildEmailModel({
+  detail,
+  groups,
+  account,
+  includeComplete,
+}: BuildOptions): DisputeEmailModel {
   const memo = detail.memo
   const wholeMemo = detail.findingsUnavailable
   const contact = billerContact(account, memo.provider)
@@ -145,7 +154,8 @@ export function buildEmailModel({ detail, groups, account, includeComplete }: Bu
     kind: 'summary',
     mimeType: 'application/pdf',
     rows: null,
-    description: 'A one-page summary of the request, for the approver who won’t open a spreadsheet.',
+    description:
+      'A one-page summary of the request, for the approver who won’t open a spreadsheet.',
     build: () => Promise.resolve(simplePdf(summaryLines(input))),
   })
   if (input.completeFile) attachments.push(completeSpec)
@@ -180,7 +190,14 @@ export function buildEmailModel({ detail, groups, account, includeComplete }: Bu
     groupIds: groups.map((g) => g.id),
     details,
     rows: wholeMemo
-      ? [{ id: 'complete', title: 'Complete credit memo', meta: `${packages.toLocaleString('en-US')} packages · ${invoices} invoices`, amountN }]
+      ? [
+          {
+            id: 'complete',
+            title: 'Complete credit memo',
+            meta: `${packages.toLocaleString('en-US')} packages · ${invoices} invoices`,
+            amountN,
+          },
+        ]
       : [...groups]
           .sort((a, b) => b.varN - a.varN)
           .map((g) => ({
@@ -200,7 +217,12 @@ export function buildEmailModel({ detail, groups, account, includeComplete }: Bu
 
 /** Every attachment in one .zip, for web mail where files are attached by hand. */
 export async function attachmentsZip(model: DisputeEmailModel): Promise<Blob> {
-  const entries = await Promise.all(model.attachments.map(async (a) => ({ name: a.name, data: new Uint8Array(await (await a.build()).arrayBuffer()) })))
+  const entries = await Promise.all(
+    model.attachments.map(async (a) => ({
+      name: a.name,
+      data: new Uint8Array(await (await a.build()).arrayBuffer()),
+    })),
+  )
   return buildZip(entries)
 }
 
@@ -213,7 +235,10 @@ export interface EmailSnapshot {
   attachments: string[]
 }
 
-export function snapshotOf(model: DisputeEmailModel, fields: { to: string; cc: string; subject: string; edits: EmailEdits }): EmailSnapshot {
+export function snapshotOf(
+  model: DisputeEmailModel,
+  fields: { to: string; cc: string; subject: string; edits: EmailEdits },
+): EmailSnapshot {
   return {
     to: fields.to,
     cc: fields.cc,
@@ -224,12 +249,22 @@ export function snapshotOf(model: DisputeEmailModel, fields: { to: string; cc: s
 }
 
 /** True when what's in the app differs from what last left it. */
-export function changedSinceHandoff(snapshot: EmailSnapshot, record: DisputeRecord | null): boolean {
+export function changedSinceHandoff(
+  snapshot: EmailSnapshot,
+  record: DisputeRecord | null,
+): boolean {
   const last = record?.handoffs[record.handoffs.length - 1]
   if (!last) return false
-  return last.to !== snapshot.to || last.cc !== snapshot.cc || last.subject !== snapshot.subject || last.body !== snapshot.body || last.attachments.join('|') !== snapshot.attachments.join('|')
+  return (
+    last.to !== snapshot.to ||
+    last.cc !== snapshot.cc ||
+    last.subject !== snapshot.subject ||
+    last.body !== snapshot.body ||
+    last.attachments.join('|') !== snapshot.attachments.join('|')
+  )
 }
 
-export const subjectFor = (memo: MemoDetail['memo']) => defaultSubject({ period: memo.period, memoId: memo.id })
+export const subjectFor = (memo: MemoDetail['memo']) =>
+  defaultSubject({ period: memo.period, memoId: memo.id })
 
 export const amountText = fmtMoney

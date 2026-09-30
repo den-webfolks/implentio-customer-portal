@@ -10,18 +10,13 @@ import { daysUntilDeadline, deadlineCountdown, fmtDateLong } from './dates'
 
 type Groupish = DisputeState & { amountN?: number | null; threePl?: string }
 
-/** A group can still be disputed: already pursued, no deadline, or before it. */
-export function groupEligible(g: Groupish, now: Date): boolean {
-  if (g.pursuit === 'pursued') return true
-  if (!g.disputeDeadline) return true
-  return daysUntilDeadline(g.disputeDeadline, now) >= 0
-}
-
-/** The dispute window closed before the group was pursued. A finding in a
- *  prepared email is never Expired until the customer says whether it was
- *  sent (decision, 2026-09-25). */
-export function groupExpired(g: Groupish, now: Date): boolean {
-  return g.pursuit !== 'pursued' && !g.prepared && !groupEligible(g, now)
+/** Not sent and its dispute deadline has passed. A warning, never a state:
+ *  the calendar doesn't close findings — only a decision (Won't pursue) or a
+ *  Biller answer does (client meeting 2026-09-28; replaces "Expired"). */
+export function groupPastDeadline(g: Groupish, now: Date): boolean {
+  return (
+    g.pursuit !== 'pursued' && !!g.disputeDeadline && daysUntilDeadline(g.disputeDeadline, now) < 0
+  )
 }
 
 /** Reserved by an email prepared but not confirmed as sent. */
@@ -46,10 +41,18 @@ export function outcomeCollection(
   opts: { amountN?: number; date?: string | null; reason?: string } = {},
 ): Collection {
   const amt = opts.amountN ?? 0
-  const final: CollectionStatus = status === 'partial' && Math.abs(amt - pursuedN) < 0.005 ? 'full' : status
+  const final: CollectionStatus =
+    status === 'partial' && Math.abs(amt - pursuedN) < 0.005 ? 'full' : status
   return {
     status: final,
-    amountN: final === 'full' ? pursuedN : final === 'not_issued' ? 0 : final === 'partial' ? r2(amt) : null,
+    amountN:
+      final === 'full'
+        ? pursuedN
+        : final === 'not_issued'
+          ? 0
+          : final === 'partial'
+            ? r2(amt)
+            : null,
     date: opts.date ?? null,
     reason: final === 'not_issued' || final === 'partial' ? (opts.reason ?? '') : '',
     history: [],
@@ -74,7 +77,6 @@ export type GroupStatusKey =
   | 'partly_collected'
   | 'declined'
   | 'not_pursued'
-  | 'expired'
   | 'prepared'
 
 export interface GroupStatusLine {
@@ -85,6 +87,8 @@ export interface GroupStatusLine {
   showAction: boolean
   subtleAction?: boolean
   muted?: boolean
+  /** Not sent and past its dispute deadline: the card shows a warning. */
+  pastDeadline?: boolean
 }
 
 export const STATUS_LABELS: Record<GroupStatusKey, string> = {
@@ -94,17 +98,18 @@ export const STATUS_LABELS: Record<GroupStatusKey, string> = {
   partly_collected: COLLECTION_LABELS.partial,
   declined: COLLECTION_LABELS.not_issued,
   not_pursued: 'Won’t pursue',
-  expired: 'Expired',
   prepared: 'In a prepared email',
 }
 
 const joinParts = (parts: (string | null | false | undefined)[]) =>
   parts.filter(Boolean).join(' · ')
 
+/** "Dispute by … · N days remaining", or the past-deadline warning. */
 function deadlineText(g: Groupish, now: Date): string {
-  return g.disputeDeadline
-    ? `Dispute by ${fmtDateLong(g.disputeDeadline)} · ${deadlineCountdown(g.disputeDeadline, now)}`
-    : ''
+  if (!g.disputeDeadline) return ''
+  return groupPastDeadline(g, now)
+    ? `Past the dispute deadline (${fmtDateLong(g.disputeDeadline)}) · ${g.threePl || 'The Biller'} may refuse it`
+    : `Dispute by ${fmtDateLong(g.disputeDeadline)} · ${deadlineCountdown(g.disputeDeadline, now)}`
 }
 
 export function groupStatusLine(
@@ -154,39 +159,32 @@ export function groupStatusLine(
     }
   }
 
-  // Reserved until the customer says whether the prepared email was sent.
+  // Reserved until the customer says whether the prepared email was sent. It
+  // may have gone on time, so a passed deadline is stated, not warned about.
   if (groupPrepared(g)) {
     return {
       key: 'prepared',
       label: STATUS_LABELS.prepared,
-      secondary: joinParts(['Not confirmed as sent', deadlineText(g, now)]),
+      secondary: joinParts([
+        'Not confirmed as sent',
+        groupPastDeadline(g, now)
+          ? `Deadline was ${fmtDateLong(g.disputeDeadline)}`
+          : deadlineText(g, now),
+      ]),
       showAction: false,
     }
   }
-  // A customer decision is never relabelled Expired (product note n359);
-  // it can be undone only while the window is open (n360).
+  // A customer decision; Undo any time, since the calendar no longer closes
+  // findings (Q-S2, user decision 2026-09-29; was: only before the deadline, n360).
   if (g.pursuit === 'excluded') {
-    const open = groupEligible(g, now)
     return {
       key: 'not_pursued',
       label: STATUS_LABELS.not_pursued,
       muted: true,
-      secondary: joinParts(['You chose not to pursue this', open && deadlineText(g, now)]),
+      secondary: 'You chose not to pursue this',
       actionLabel: 'Undo',
-      showAction: open,
-      subtleAction: open,
-    }
-  }
-  if (groupExpired(g, now)) {
-    return {
-      key: 'expired',
-      label: STATUS_LABELS.expired,
-      muted: true,
-      secondary: joinParts([
-        `Dispute window closed ${fmtDateLong(g.disputeDeadline)}`,
-        g.amountN != null && `${fmtMoney(g.amountN)} not disputed`,
-      ]),
-      showAction: false,
+      showAction: true,
+      subtleAction: true,
     }
   }
   return {
@@ -196,28 +194,30 @@ export function groupStatusLine(
     actionLabel: 'Won’t pursue',
     showAction: true,
     subtleAction: true,
+    pastDeadline: groupPastDeadline(g, now),
   }
 }
 
 // ---------- Finding phase -----------------------------------------------------
 
-/** Where a finding sits in the customer's work: still open to dispute,
- *  waiting on the Biller, or closed (collected, partly collected, declined,
- *  not pursued, or expired). */
+/** Where a finding sits in the customer's work: still open to dispute (past
+ *  its deadline or not), waiting on the Biller, or closed (collected, partly
+ *  collected, declined, or not pursued). */
 export type FindingPhase = 'open' | 'waiting' | 'closed'
 
-export function findingPhase(g: Groupish, now: Date): FindingPhase {
+export function findingPhase(g: Groupish): FindingPhase {
   if (g.pursuit === 'pursued')
     return !g.collection || g.collection.status === 'awaiting' ? 'waiting' : 'closed'
-  if (g.pursuit === 'excluded') return 'closed'
-  return groupExpired(g, now) ? 'closed' : 'open'
+  return g.pursuit === 'excluded' ? 'closed' : 'open'
 }
 
 // ---------- Recovery buckets -------------------------------------------------
 
 /** Five non-overlapping money buckets; together they equal the total
  *  identified. A partly collected finding splits across Collected and Not
- *  recovered (partly collected is final — decision 5). */
+ *  recovered (partly collected is final — decision 5). Past-deadline money
+ *  stays Left to dispute; Not disputed is only what the team chose not to
+ *  pursue (status model, option D). */
 export type RecoveryBucketKey = 'open' | 'awaiting' | 'collected' | 'notRecovered' | 'notDisputed'
 
 export type RecoveryBuckets = Record<RecoveryBucketKey, number>
@@ -230,10 +230,10 @@ export const RECOVERY_BUCKETS: { key: RecoveryBucketKey; label: string }[] = [
   { key: 'notDisputed', label: 'Not disputed' },
 ]
 
-function itemBuckets(g: Groupish, now: Date): Partial<RecoveryBuckets> {
+function itemBuckets(g: Groupish): Partial<RecoveryBuckets> {
   const amt = g.amountN ?? 0
   if (g.pursuit !== 'pursued')
-    return findingPhase(g, now) === 'open' ? { open: amt } : { notDisputed: amt }
+    return findingPhase(g) === 'open' ? { open: amt } : { notDisputed: amt }
   switch (g.collection?.status) {
     case 'full':
       return { collected: amt }
@@ -248,10 +248,16 @@ function itemBuckets(g: Groupish, now: Date): Partial<RecoveryBuckets> {
   }
 }
 
-export function recoveryBuckets(items: readonly Groupish[], now: Date): RecoveryBuckets {
-  const out: RecoveryBuckets = { open: 0, awaiting: 0, collected: 0, notRecovered: 0, notDisputed: 0 }
+export function recoveryBuckets(items: readonly Groupish[]): RecoveryBuckets {
+  const out: RecoveryBuckets = {
+    open: 0,
+    awaiting: 0,
+    collected: 0,
+    notRecovered: 0,
+    notDisputed: 0,
+  }
   for (const g of items) {
-    const b = itemBuckets(g, now)
+    const b = itemBuckets(g)
     for (const k of Object.keys(b) as RecoveryBucketKey[]) out[k] += b[k] ?? 0
   }
   for (const k of Object.keys(out) as RecoveryBucketKey[]) out[k] = r2(out[k])
@@ -259,8 +265,8 @@ export function recoveryBuckets(items: readonly Groupish[], now: Date): Recovery
 }
 
 /** Whether an item carries money in a bucket (table filtering by slice). */
-export function bucketMatch(g: Groupish, key: RecoveryBucketKey, now: Date): boolean {
-  return (itemBuckets(g, now)[key] ?? 0) > 0.005
+export function bucketMatch(g: Groupish, key: RecoveryBucketKey): boolean {
+  return (itemBuckets(g)[key] ?? 0) > 0.005
 }
 
 // ---------- Memo status -------------------------------------------------------
@@ -293,9 +299,14 @@ export interface MemoStatus {
   draftDate: string | null
   collectedN: number
   notRecoveredN: number
-  /** Earliest deadline among open findings (ISO date), and days left to it. */
+  /** Earliest deadline not yet passed among open findings (ISO date), and
+   *  days left to it. Past deadlines never count down. */
   nextDeadline: string | null
   daysLeft: number | null
+  /** Open findings past their dispute deadline (still disputable), and the
+   *  latest of those deadlines. Prepared ones don't count: they may have gone
+   *  on time. */
+  pastDeadline: CountAmount & { deadline: string | null }
 }
 
 /** The unsent dispute draft: findings not in `excludedIds` are selected. */
@@ -318,15 +329,22 @@ export function memoStatus(
     count: arr.length,
     amountN: r2(arr.reduce((s, g) => s + (g.amountN ?? 0), 0)),
   })
-  const open = items.filter((g) => findingPhase(g, now) === 'open')
-  const waiting = items.filter((g) => findingPhase(g, now) === 'waiting')
-  const closed = items.filter((g) => findingPhase(g, now) === 'closed')
+  const open = items.filter((g) => findingPhase(g) === 'open')
+  const waiting = items.filter((g) => findingPhase(g) === 'waiting')
+  const closed = items.filter((g) => findingPhase(g) === 'closed')
   const prepared = open.filter(groupPrepared)
-  const selected = draft ? open.filter((g) => !groupPrepared(g) && !draft.excludedIds.includes(g.id)) : []
-  const deadlines = open.map((g) => g.disputeDeadline).filter((d): d is string => !!d).sort()
+  const selected = draft
+    ? open.filter((g) => !groupPrepared(g) && !draft.excludedIds.includes(g.id))
+    : []
+  const past = open.filter((g) => !groupPrepared(g) && groupPastDeadline(g, now))
+  const deadlines = open
+    .filter((g) => !groupPastDeadline(g, now))
+    .map((g) => g.disputeDeadline)
+    .filter((d): d is string => !!d)
+    .sort()
   const nextDeadline = deadlines[0] ?? null
   const daysLeft = nextDeadline ? daysUntilDeadline(nextDeadline, now) : null
-  const buckets = recoveryBuckets(items, now)
+  const buckets = recoveryBuckets(items)
 
   const key: MemoStatusKey = open.length ? 'ready' : waiting.length ? 'waiting' : 'done'
   return {
@@ -344,6 +362,15 @@ export function memoStatus(
     notRecoveredN: buckets.notRecovered,
     nextDeadline,
     daysLeft,
+    pastDeadline: {
+      ...tally(past),
+      deadline:
+        past
+          .map((g) => g.disputeDeadline)
+          .filter((d): d is string => !!d)
+          .sort()
+          .pop() ?? null,
+    },
   }
 }
 

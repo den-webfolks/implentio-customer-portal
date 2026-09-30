@@ -61,7 +61,7 @@ reading order, progressive disclosure).
 ## Demo/scenario harness (temporary infrastructure)
 
 `?demo=1` shows the scenario picker; `?scenario=<id>` seeds the fixture store
-(18 scenarios, see `src/demo/scenarios.ts`). Useful URLs:
+(21 scenarios, see `src/demo/scenarios.ts`). Useful URLs:
 `/tracker/memos?demo=1`, `/memos/CM-2026-0630?scenario=dispute-awaiting&demo=1`.
 Playwright tests use these as setup. Revisit/remove before any
 customer-facing deployment (see ARCHITECTURE.md).

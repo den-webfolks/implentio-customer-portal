@@ -13,6 +13,7 @@ import styles from './ReviewSend.module.css'
 
 export function StepSelection({
   model,
+  provider,
   deadline,
   notIncluded,
   canChange,
@@ -20,7 +21,8 @@ export function StepSelection({
   titleRef,
 }: {
   model: DisputeEmailModel
-  /** Earliest deadline among the selected findings. */
+  provider: string
+  /** Earliest deadline among the selected findings; negative days once passed. */
   deadline: { date: string; daysLeft: number } | null
   /** Open findings left out of this dispute. */
   notIncluded: { count: number; amountN: number } | null
@@ -38,7 +40,9 @@ export function StepSelection({
           <div key={r.id} className={styles.selRow}>
             <span className="ds-body-base ds-w-medium">{r.title}</span>
             <span className={`ds-body-small ds-muted ${styles.selMeta}`}>{r.meta}</span>
-            <span className={`ds-body-base ds-w-semi ${styles.selAmount}`}>{fmtMoney(r.amountN)}</span>
+            <span className={`ds-body-base ds-w-semi ${styles.selAmount}`}>
+              {fmtMoney(r.amountN)}
+            </span>
           </div>
         ))}
         <div className={styles.selTotal}>
@@ -60,15 +64,23 @@ export function StepSelection({
         <p className={`ds-body-base ${styles.deadline}`}>
           <ClockIcon aria-hidden="true" />
           <span>
-            {deadline && (
-              <>
-                Dispute by {fmtDateLong(deadline.date)} ({countdownText(deadline.daysLeft).toLowerCase()}).{' '}
-              </>
-            )}
+            {deadline &&
+              (deadline.daysLeft < 0 ? (
+                <>
+                  Past the dispute deadline ({fmtDateLong(deadline.date)}). {provider} may refuse
+                  disputes sent after it.{' '}
+                </>
+              ) : (
+                <>
+                  Dispute by {fmtDateLong(deadline.date)} (
+                  {countdownText(deadline.daysLeft).toLowerCase()}).{' '}
+                </>
+              ))}
             {notIncluded && (
               <>
-                {plural(notIncluded.count, 'other finding')} ({fmtMoney(notIncluded.amountN)}) {notIncluded.count === 1 ? 'is' : 'are'} not included. {notIncluded.count === 1 ? 'It stays' : 'They stay'} open
-                {deadline ? ' until then' : ''}.
+                {plural(notIncluded.count, 'other finding')} ({fmtMoney(notIncluded.amountN)}){' '}
+                {notIncluded.count === 1 ? 'is' : 'are'} not included.{' '}
+                {notIncluded.count === 1 ? 'It stays' : 'They stay'} open.
               </>
             )}
           </span>
@@ -133,7 +145,13 @@ export function RecipientsHeader({
             validation={invalidTo ? 'invalid' : undefined}
             message={invalidTo ?? undefined}
             // Always a line under the field, so an error replaces it rather than pushing the rest down.
-            caption={!hasContact || !fields.to.trim() ? `Add ${provider}’s billing email` : toChanged ? `Instead of ${contactEmail}, the dispute contact on file` : `${provider}’s dispute contact, from your Biller contacts`}
+            caption={
+              !hasContact || !fields.to.trim()
+                ? `Add ${provider}’s billing email`
+                : toChanged
+                  ? `Instead of ${contactEmail}, the dispute contact on file`
+                  : `${provider}’s dispute contact, from your Biller contacts`
+            }
           />
           <TextField
             ref={ccRef}
@@ -149,9 +167,21 @@ export function RecipientsHeader({
           />
         </div>
         <div className={styles.subjectRow}>
-          <TextField ref={subjectRef} label="Subject" type="text" value={fields.subject} onChange={(e) => onChange({ subject: e.target.value })} />
+          <TextField
+            ref={subjectRef}
+            label="Subject"
+            type="text"
+            value={fields.subject}
+            onChange={(e) => onChange({ subject: e.target.value })}
+          />
           {fields.subject !== defaultSubject && (
-            <Link variant="accent" size="small" bold onClick={() => onChange({ subject: defaultSubject })} style={{ marginBottom: 10 }}>
+            <Link
+              variant="accent"
+              size="small"
+              bold
+              onClick={() => onChange({ subject: defaultSubject })}
+              style={{ marginBottom: 10 }}
+            >
               Reset
             </Link>
           )}
@@ -168,7 +198,9 @@ export function RecipientsHeader({
           <Checkbox
             checked={fields.saveContact}
             onCheckedChange={(on) => onChange({ saveContact: on })}
-            label={<span className="ds-w-medium">Save this address as {provider}’s dispute contact</span>}
+            label={
+              <span className="ds-w-medium">Save this address as {provider}’s dispute contact</span>
+            }
           />
         )}
       </div>

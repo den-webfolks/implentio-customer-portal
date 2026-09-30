@@ -133,7 +133,7 @@ const STATUS_ICON: Record<RowStatus['icon'], ReactNode> = {
   active: <PaperAirplaneIcon aria-hidden="true" />,
   open: <ClockIcon aria-hidden="true" />,
   closed: <CheckCircleIcon aria-hidden="true" />,
-  expired: <NoSymbolIcon aria-hidden="true" />,
+  skipped: <NoSymbolIcon aria-hidden="true" />,
 }
 
 function MemoRow({ r, demo, onDownload }: { r: MemoRowView; demo: boolean; onDownload: () => void }) {
@@ -342,6 +342,13 @@ export function MemosTab() {
                       <>
                         {' '}
                         Next deadline {shortDate(summary.toDispute.nextDeadline)} · {countdownText(summary.toDispute.daysLeft).toLowerCase()}.
+                      </>
+                    )}
+                    {summary.toDispute.pastDeadline.amountN > 0.005 && (
+                      <>
+                        {' '}
+                        {b.open - summary.toDispute.pastDeadline.amountN > 0.005 ? `${fmtMoney(summary.toDispute.pastDeadline.amountN)} of it is` : 'All of it is'} past the dispute deadline
+                        {summary.toDispute.pastDeadline.memos > 1 ? ` (${plural(summary.toDispute.pastDeadline.memos, 'credit memo')})` : ''}.
                       </>
                     )}
                   </p>

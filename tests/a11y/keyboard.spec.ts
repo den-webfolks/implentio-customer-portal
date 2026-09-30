@@ -36,7 +36,7 @@ test('escape closes the filter menu and returns focus to its trigger', async ({ 
 
 test('escape closes only the top layer at a time', async ({ page }) => {
   await page.goto('/memos/CM-2026-0630')
-  await page.locator('#finding-eg-base').getByRole('button', { name: 'Show me why' }).click()
+  await page.locator('#finding-eg-base').getByRole('button', { name: 'Show why' }).click()
   await page.locator('#finding-eg-base').getByRole('button', { name: /^See all/ }).click()
   const modal = page.getByRole('dialog', { name: /^All 510 packages/ })
   await expect(modal).toBeVisible()

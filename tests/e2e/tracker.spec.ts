@@ -8,10 +8,11 @@ test('the summary adds up the rows, and the list puts most left to dispute first
   const summary = page.getByRole('region', { name: 'Where your money is' })
   await expect(summary.getByText('$49,513.43')).toBeVisible()
   await expect(summary.getByText(/overcharged across 6 credit memos/)).toBeVisible()
-  await expect(summary.getByText('$19,075.62')).toBeVisible()
+  await expect(summary.getByText('$25,603.32')).toBeVisible()
+  await expect(summary.getByText(/\$6,527\.70 of it is past the dispute deadline \(2 credit memos\)\./)).toBeVisible()
   await expect(summary.getByText('$9,410.11')).toBeVisible()
   await expect(summary.getByText('80.7%')).toBeVisible()
-  await expect(summary.getByText('$9,327.70')).toBeVisible()
+  await expect(summary.getByText('$2,800.00').first()).toBeVisible()
   await expect(page.getByRole('heading', { name: '7 credit memos · 1 with no overcharges' })).toBeVisible()
   await expect(page.getByText(/^Audit in progress: CM-2026-0714/)).toBeVisible()
   await expect(page.locator('article h3')).toHaveText(['CM-2026-0630', 'CM-2026-0531', 'CM-2026-0514', 'CM-2026-0430', 'CM-2026-0517', 'CM-2026-0328'])
@@ -20,18 +21,18 @@ test('the summary adds up the rows, and the list puts most left to dispute first
   await expect(page.locator('article').getByText('Left to dispute', { exact: true })).toHaveCount(6)
   await expect(row(page, 'CM-2026-0630').getByText('Not disputed yet')).toBeVisible()
   await expect(row(page, 'CM-2026-0630').getByText('Dispute by Sep 20, 2026 · 3 days remaining')).toBeVisible()
-  // Everything sent: $0.00 left, the rest once each, and the active dispute.
+  // Past the deadline stays left to dispute, said under the number; the rest once each.
   const waiting = row(page, 'CM-2026-0517')
-  await expect(waiting.getByText('$0.00', { exact: true })).toBeVisible()
-  await expect(waiting.getByText('of $22,250.00 overcharged')).toBeVisible()
+  await expect(waiting.getByText('$5,050.00', { exact: true })).toBeVisible()
+  await expect(waiting.getByText('of $22,250.00 overcharged · all past the deadline')).toBeVisible()
   await expect(waiting.getByRole('list', { name: 'The rest of this memo' }).getByRole('listitem')).toHaveText([
     '$2,700.00 waiting',
     '$11,700.00 recovered',
     '$2,800.00 not recovered',
-    '$5,050.00 not disputed',
   ])
   await expect(waiting.getByText('Active dispute')).toBeVisible()
   await expect(waiting.getByText('Sent Aug 22, 2026 · 26 days ago')).toBeVisible()
+  await expect(waiting.getByText('Still to dispute: past the dispute deadline (May 15, 2026)')).toBeVisible()
   // One button on every row, landing on the memo's next step.
   await expect(page.getByRole('link', { name: /^Check details for / })).toHaveCount(6)
   await expect(details(page, 'CM-2026-0517')).toHaveAttribute('href', '/memos/CM-2026-0517?outcomes=1')
@@ -42,7 +43,7 @@ test('the summary adds up the rows, and the list puts most left to dispute first
 test('the summary total matches Credit outcomes, in the same words', async ({ page }) => {
   await page.goto('/tracker/outcomes')
   await expect(page.getByRole('button', { name: 'Total identified $49,513.43', exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Left to dispute $19,075.62', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Left to dispute $25,603.32', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Recovered $11,700.00', exact: true })).toBeVisible()
 })
 
@@ -95,11 +96,10 @@ test('Finished is collapsed and opens by itself when it is all that is left', as
 test('outcomes tab covers every memo and its slices filter the findings table', async ({ page }) => {
   await page.goto('/tracker/outcomes')
   await expect(page.getByText('Showing 22 of 22 findings')).toBeVisible()
-  await page.getByRole('button', { name: 'Left to dispute $19,075.62', exact: true }).click()
-  await expect(page.getByText(/Showing 11 of 22 findings/)).toBeVisible()
-  await page.getByRole('button', { name: 'Clear all' }).click()
-  await page.getByRole('button', { name: 'Not disputed $6,527.70', exact: true }).click()
-  await expect(page.getByText(/Showing 4 of 22 findings/)).toBeVisible()
+  // Past-deadline findings stay left to dispute, flagged in the table.
+  await page.getByRole('button', { name: 'Left to dispute $25,603.32', exact: true }).click()
+  await expect(page.getByText(/Showing 15 of 22 findings/)).toBeVisible()
+  await expect(page.getByText('Past the deadline', { exact: true })).toHaveCount(4)
 })
 
 test('a memo with a close deadline shows the prototype countdown and opens on its findings', async ({ page }) => {

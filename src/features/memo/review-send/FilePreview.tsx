@@ -40,12 +40,18 @@ export function FilePreview({ file, onClose }: { file: AttachmentSpec; onClose: 
               <tbody>
                 {shown.map((r) => (
                   <tr key={`${r.tracking}|${r.invoice}`}>
-                    <td className="nowrap" style={{ fontFamily: 'var(--ds-font-mono)', fontSize: 12 }}>
+                    <td
+                      className="nowrap"
+                      style={{ fontFamily: 'var(--ds-font-mono)', fontSize: 12 }}
+                    >
                       {r.tracking}
                     </td>
                     <td className="num">{fmtMoney(r.billedN)}</td>
                     <td className="num">{fmtMoney(r.contractN)}</td>
-                    <td className="num" style={{ color: 'var(--ds-fg-accent-text)', fontWeight: 600 }}>
+                    <td
+                      className="num"
+                      style={{ color: 'var(--ds-fg-accent-text)', fontWeight: 600 }}
+                    >
                       {posMoney(r.differenceN)}
                     </td>
                   </tr>

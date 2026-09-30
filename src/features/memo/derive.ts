@@ -4,7 +4,14 @@
  * shared memo status in domain/outcomes) and the findings view-model
  * (~13962–14075).
  */
-import type { Collection, DisputeRecord, DisputeState, FindingGroup, MemoDetail, PackageRecord } from '@/domain/types'
+import type {
+  Collection,
+  DisputeRecord,
+  DisputeState,
+  FindingGroup,
+  MemoDetail,
+  PackageRecord,
+} from '@/domain/types'
 import { fmtMoney, posMoney, r2 } from '@/domain/money'
 import { excelDate } from '@/domain/dates'
 import { groupStatusLine, type MemoStatus } from '@/domain/outcomes'
@@ -39,16 +46,24 @@ export type DisputeItem = DisputeState & {
 export const COMPLETE_MEMO_TITLE = 'Complete credit memo'
 
 /** Disputes that were sent (the cards); prepared and discarded ones are not. */
-export const sentDisputes = (disputes: readonly DisputeRecord[]) => disputes.filter((d) => d.state === 'sent')
+export const sentDisputes = (disputes: readonly DisputeRecord[]) =>
+  disputes.filter((d) => d.state === 'sent')
 
 /** The memo's one email prepared but not confirmed as sent, if any. */
-export const preparedDispute = (disputes: readonly DisputeRecord[]) => disputes.find((d) => d.state === 'prepared') ?? null
+export const preparedDispute = (disputes: readonly DisputeRecord[]) =>
+  disputes.find((d) => d.state === 'prepared') ?? null
 
-export function memoDisputeItems(detail: MemoDetail, disputes: readonly DisputeRecord[]): DisputeItem[] {
+export function memoDisputeItems(
+  detail: MemoDetail,
+  disputes: readonly DisputeRecord[],
+): DisputeItem[] {
   const provider = detail.memo.provider
   const sent = sentDisputes(disputes)
   const prepared = preparedDispute(disputes)
-  const reserved = (id: string) => (prepared?.groupIds.includes(id) ? { prepared: true, preparedAt: prepared.preparedAt ?? null } : {})
+  const reserved = (id: string) =>
+    prepared?.groupIds.includes(id)
+      ? { prepared: true, preparedAt: prepared.preparedAt ?? null }
+      : {}
   if (detail.findingsUnavailable) {
     const d = sent.find((x) => x.scope === 'memo')
     return [
@@ -61,7 +76,9 @@ export function memoDisputeItems(detail: MemoDetail, disputes: readonly DisputeR
         pursuedTs: d?.sentAt ?? null,
         disputeDeadline: null,
         collection: d?.collection ?? null,
-        ...(prepared?.scope === 'memo' && !d ? { prepared: true, preparedAt: prepared.preparedAt ?? null } : {}),
+        ...(prepared?.scope === 'memo' && !d
+          ? { prepared: true, preparedAt: prepared.preparedAt ?? null }
+          : {}),
       },
     ]
   }
@@ -87,16 +104,31 @@ export interface DisputeSection {
   rows: { id: string; title: string; amountN: number; collection: Collection | null }[]
 }
 
-export function disputeSections(detail: MemoDetail, disputes: readonly DisputeRecord[]): DisputeSection[] {
+export function disputeSections(
+  detail: MemoDetail,
+  disputes: readonly DisputeRecord[],
+): DisputeSection[] {
   return sentDisputes(disputes).map((record) => ({
     record,
     rows:
       record.scope === 'memo'
-        ? [{ id: record.id, title: COMPLETE_MEMO_TITLE, amountN: record.amountN, collection: record.collection }]
+        ? [
+            {
+              id: record.id,
+              title: COMPLETE_MEMO_TITLE,
+              amountN: record.amountN,
+              collection: record.collection,
+            },
+          ]
         : detail.findingGroups
             .filter((g) => record.groupIds.includes(g.id))
             .sort((a, b) => b.varN - a.varN)
-            .map((g) => ({ id: g.id, title: findingProblem(g), amountN: g.varN, collection: g.collection })),
+            .map((g) => ({
+              id: g.id,
+              title: findingProblem(g),
+              amountN: g.varN,
+              collection: g.collection,
+            })),
   }))
 }
 
@@ -126,6 +158,12 @@ export function workspaceSummary(input: {
   if (!st) return null
   const findings = (n: number) => plural(n, 'finding')
   const isAre = (n: number) => (n === 1 ? 'is' : 'are')
+  // Past the deadline is a warning on open findings, never a reason they close.
+  const past = st.pastDeadline.count
+  const pastClause =
+    past > 0
+      ? `${past === st.open.count ? (past === 1 ? 'The finding is' : 'All of them are') : `${findings(past)} ${isAre(past)}`} past the dispute deadline — ${provider} may refuse ${past === 1 ? 'it' : 'them'}.`
+      : ''
   const ofTotal = `of ${fmtMoney(totalN)} overcharged`
   const total = { label: 'Total overcharged', amountN: totalN, context: foundText }
   if (st.prepared.count > 0) {
@@ -140,13 +178,19 @@ export function workspaceSummary(input: {
     if (wholeMemo)
       return {
         hero: total,
-        sentence: 'A breakdown by finding isn’t available, so you’ll dispute the complete credit memo.',
+        sentence:
+          'A breakdown by finding isn’t available, so you’ll dispute the complete credit memo.',
         action: 'send',
       }
     if (!hasDisputes)
       return {
         hero: total,
-        sentence: `Tick the findings you want to claim back from ${provider}, then choose Review & send.`,
+        sentence: [
+          `Tick the findings you want to claim back from ${provider}, then choose Review & send.`,
+          pastClause,
+        ]
+          .filter(Boolean)
+          .join(' '),
         action: null,
       }
     const waitingClause =
@@ -155,7 +199,9 @@ export function workspaceSummary(input: {
         : ''
     return {
       hero: { label: 'Still to dispute', amountN: st.open.amountN, context: ofTotal },
-      sentence: [`${findings(st.open.count)} can still be disputed.`, waitingClause].filter(Boolean).join(' '),
+      sentence: [`${findings(st.open.count)} can still be disputed.`, pastClause, waitingClause]
+        .filter(Boolean)
+        .join(' '),
       action: null,
     }
   }
@@ -168,8 +214,16 @@ export function workspaceSummary(input: {
       action: null,
     }
   return hasDisputes
-    ? { hero: { label: 'Recovered', amountN: st.collectedN, context: ofTotal }, sentence: 'Every finding has a final outcome.', action: null }
-    : { hero: total, sentence: 'Nothing left to dispute: the deadline has passed for every finding.', action: null }
+    ? {
+        hero: { label: 'Recovered', amountN: st.collectedN, context: ofTotal },
+        sentence: 'Every finding has a final outcome.',
+        action: null,
+      }
+    : {
+        hero: total,
+        sentence: 'Nothing left to dispute: your team chose not to pursue these findings.',
+        action: null,
+      }
 }
 
 /** Biggest findings first. With more than 3, show those covering 95% of the

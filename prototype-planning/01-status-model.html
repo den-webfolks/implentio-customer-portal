@@ -1,0 +1,911 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 · Status & dispute eligibility — Implentio planning</title>
+<style id="kit">
+/* Planning kit — shared by every prototype-planning/*.html file.
+   Inlined into each file's style block with id="kit" by sync-kit.mjs, so
+   every file stays self-contained (never write a closing style tag here). Edit here, then run:
+     node prototype-planning/_kit/sync-kit.mjs
+   Token values are copied from src/styles/tokens.css (--ds-*). */
+
+:root {
+  --ds-purple-700: #34287c; --ds-purple-600: #4535a5; --ds-purple-500: #5642ce;
+  --ds-purple-300: #bbb3eb; --ds-purple-100: #eeecfa;
+  --ds-orange-700: #913806; --ds-orange-500: #f25e0a; --ds-orange-100: #feefe6;
+  --ds-neutral-900: #10103e; --ds-neutral-800: #393863; --ds-neutral-700: #61608b;
+  --ds-neutral-600: #9a98b7; --ds-neutral-500: #bab8d1; --ds-neutral-400: #cccadc;
+  --ds-neutral-300: #e0dfec; --ds-neutral-200: #eceafa; --ds-neutral-100: #f6f4fe;
+  --ds-neutral-50: #f7f6f9; --ds-neutral-0: #ffffff;
+  --ds-red-500: #aa261b; --ds-red-100: #fbd8d6; --ds-green-500: #3a802f; --ds-green-100: #d3edce;
+  --ds-yellow-500: #9c6d11; --ds-yellow-100: #ffeac2;
+  --ds-blue-800: #1f4366; --ds-blue-500: #477db2; --ds-blue-300: #9dcaf5; --ds-blue-100: #d9ecff;
+
+  --fg: var(--ds-neutral-900); --muted: var(--ds-neutral-700); --faint: var(--ds-neutral-600);
+  --bg: var(--ds-neutral-50); --surface: var(--ds-neutral-0);
+  --line: rgba(16, 16, 62, 0.1); --line-2: rgba(16, 16, 62, 0.16); --line-3: rgba(16, 16, 62, 0.24);
+  --brand: var(--ds-purple-500); --brand-dark: var(--ds-purple-600); --brand-soft: var(--ds-purple-100);
+  --money: var(--ds-orange-700); --accent-soft: var(--ds-orange-100);
+  --focus: var(--ds-blue-300);
+
+  --t-neutral-fg: var(--ds-purple-500); --t-neutral-bg: var(--ds-purple-100);
+  --t-info-fg: var(--ds-blue-800); --t-info-bg: var(--ds-blue-100);
+  --t-success-fg: #2e6a28; --t-success-bg: var(--ds-green-100);
+  --t-attention-fg: #7f5a14; --t-attention-bg: var(--ds-yellow-100);
+  --t-danger-fg: var(--ds-red-500); --t-danger-bg: var(--ds-red-100);
+  --t-muted-fg: var(--ds-neutral-700); --t-muted-bg: var(--ds-neutral-50);
+
+  /* chart colours = the app's TONE_CHART_COLOR */
+  --c-open: var(--ds-purple-500); --c-wait: var(--ds-blue-500); --c-good: var(--ds-green-500);
+  --c-part: var(--ds-yellow-500); --c-bad: var(--ds-red-500); --c-none: var(--ds-neutral-500);
+
+  --r-s: 4px; --r-m: 6px; --r-l: 8px; --r-xl: 12px;
+  --shadow: 0 1px 0 rgba(27, 31, 35, 0.04);
+  --shadow-pop: 0 1px 0 rgba(27, 31, 35, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+  --font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* planning-layer colours (annotations, never product UI) */
+  --k-existing: #5d5c78; --k-existing-bg: #eceaf3;
+  --k-confirmed: #1f4366; --k-confirmed-bg: #d9ecff;
+  --k-proposed: #913806; --k-proposed-bg: #feefe6;
+  --k-unresolved: #7f5a14; --k-unresolved-bg: #ffeac2;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 400 14px/1.5 var(--font); letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums;
+}
+h1, h2, h3, h4 { margin: 0; letter-spacing: -0.02em; font-weight: 600; line-height: 1.25; }
+h1 { font-size: 28px; letter-spacing: -0.03em; }
+h2 { font-size: 21px; }
+h3 { font-size: 16px; }
+h4 { font-size: 14px; }
+p { margin: 0; }
+a { color: var(--brand); text-decoration: none; font-weight: 500; }
+a:hover { text-decoration: underline; }
+button { font: inherit; letter-spacing: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+ul, ol { margin: 0; padding-inline-start: 20px; }
+li + li { margin-top: 4px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
+
+/* ---------- document shell ---------- */
+.doc { max-width: 1200px; margin: 0 auto; padding: 28px 24px 96px; display: flex; flex-direction: column; gap: 40px; }
+.doc-head { display: flex; flex-direction: column; gap: 10px; }
+.crumbs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 13px; }
+.crumbs a { font-weight: 500; }
+.eyebrow { font: 600 12px/1.3 var(--font); letter-spacing: 0.05em; text-transform: uppercase; color: var(--brand); }
+.lede { font-size: 16px; color: var(--muted); max-width: 80ch; }
+.toc {
+  position: sticky; top: 0; z-index: 50; display: flex; gap: 6px; flex-wrap: wrap;
+  padding: 10px 0; margin: -10px 0 0; background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(6px); border-bottom: 1px solid var(--line);
+}
+.toc a { padding: 4px 10px; border-radius: 99px; font-size: 13px; color: var(--muted); border: 1px solid var(--line); background: var(--surface); }
+.toc a:hover { color: var(--brand); border-color: var(--ds-purple-300); text-decoration: none; }
+.sec { display: flex; flex-direction: column; gap: 16px; scroll-margin-top: 64px; }
+.sec-head { display: flex; flex-direction: column; gap: 6px; }
+.sec-num { font: 600 12px/1 var(--font); color: var(--faint); letter-spacing: 0.05em; text-transform: uppercase; }
+.sub { display: flex; flex-direction: column; gap: 12px; }
+.prose { max-width: 78ch; }
+.prose > * + * { margin-top: 8px; }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+.small { font-size: 13px; }
+.tiny { font-size: 12px; }
+.semi { font-weight: 600; }
+.medium { font-weight: 500; }
+.nowrap { white-space: nowrap; }
+.money { color: var(--money); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* layout helpers */
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.row.top { align-items: flex-start; }
+.between { justify-content: space-between; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.stack.s4 { gap: 4px; } .stack.s8 { gap: 8px; } .stack.s16 { gap: 16px; } .stack.s24 { gap: 24px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+.grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+
+/* ---------- planning layer (annotations) ---------- */
+.k { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 99px; font: 600 11px/18px var(--font); letter-spacing: 0.02em; white-space: nowrap; vertical-align: middle; }
+.k::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.k-existing { color: var(--k-existing); background: var(--k-existing-bg); }
+.k-confirmed { color: var(--k-confirmed); background: var(--k-confirmed-bg); }
+.k-proposed { color: var(--k-proposed); background: var(--k-proposed-bg); }
+.k-unresolved { color: var(--k-unresolved); background: var(--k-unresolved-bg); }
+.cx { display: inline-block; padding: 1px 7px; border-radius: var(--r-s); font: 600 11px/18px var(--font); border: 1px solid currentColor; white-space: nowrap; }
+.cx-change { color: var(--k-confirmed); }
+.cx-compat { color: var(--ds-green-500); }
+.cx-conflict { color: var(--ds-red-500); }
+.cx-verify { color: var(--k-unresolved); }
+.legend { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); }
+
+/* .note and .q are block containers: inline text inside them flows normally. */
+.note {
+  border: 1px dashed var(--line-3); border-radius: var(--r-l); background: #fffdf7;
+  padding: 12px 14px; font-size: 13px; color: var(--ds-neutral-800);
+}
+.note > .note-label { display: block; margin-bottom: 6px; font: 600 11px/1 var(--font); letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+.note > * + *:not(.note-label) { margin-top: 6px; }
+.q {
+  border-inline-start: 3px solid var(--ds-yellow-500); background: var(--k-unresolved-bg);
+  border-radius: 0 var(--r-m) var(--r-m) 0; padding: 10px 12px; font-size: 13px;
+}
+.q > b:first-child { display: block; margin-bottom: 4px; color: var(--k-unresolved); }
+.q > * + * { margin-top: 4px; }
+.problem { border-inline-start: 3px solid var(--ds-red-500); background: #fff6f5; border-radius: 0 var(--r-m) var(--r-m) 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.box.tint { background: var(--ds-neutral-100); }
+
+/* planning tables */
+.ptable { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); overflow: hidden; }
+.ptable th { text-align: start; font-weight: 600; color: var(--muted); background: var(--ds-neutral-50); padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+.ptable td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ptable tr:last-child td { border-bottom: 0; }
+.scroll-x { overflow-x: auto; border-radius: var(--r-l); }
+.d { display: inline-block; padding: 0 6px; border-radius: var(--r-s); font: 600 11px/18px var(--font); white-space: nowrap; }
+.d-have { background: var(--ds-green-100); color: #2e6a28; }
+.d-verify { background: var(--ds-yellow-100); color: #7f5a14; }
+.d-missing { background: var(--ds-red-100); color: var(--ds-red-500); }
+.d-new { background: var(--ds-blue-100); color: var(--ds-blue-800); }
+
+details.more { border: 1px solid var(--line); border-radius: var(--r-l); background: var(--surface); }
+details.more > summary { cursor: pointer; padding: 10px 14px; font-weight: 600; list-style: none; display: flex; gap: 8px; align-items: center; }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::before { content: '▸'; color: var(--faint); transition: transform 120ms; }
+details.more[open] > summary::before { transform: rotate(90deg); }
+details.more > .more-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+/* compare columns */
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; align-items: start; }
+.compare > .col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.col-head { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+
+/* segmented control & tabs (planning + app) */
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--r-l); background: var(--ds-neutral-200); flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; padding: 5px 12px; border-radius: var(--r-m); cursor: pointer; font-weight: 500; color: var(--muted); font-size: 13px; }
+.seg button[aria-pressed='true'], .seg button[aria-selected='true'] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow-pop); }
+.tabs { display: flex; gap: 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { border: 0; background: none; padding: 8px 2px 10px; cursor: pointer; color: var(--muted); font-weight: 500; font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button[aria-selected='true'] { color: var(--brand); border-bottom-color: var(--brand); }
+[data-panel][hidden] { display: none !important; }
+
+/* ---------- product UI mock (looks like the app) ---------- */
+/* Inline labels never stretch when they sit in a flex column. */
+.chip, .tag, .k, .cx, .d, .owner, .flag { width: fit-content; max-width: 100%; }
+.frame { border: 1px solid var(--line-2); border-radius: var(--r-xl); background: var(--bg); overflow: hidden; box-shadow: var(--shadow-pop); }
+.frame-bar { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--surface); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--faint); }
+.frame-bar::before { content: ''; width: 34px; height: 8px; background: radial-gradient(circle, var(--ds-neutral-400) 3.5px, transparent 4px) 0 0 / 12px 8px repeat-x; }
+.frame-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.frame.narrow { max-width: 420px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow); padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+.card.flat { box-shadow: none; }
+.card.accent { border-inline-start: 3px solid var(--brand); }
+.card.waiting { background: #f3f8fe; border-color: #d4e4f5; border-inline-start: 3px solid var(--ds-blue-500); }
+.card.warn { background: #fffaf0; border-color: #f1ddb2; border-inline-start: 3px solid var(--ds-yellow-500); }
+.card.implentio { background: #f7f5fe; border-color: #ddd8f6; border-inline-start: 3px solid var(--brand); }
+
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--r-m); font: 500 12px/20px var(--font); white-space: nowrap; background: var(--t-neutral-bg); color: var(--t-neutral-fg); vertical-align: middle; }
+.chip.lg { font-size: 14px; line-height: 24px; padding: 2px 10px; }
+.chip.info { background: var(--t-info-bg); color: var(--t-info-fg); }
+.chip.success { background: var(--t-success-bg); color: var(--t-success-fg); }
+.chip.attention { background: var(--t-attention-bg); color: var(--t-attention-fg); }
+.chip.danger { background: var(--t-danger-bg); color: var(--t-danger-fg); }
+.chip.muted { background: var(--t-muted-bg); color: var(--t-muted-fg); box-shadow: inset 0 0 0 1px var(--line); }
+.tag { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 99px; font: 500 12px/20px var(--font); border: 1px solid var(--line-2); color: var(--fg); background: var(--surface); white-space: nowrap; }
+.owner { display: inline-flex; align-items: center; gap: 5px; font: 500 12px/20px var(--font); color: var(--brand-dark); }
+.owner .dot { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--brand); color: #fff; font: 700 10px/1 var(--font); }
+.owner.you .dot { background: var(--ds-neutral-700); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 7px 12px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); color: var(--fg); font: 500 14px/1.46 var(--font); cursor: pointer; box-shadow: var(--shadow); white-space: nowrap; }
+.btn:hover { box-shadow: 0 1px 0 rgba(27, 31, 35, 0.12); }
+.btn.primary { background: var(--brand); border-color: var(--line); color: #fff; }
+.btn.primary:hover { background: var(--brand-dark); }
+.btn.sm { min-height: 32px; padding: 5px 11px; font-size: 13px; }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.lnk { border: 0; background: none; padding: 0; color: var(--brand); font-weight: 500; cursor: pointer; font-size: inherit; text-align: start; }
+.lnk:hover { text-decoration: underline; }
+.lnk.sm { font-size: 13px; }
+.lnk.bold { font-weight: 600; }
+
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat .lbl { font-size: 12px; color: var(--muted); }
+.stat .val { font-size: 18px; font-weight: 600; }
+.stat .val.big { font-size: 28px; letter-spacing: -0.03em; }
+.hero-amt { font: 600 34px/1.05 var(--font); letter-spacing: -0.03em; color: var(--money); }
+
+.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tbl th { text-align: start; color: var(--muted); font-weight: 400; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: bottom; }
+.tbl td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.tbl tbody tr:hover td { background: var(--ds-neutral-50); }
+.tbl .num, .tbl th.num { text-align: end; }
+.tbl tr.total td { font-weight: 600; background: var(--ds-neutral-50); }
+.tbl td.diff { color: var(--money); font-weight: 600; }
+.tbl tr.hl td { background: #fff8e8; }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label, .field .flabel { font-size: 13px; font-weight: 500; }
+.input, .textarea, .select { width: 100%; border: 1px solid var(--line-2); border-radius: var(--r-m); padding: 7px 10px; font: 400 14px/1.4 var(--font); background: var(--surface); color: var(--fg); }
+.textarea { min-height: 72px; resize: vertical; }
+.hint { font-size: 12px; color: var(--muted); }
+.radios { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.radios label { display: inline-flex; align-items: center; gap: 8px; padding: 5px 11px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); cursor: pointer; font-size: 14px; }
+.radios input { accent-color: var(--brand); margin: 0; }
+.radios label:has(input:checked) { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+.choice { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-l); background: var(--surface); cursor: pointer; }
+.choice input { accent-color: var(--brand); margin-top: 3px; }
+.choice:has(input:checked) { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); background: #fbfaff; }
+.check { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
+.check input { accent-color: var(--brand); width: 16px; height: 16px; margin: 0; }
+
+.banner { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--r-l); border: 1px solid var(--line); font-size: 13.5px; }
+.banner.info { background: var(--ds-blue-100); border-color: #bcd8f5; }
+.banner.warn { background: var(--ds-yellow-100); border-color: #f1d9a4; }
+.banner.good { background: var(--ds-green-100); border-color: #b9dcb2; }
+.banner.brand { background: var(--brand-soft); border-color: var(--ds-purple-300); }
+
+.stepper { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.stepper .step { display: inline-flex; align-items: center; gap: 6px; }
+.stepper .step b { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--ds-neutral-200); color: var(--muted); font-size: 11px; }
+.stepper .step.on { color: var(--fg); font-weight: 600; }
+.stepper .step.on b { background: var(--brand); color: #fff; }
+.stepper .step.done b { background: var(--ds-green-500); color: #fff; }
+.stepper .sep { width: 24px; height: 1px; background: var(--line-2); }
+
+.modal { border: 1px solid var(--line-2); border-radius: var(--r-xl); background: var(--surface); box-shadow: 0 12px 40px rgba(16, 16, 62, 0.18); display: flex; flex-direction: column; overflow: hidden; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.modal-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--line); background: var(--ds-neutral-50); flex-wrap: wrap; }
+.overlay-hint { background: rgba(16, 16, 62, 0.28); padding: 20px; border-radius: var(--r-xl); }
+
+/* bars */
+.bar { display: flex; height: 10px; border-radius: 99px; overflow: hidden; background: var(--ds-neutral-200); gap: 2px; }
+.bar > span { display: block; height: 100%; }
+.bar.thin { height: 8px; }
+.bar.tall { height: 14px; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; vertical-align: middle; margin-inline-end: 4px; }
+
+/* timeline */
+.tl { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; }
+.tl li { position: relative; padding: 0 0 14px 22px; margin: 0; }
+.tl li::before { content: ''; position: absolute; left: 4px; top: 5px; width: 9px; height: 9px; border-radius: 50%; background: var(--surface); border: 2px solid var(--line-3); }
+.tl li::after { content: ''; position: absolute; left: 8px; top: 16px; bottom: 0; width: 1px; background: var(--line-2); }
+.tl li:last-child::after { display: none; }
+.tl li.done::before { background: var(--ds-green-500); border-color: var(--ds-green-500); }
+.tl li.now::before { background: var(--brand); border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+.tl li.todo { color: var(--faint); }
+
+/* ---------- diagrams ---------- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; row-gap: 12px; }
+.flow .node { padding: 8px 12px; border-radius: var(--r-l); border: 1px solid var(--line-2); background: var(--surface); font-weight: 500; font-size: 13px; display: flex; flex-direction: column; gap: 2px; justify-content: center; min-width: 96px; }
+.flow .node small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.flow .arrow { align-self: center; color: var(--faint); padding: 0 6px; font-size: 16px; }
+.node.n-open { border-color: var(--ds-purple-300); background: var(--ds-purple-100); }
+.node.n-wait { border-color: #bcd8f5; background: var(--ds-blue-100); }
+.node.n-good { border-color: #b9dcb2; background: var(--ds-green-100); }
+.node.n-bad { border-color: #f0b8b3; background: var(--ds-red-100); }
+.node.n-part { border-color: #f1d9a4; background: var(--ds-yellow-100); }
+.node.n-muted { border-color: var(--line-2); background: var(--ds-neutral-50); color: var(--muted); }
+.node.n-new { border-style: dashed; border-color: var(--ds-orange-500); background: #fff8f3; }
+.node.n-gone { border-style: dashed; color: var(--faint); background: repeating-linear-gradient(135deg, #fff, #fff 6px, #f6f5f9 6px, #f6f5f9 12px); text-decoration: line-through; }
+
+/* print-ish */
+@media print { .toc { position: static; } body { background: #fff; } }
+@media (max-width: 640px) { .doc { padding: 16px 16px 64px; gap: 28px; } h1 { font-size: 23px; } .frame-body { padding: 14px; } }
+</style>
+<style>
+/* state explorer */
+.lanes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 900px) { .lanes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .lanes { grid-template-columns: 1fr; } }
+.lane { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.lane-h { font: 600 11px/1.2 var(--font); letter-spacing: 0.05em; text-transform: uppercase; color: var(--faint); display: flex; justify-content: space-between; gap: 6px; }
+.st { text-align: start; cursor: pointer; border-radius: var(--r-m); border: 1px solid var(--line-2); background: var(--surface); padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; transition: opacity 120ms, box-shadow 120ms; }
+.st:hover { box-shadow: var(--shadow-pop); }
+.st .st-sub { font-size: 12px; color: var(--muted); }
+.st.sel { box-shadow: 0 0 0 2px var(--brand); border-color: var(--brand); }
+.st.next { box-shadow: 0 0 0 2px var(--ds-green-500); }
+.st.dim { opacity: 0.35; }
+.st.gone { background: repeating-linear-gradient(135deg, #fff, #fff 6px, #f6f5f9 6px, #f6f5f9 12px); }
+.st.gone .chip { text-decoration: line-through; }
+.st.newst { border-style: dashed; border-color: var(--ds-orange-500); }
+.lane-arrow { display: none; }
+.xp { display: grid; grid-template-columns: 1fr; gap: 12px; }
+#explain { max-width: 860px; }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; font-size: 13px; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; }
+.tr-row { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.tr-row:first-child { border-top: 0; }
+.dims { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 12px; }
+.dim-card { border-radius: var(--r-l); padding: 14px; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--line); background: var(--surface); }
+.dim-card h3 { font-size: 15px; }
+/* walkthrough */
+.walk { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 760px) { .walk { grid-template-columns: 1fr; } }
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.steps li { margin: 0; }
+.steps button { width: 100%; text-align: start; border: 1px solid transparent; background: none; border-radius: var(--r-m); padding: 7px 10px; cursor: pointer; display: flex; gap: 8px; align-items: baseline; color: var(--muted); }
+.steps button b { font-size: 11px; color: var(--faint); min-width: 14px; }
+.steps button[aria-current='step'] { background: var(--surface); border-color: var(--brand); color: var(--fg); font-weight: 500; }
+.mini-finding { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: start; }
+@media (max-width: 560px) { .mini-finding { grid-template-columns: 1fr; } }
+.flag { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: #7f5a14; background: var(--ds-yellow-100); border-radius: var(--r-m); padding: 2px 8px; }
+.flag svg { width: 14px; height: 14px; }
+/* options */
+.trow { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.6fr); gap: 16px; align-items: center; }
+@media (max-width: 760px) { .trow { grid-template-columns: 1fr; } }
+.big-left { font: 600 24px/1.1 var(--font); letter-spacing: -0.03em; }
+.opt-verdict { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; }
+.cat li { list-style: none; }
+.cat { padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 10px; }
+.cat li { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+</style>
+</head>
+<body>
+<main class="doc">
+  <header class="doc-head">
+    <nav class="crumbs" aria-label="Planning files"><a href="00-overview.html">← Overview</a><span>·</span><a href="../docs/client-app-prototype-plan.md">Plan document</a><span>·</span><span>Exploration 01 of 06</span></nav>
+    <div class="eyebrow">Planning exploration · not production UI</div>
+    <h1>Status &amp; dispute eligibility model</h1>
+    <p class="lede">What states a finding can be in, what moves it between them, what really closes it — and what happens now that a passed deadline no longer closes anything.</p>
+    <div class="legend"><span class="k k-existing">Existing</span><span class="k k-confirmed">Newly confirmed</span><span class="k k-proposed">Proposed</span><span class="k k-unresolved">Unresolved</span><span>· Memo CM-2026-0517 and the golden memo are real demo data.</span></div>
+  </header>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#problem">1 Problem</a><a href="#compare">2 Current vs proposed</a><a href="#model">3 Proposed model</a><a href="#flow">4 Main flow</a><a href="#states">5 States</a><a href="#edge">6 Edge cases</a><a href="#data">7 Data</a><a href="#questions">8 Open questions</a>
+  </nav>
+
+  <!-- 1 ─────────────────────────────────────────────── -->
+  <section class="sec" id="problem">
+    <div class="sec-head"><span class="sec-num">1</span><h2>Problem</h2></div>
+    <div class="grid2">
+      <div class="problem">
+        <div class="row"><strong>The calendar closes findings, not a decision</strong><span class="cx cx-change">Confirmed change</span></div>
+        <p class="small">Today a finding that isn't sent by its deadline becomes <span class="chip muted">Expired</span>: no checkbox, its money moves to <em>Not disputed</em>, and the memo can read <em>Done</em>. Product notes n342/n349 forbid any workaround. The client now says customers may still choose to pursue older findings — closure should come from a business outcome.</p>
+      </div>
+      <div class="problem">
+        <div class="row"><strong>Nothing closes a dispute the Biller ignores</strong><span class="cx cx-conflict">Potential conflict</span></div>
+        <p class="small">A sent dispute waits forever, or the customer records a false <span class="chip danger">Denied</span>. "No reply yet" was removed on 2026-09-25 (a nudge); a closing result is a different thing, but it is new (C9).</p>
+      </div>
+      <div class="problem">
+        <div class="row"><strong>Small inconsistencies that grow</strong><span class="cx cx-verify">Needs verification</span></div>
+        <p class="small"><em>Won't pursue</em> can be undone only before the deadline (n360) — with no calendar closure, why? A memo whose open findings are all <em>Won't pursue</em> shows <em>Done</em> while Undo is possible (L13). Answers say <em>collected</em>, money says <em>recovered</em> (L6).</p>
+      </div>
+    </div>
+    <div class="note"><span class="note-label">Out of scope here: Implentio-managed disputes</span>Who handles a dispute (you or Implentio) is discussed on its own in <a href="03-dispute-ownership.html">03 · Dispute ownership</a>. This file models only the customer's own path. The working idea for 03: "Handled by" is a layer on top of these statuses, not an extra stage — so nothing below should need to change when it lands.</div>
+    <div class="note"><span class="note-label">What is not a problem</span>The meeting's example labels ("Available to dispute", "Dispute in progress", "Recovered", "Dismissed") already exist under decided names. This file keeps the existing names <span class="k k-existing">Existing</span> and maps the meeting's words onto them (section 2).</div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────────── -->
+  <section class="sec" id="compare">
+    <div class="sec-head"><span class="sec-num">2</span><h2>Current vs proposed</h2>
+      <p class="muted">Switch between the lifecycle as built and as proposed. Click any state to see what it means and where it can go next.</p></div>
+    <div class="row">
+      <div class="seg" role="group" aria-label="Lifecycle version">
+        <button type="button" data-toggle="ver" data-value="current" aria-pressed="false">Current (built)</button>
+        <button type="button" data-toggle="ver" data-value="proposed" aria-pressed="true">Proposed</button>
+      </div>
+      <span class="small muted" id="ver-caption"></span>
+    </div>
+    <div class="xp">
+      <div class="lanes" id="lanes"></div>
+      <div class="box" id="explain" aria-live="polite"></div>
+    </div>
+
+    <h3 style="margin-top:8px">Meeting words → names we keep</h3>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th>Meeting example</th><th>Use</th><th>Status</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Available to dispute</td><td><span class="chip">Ready to dispute</span></td><td><span class="k k-existing">Existing</span></td><td>Decided 2026-09-24 ("Eligible to pursue" → "Ready to dispute")</td></tr>
+          <tr><td>Selected / preparing dispute</td><td>"N selected" in the selection bar · <span class="chip attention">In a prepared email</span></td><td><span class="k k-existing">Existing</span></td><td>A selection is a draft, not a status (n358 drafting changes nothing)</td></tr>
+          <tr><td>Dispute in progress</td><td><span class="chip info">Waiting on Biller</span></td><td><span class="k k-existing">Existing</span></td><td>Who handles it is discussed in 03</td></tr>
+          <tr><td>Recovered / Partially recovered</td><td><span class="chip success">Fully collected</span> <span class="chip attention">Partly collected</span> (answers) · <em>Recovered</em> (money)</td><td><span class="k k-existing">Existing</span> <span class="k k-unresolved">Q-T1</span></td><td>User decision 2026-09-24 kept "collected" for answers; money words say "recovered". PM to confirm one family?</td></tr>
+          <tr><td>Denied by biller</td><td><span class="chip danger">Denied</span></td><td><span class="k k-existing">Existing</span></td><td>"Biller declined" → "Denied", 2026-09-24</td></tr>
+          <tr><td>Dismissed / not pursued</td><td><span class="chip muted">Won't pursue</span></td><td><span class="k k-existing">Existing</span></td><td>A customer decision, reversible</td></tr>
+          <tr><td>(no example)</td><td><span class="flag">Past the dispute deadline</span></td><td><span class="k k-proposed">Proposed</span></td><td>Replaces <em>Expired</em> — a warning, not a state</td></tr>
+          <tr><td>(no example)</td><td><span class="chip muted">Closed, no answer</span></td><td><span class="k k-unresolved">Unresolved</span></td><td>The Biller never answered; needed for "which Billers respond" (Q-S3)</td></tr>
+          <tr><td>Implentio-managed</td><td>—</td><td>—</td><td>Not a status here; separate discussion in <a href="03-dispute-ownership.html">03</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────────── -->
+  <section class="sec" id="model">
+    <div class="sec-head"><span class="sec-num">3</span><h2>Proposed model: three separate things</h2>
+      <p class="muted prose">The meeting's list mixes <em>where</em> a finding is, <em>how</em> it ended, and <em>facts about it</em>. Keeping them apart (as product note n341 already demands for the data) makes every rule one line. The UI still shows one label per finding.</p></div>
+    <div class="dims">
+      <div class="dim-card">
+        <div class="row between"><h3>1 · Stage</h3><span class="k k-existing">mostly existing</span></div>
+        <p class="small muted">Where it is. Exactly one at a time.</p>
+        <div class="flow">
+          <span class="node n-open">Ready to dispute</span><span class="arrow">→</span>
+          <span class="node n-part">In a prepared email</span><span class="arrow">→</span>
+          <span class="node n-wait">Waiting on Biller</span><span class="arrow">→</span>
+          <span class="node n-muted">Closed</span>
+        </div>
+      </div>
+      <div class="dim-card">
+        <div class="row between"><h3>2 · Result</h3><span class="k k-existing">+1 new</span></div>
+        <p class="small muted">How it closed. Only when the stage is Closed.</p>
+        <div class="row" style="gap:6px"><span class="chip success">Fully collected</span><span class="chip attention">Partly collected</span><span class="chip danger">Denied</span><span class="chip muted">Won't pursue</span><span class="chip muted" style="outline:1px dashed var(--ds-orange-500)">Closed, no answer</span></div>
+        <p class="tiny muted">Biller answers are final but editable with history (n345). Won't pursue is reversible (Undo).</p>
+      </div>
+      <div class="dim-card">
+        <div class="row between"><h3>3 · Flags</h3><span class="k k-proposed">Proposed</span></div>
+        <p class="small muted">Facts that change what we say, not what's allowed.</p>
+        <ul class="small">
+          <li><span class="flag">Past the dispute deadline</span> — replaces Expired</li>
+          <li><strong>Sent after the deadline</strong> <span class="k k-existing">Existing</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="note"><span class="note-label">The one rule that changes</span>
+      <p><strong>Before:</strong> <code>deadline passed &amp;&amp; not pursued ⇒ Expired (closed)</code>. <strong>After:</strong> <code>deadline passed ⇒ add flag</code>. Nothing closes a finding except a customer decision (<em>Won't pursue</em>) or a result (answer / <em>Closed, no answer</em>). <span class="k k-confirmed">Newly confirmed</span> direction; the consequences below are <span class="k k-unresolved">Unresolved</span>.</p>
+    </div>
+
+    <h3>What each state means for the memo, the money and "whose move" <span class="k k-proposed">Proposed</span></h3>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th>Finding state</th><th>Memo status it contributes</th><th>Money bucket</th><th>Whose move</th><th>In recovery rate?</th></tr></thead>
+        <tbody id="matrix"></tbody>
+      </table>
+    </div>
+    <p class="small muted">Memo status keeps its rule <span class="k k-existing">Existing</span>: any open → <em>Ready to dispute</em>; else any waiting → <em>Waiting on Biller</em>; else <em>Done</em>. The recovery rate is recovered ÷ (recovered + not recovered), as the tracker shows today.</p>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────────── -->
+  <section class="sec" id="flow">
+    <div class="sec-head"><span class="sec-num">4</span><h2>Main flow: one finding, start to history</h2>
+      <p class="muted">"Fuel charge higher than your contract allows" on CM-2026-0630 ($35.10). Pick a path, then step through it.</p></div>
+    <div class="row">
+      <div class="seg" role="group" aria-label="Path">
+        <button type="button" data-toggle="path" data-value="self" aria-pressed="true">You send it</button>
+        <button type="button" data-toggle="path" data-value="late">Sent after the deadline</button>
+      </div>
+    </div>
+    <div class="walk">
+      <ol class="steps" id="steps" aria-label="Steps"></ol>
+      <div class="frame">
+        <div class="frame-bar">Memo CM-2026-0630 · Summary &amp; findings</div>
+        <div class="frame-body" id="walk-view"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────────── -->
+  <section class="sec" id="states">
+    <div class="sec-head"><span class="sec-num">5</span><h2>States that change the experience</h2></div>
+
+    <div class="sub">
+      <h3>5a · Past the deadline: four ways to count it <span class="k k-unresolved">Product decision</span></h3>
+      <p class="prose muted small">Real demo memo <strong>CM-2026-0517</strong> (QuickBox, deadline May 15, 2026, total $22,250.00): Shipping price $9,200 fully collected · Fuel $4,100 partly collected ($2,500) · Remote-area fee $1,200 denied · Remote-area fee $2,700 waiting (sent Aug 22) · <strong>Home-delivery fee $3,200 and Multi-package $1,850 never sent</strong> — today both are <em>Expired</em>.</p>
+      <div class="row">
+        <div class="seg" role="group" aria-label="Option">
+          <button type="button" data-toggle="opt" data-value="now" aria-pressed="true">Today</button>
+          <button type="button" data-toggle="opt" data-value="A">A · Flag only</button>
+          <button type="button" data-toggle="opt" data-value="B">B · Separate bucket</button>
+          <button type="button" data-toggle="opt" data-value="C">C · Ask once</button>
+          <button type="button" data-toggle="opt" data-value="D">D · Open, aged</button>
+        </div>
+        <label class="check small"><input type="checkbox" id="answered"> QuickBox has answered the waiting dispute (Denied)</label>
+      </div>
+      <div class="frame">
+        <div class="frame-bar">Tracker row · Credit memos</div>
+        <div class="frame-body" id="opt-tracker"></div>
+      </div>
+      <div class="frame">
+        <div class="frame-bar">Memo page · the two unsent findings</div>
+        <div class="frame-body" id="opt-memo"></div>
+      </div>
+      <div class="opt-verdict" id="opt-verdict"></div>
+      <div class="note"><span class="note-label">Review note (plan review F1)</span>Option B looks tidy but closes by the calendar one level up: the memo reads <em>Done</em>, the tracker row shows $0.00 and folds into <em>Finished</em>, and a late dispute sends the memo backwards from Done to Waiting. A and D follow the meeting's principle literally; C brings back the removed "Action needed". <strong>No option is recommended</strong> — take A/B/C/D to the client.</div>
+    </div>
+
+    <div class="sub">
+      <h3>5b · Every status line, as the finding card would show it</h3>
+      <ul class="cat" id="catalogue"></ul>
+    </div>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────────── -->
+  <section class="sec" id="edge">
+    <div class="sec-head"><span class="sec-num">6</span><h2>Edge cases</h2></div>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th style="width:30%">Case</th><th>Today</th><th>Proposed handling</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Prepared email discarded ("I didn't send it") after the deadline</td><td>Becomes Expired at once, no message (known follow-up)</td><td>Back to Ready to dispute with the past-deadline flag</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td>Late dispute sent</td><td>Only possible via a prepared email; recorded "sent after the deadline"</td><td>Allowed for any open finding; same flag on the dispute card; dialog step 1 says "QuickBox may refuse disputes sent after May 15"</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td>All open findings marked Won't pursue</td><td>Memo shows Done while Undo is possible (L13)</td><td>Keep Done; Undo reopens the memo (it can move back from Done). Needs the client's OK that Done isn't irreversible</td><td><span class="k k-unresolved">Unresolved</span></td></tr>
+          <tr><td>Undo Won't pursue after the deadline</td><td>Not allowed (n360)</td><td>Allowed (there's no calendar closure any more)</td><td><span class="k k-unresolved">Q-S2</span></td></tr>
+          <tr><td>Biller answers after "Closed, no answer"</td><td>—</td><td>Change the answer; history keeps both</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td>Partly collected, then a new dispute for the rest; or a denied finding disputed again</td><td>Impossible — one answer per finding</td><td>Store answers per dispute attempt; the finding's result = its latest attempt; history shows both</td><td><span class="k k-unresolved">Q-S4</span></td></tr>
+          <tr><td>Whole-memo dispute (no finding breakdown)</td><td>No deadline at all</td><td>Unchanged; the flag never shows</td><td><span class="k k-existing">Existing</span></td></tr>
+          <tr><td>Memo republished as a new version while findings are past the deadline</td><td>Superseded versions excluded (n346)</td><td>Do the flags and history carry over to matching findings? Deadlines may change with the version</td><td><span class="k k-unresolved">Q-01a</span></td></tr>
+          <tr><td>Answer changed after closing</td><td>Allowed, with history</td><td>Unchanged; history per attempt</td><td><span class="k k-existing">Existing</span></td></tr>
+          <tr><td>Different deadlines within one memo</td><td>Per finding; granularity undecided (n351)</td><td>Flag per finding; memo shows the earliest open one</td><td><span class="k k-unresolved">Q-S6</span></td></tr>
+          <tr><td>"Won't pursue the rest" on an old memo</td><td>One by one only</td><td>One action for every undecided finding, with a confirm naming count and amount; each stays undoable</td><td><span class="k k-proposed">Proposed</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 7 ─────────────────────────────────────────────── -->
+  <section class="sec" id="data">
+    <div class="sec-head"><span class="sec-num">7</span><h2>Data</h2>
+      <div class="legend"><span class="d d-have">Have</span><span class="d d-verify">Verify</span><span class="d d-missing">Missing</span><span class="d d-new">New field</span></div></div>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th>UI element</th><th>Reads</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>Status chip + line on a finding</td><td><code>pursuit</code>, <code>prepared</code>, <code>collection.status</code>, <code>disputeDeadline</code> (via <code>groupStatusLine</code>)</td><td><span class="d d-have">Have</span></td></tr>
+          <tr><td>Past-deadline flag</td><td>derived: <code>disputeDeadline &lt; today</code> and not pursued — replaces <code>groupExpired</code></td><td><span class="d d-have">Have</span> (logic change)</td></tr>
+          <tr><td>Deadline value itself</td><td>backend <code>disputeDeadline</code>; contractual per Biller? per invoice? (n351)</td><td><span class="d d-verify">Verify</span></td></tr>
+          <tr><td>"Closed, no answer" result</td><td><code>collection.status = 'no_answer'</code></td><td><span class="d d-new">New field</span></td></tr>
+          <tr><td>More than one attempt per finding</td><td><code>DisputeRecord.items[] {findingId, amountN, answer}</code></td><td><span class="d d-new">New field</span></td></tr>
+          <tr><td>Past-deadline money line (options B/D)</td><td>derived bucket</td><td><span class="d d-have">Have</span> (logic change)</td></tr>
+          <tr><td>"Won't pursue the rest"</td><td>batch of <code>setGroupNotPursued</code></td><td><span class="d d-have">Have</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small muted">Code touch points when built: <code>src/domain/outcomes.ts</code> (<code>groupEligible</code>, <code>groupExpired</code>, <code>groupStatusLine</code>, <code>findingPhase</code>, <code>recoveryBuckets</code>, <code>memoStatus</code>), tracker derive + row, memo summary, Credit outcomes filters, scenario <code>dispute-deadline</code>, unit tests in <code>outcomes.test.ts</code>.</p>
+  </section>
+
+  <!-- 8 ─────────────────────────────────────────────── -->
+  <section class="sec" id="questions">
+    <div class="sec-head"><span class="sec-num">8</span><h2>Open questions</h2></div>
+    <div class="grid2">
+      <div class="q"><b>Q-S1 · Past the deadline</b>Option A, B, C or D (section 5a)? Should the deadline still be shown prominently, or only as a warning on the finding?</div>
+      <div class="q"><b>Q-S2 · Undo Won't pursue</b>Always allowed now that the calendar doesn't close findings? (n360 said only before the deadline.)</div>
+      <div class="q"><b>Q-S3 · Closed, no answer</b>Wanted? After how many days can it be chosen? Does it count in the recovery rate as a failure, or apart?</div>
+      <div class="q"><b>Q-S4 · Dispute again</b>Can a denied finding, or the unpaid part of a partial answer, be disputed again? (Decides whether answers are stored per attempt — recommended either way.)</div>
+      <div class="q"><b>Q-S5 · Other resolutions</b>What is "another explicit resolution"? E.g. the Biller corrects the next invoice instead of issuing a credit — is that "Fully collected"?</div>
+      <div class="q"><b>Q-S6 · Deadline granularity</b>Per finding, invoice or memo (n351, still open)? Do Billers ever accept late disputes in practice?</div>
+      <div class="q"><b>Q-T1 · Words</b>"Collected" (answers) vs "Recovered" (money): keep both? "Past the dispute deadline", "Closed, no answer" — PM to name.</div>
+      <div class="q"><b>Q-01a · New memo version</b>When a memo is republished, do past-deadline flags, Won't pursue decisions and attempts carry over to the matching findings?</div>
+    </div>
+  </section>
+</main>
+
+<script id="kit">
+/* Planning kit behaviour — inlined into each file's script block with
+   id="kit" by sync-kit.mjs (never write a closing script tag in this file).
+
+   [data-tabs]          container; its [data-tab="x"] buttons show the matching
+                        [data-panel="x"] inside the same container (nearest).
+   [data-toggle="grp"]  buttons with data-value; sets data-<grp>="value" on the
+                        element named by data-target (default: <body>) and
+                        aria-pressed on the buttons. CSS/JS react to it.
+   window.kit.money(n)  "$1,234.56"
+*/
+(function () {
+  const money = (n) =>
+    (n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  function initTabs(root) {
+    root.querySelectorAll('[data-tabs]').forEach((box) => {
+      const own = (el) => el.closest('[data-tabs]') === box
+      const tabs = [...box.querySelectorAll('[data-tab]')].filter(own)
+      const panels = [...box.querySelectorAll('[data-panel]')].filter(own)
+      const show = (key) => {
+        tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === key)))
+        panels.forEach((p) => (p.hidden = p.dataset.panel !== key))
+        box.dispatchEvent(new CustomEvent('tabchange', { detail: key }))
+      }
+      tabs.forEach((t) => {
+        t.setAttribute('role', 'tab')
+        t.addEventListener('click', () => show(t.dataset.tab))
+      })
+      const first = tabs.find((t) => t.getAttribute('aria-selected') === 'true') ?? tabs[0]
+      if (first) show(first.dataset.tab)
+    })
+  }
+
+  function initToggles(root) {
+    const groups = new Map()
+    root.querySelectorAll('[data-toggle]').forEach((b) => {
+      const g = b.dataset.toggle
+      if (!groups.has(g)) groups.set(g, [])
+      groups.get(g).push(b)
+    })
+    groups.forEach((btns, g) => {
+      const set = (v) => {
+        btns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === v)))
+        const targetSel = btns[0].dataset.target
+        const target = targetSel ? document.querySelector(targetSel) : document.body
+        if (target) target.dataset[g] = v
+        document.dispatchEvent(new CustomEvent('toggle:' + g, { detail: v }))
+      }
+      btns.forEach((b) => b.addEventListener('click', () => set(b.dataset.value)))
+      const first = btns.find((b) => b.getAttribute('aria-pressed') === 'true') ?? btns[0]
+      set(first.dataset.value)
+    })
+  }
+
+  window.kit = { money, initTabs, initToggles }
+  document.addEventListener('DOMContentLoaded', () => {
+    initTabs(document)
+    initToggles(document)
+  })
+})()
+</script>
+<script>
+(function () {
+  const $ = (s) => document.querySelector(s)
+  const money = (n) => window.kit.money(n)
+  const tag = (k) => ({ existing: '<span class="k k-existing">Existing</span>', proposed: '<span class="k k-proposed">Proposed</span>', unresolved: '<span class="k k-unresolved">Unresolved</span>', removed: '<span class="k k-confirmed">Removed (confirmed change)</span>' }[k] || '')
+  const chip = (tone, label) => `<span class="chip ${tone === 'neutral' ? '' : tone}">${label}</span>`
+  const warn = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>'
+
+  // ---------- states ----------
+  const S = {
+    ready: { lane: 0, label: 'Ready to dispute', tone: 'neutral', v: ['current', 'proposed'], kind: 'existing',
+      sub: 'Dispute by Sep 20, 2026 · 3 days remaining', terminal: 'No',
+      memo: 'Ready to dispute', money: 'Left to dispute', move: 'Customer', rate: 'No',
+      note: 'Undecided (n363). Ticking it puts it in the dispute draft — a selection, not a status ("Included in dispute").' },
+    late: { lane: 0, label: 'Ready to dispute', flag: true, tone: 'neutral', v: ['proposed'], kind: 'proposed',
+      sub: 'Past the dispute deadline (May 15, 2026) · QuickBox may refuse it', terminal: 'No',
+      memo: 'Depends on option (5a)', money: 'Depends on option (5a)', move: 'Customer', rate: 'No',
+      note: 'Replaces Expired. Still selectable, still "Won\'t pursue"-able. The dispute it goes into is flagged "sent after the deadline".' },
+    expired: { lane: 3, label: 'Expired', tone: 'muted', v: ['current', 'proposed'], kind: 'existing', gone: 'proposed',
+      sub: 'Dispute window closed May 15, 2026 · $3,200.00 not disputed', terminal: 'Yes — by the calendar',
+      memo: 'Done (closed)', money: 'Not disputed', move: 'Nobody — no workaround (n349)', rate: 'No',
+      note: 'n342 / n349 / n364. In the proposed model this state is removed: the deadline becomes a flag (Confirmed change, C1).' },
+    prepared: { lane: 1, label: 'In a prepared email', tone: 'attention', v: ['current', 'proposed'], kind: 'existing',
+      sub: 'Not confirmed as sent · Dispute by Sep 20, 2026', terminal: 'No',
+      memo: 'Ready to dispute', money: 'Left to dispute', move: 'Customer — answer "Did you send it?"', rate: 'No',
+      note: 'Created when any part of the email leaves the app (2026-09-25). Findings are reserved: no checkbox, no Won\'t pursue, never Expired while waiting for the answer.' },
+    waiting: { lane: 2, label: 'Waiting on Biller', tone: 'info', v: ['current', 'proposed'], kind: 'existing',
+      sub: 'Sent to QuickBox on Sep 8, 2026', terminal: 'No',
+      memo: 'Waiting on Biller', money: 'Waiting on Biller', move: 'Biller (customer records the answer)', rate: 'No',
+      note: 'Proposed addition: "sent after the deadline" as a flag on the dispute.' },
+    full: { lane: 3, label: 'Fully collected', tone: 'success', v: ['current', 'proposed'], kind: 'existing',
+      sub: 'Sent to QuickBox on Sep 8, 2026 · Collected Sep 12, 2026', terminal: 'Final — editable with history',
+      memo: 'Done (closed)', money: 'Recovered', move: '—', rate: 'Yes' },
+    partial: { lane: 3, label: 'Partly collected', tone: 'attention', v: ['current', 'proposed'], kind: 'existing',
+      sub: '$20.00 collected · $15.10 not recovered · Sep 13, 2026', terminal: 'Final (D5) — editable',
+      memo: 'Done (closed)', money: 'Recovered + Not recovered', move: '—', rate: 'Yes',
+      note: 'Can the unpaid part be disputed again? Q-S4.' },
+    denied: { lane: 3, label: 'Denied', tone: 'danger', v: ['current', 'proposed'], kind: 'existing',
+      sub: '“Surcharge applied per contract addendum.” · Sep 14, 2026', terminal: 'Final — editable',
+      memo: 'Done (closed)', money: 'Not recovered', move: '—', rate: 'Yes',
+      note: 'Reason is optional and asked after saving today; 04 proposes asking at the moment of denial.' },
+    noans: { lane: 3, label: 'Closed, no answer', tone: 'muted', v: ['proposed'], kind: 'unresolved',
+      sub: 'QuickBox didn\'t answer in 45 days · closed by Tori Matthews', terminal: 'Final — editable',
+      memo: 'Done (closed)', money: 'Unresolved: Not recovered, or its own line', move: '—', rate: 'Unresolved (Q-S3) — never silently a failure',
+      note: 'Needed so "which Billers respond" can be measured and people stop recording false denials (C9).' },
+    wont: { lane: 3, label: 'Won’t pursue', tone: 'muted', v: ['current', 'proposed'], kind: 'existing',
+      sub: 'You chose not to pursue this · Undo', terminal: 'Reversible (Undo)',
+      memo: 'Done (closed)', money: 'Not disputed', move: 'Customer', rate: 'No',
+      note: 'Today Undo only while the deadline is open (n360). Proposed: always (Q-S2).' },
+  }
+  // transitions: [from, to, trigger, who, versions, tag]
+  const T = [
+    ['ready', 'prepared', 'Any part of the email leaves the app', 'Customer', 'cp', 'existing'],
+    ['ready', 'waiting', 'Sent from connected Gmail/Outlook', 'Customer', 'cp', 'existing'],
+    ['ready', 'wont', 'Won’t pursue', 'Customer', 'cp', 'existing'],
+    ['ready', 'expired', 'Deadline passes unsent', 'Calendar', 'c', 'existing'],
+    ['ready', 'late', 'Deadline passes unsent (adds the flag)', 'Calendar', 'p', 'proposed'],
+    ['late', 'prepared', 'Email leaves the app (dispute flagged late)', 'Customer', 'p', 'proposed'],
+    ['late', 'waiting', 'Sent from connected mailbox (flagged late)', 'Customer', 'p', 'proposed'],
+    ['late', 'wont', 'Won’t pursue (or "Won’t pursue the rest")', 'Customer', 'p', 'proposed'],
+    ['prepared', 'waiting', '"I sent it" (+ date; may be flagged late)', 'Any teammate', 'cp', 'existing'],
+    ['prepared', 'ready', '"I didn’t send it"', 'Any teammate', 'cp', 'existing'],
+    ['prepared', 'expired', '"I didn’t send it" after the deadline', 'Any teammate', 'c', 'existing'],
+    ['prepared', 'late', '"I didn’t send it" after the deadline', 'Any teammate', 'p', 'proposed'],
+    ['waiting', 'full', 'Answer: Fully collected', 'Customer', 'cp', 'existing'],
+    ['waiting', 'partial', 'Answer: Partly collected + amount', 'Customer', 'cp', 'existing'],
+    ['waiting', 'denied', 'Answer: Denied + reason', 'Customer', 'cp', 'existing'],
+    ['waiting', 'noans', 'Close: no answer after N days', 'Customer', 'p', 'unresolved'],
+    ['full', 'partial', 'Change the answer (history kept)', 'Customer', 'cp', 'existing'],
+    ['partial', 'ready', 'Dispute the rest again', 'Customer', 'p', 'unresolved'],
+    ['denied', 'ready', 'Dispute again', 'Customer', 'p', 'unresolved'],
+    ['denied', 'full', 'Change the answer (Biller paid later)', 'Customer', 'cp', 'existing'],
+    ['noans', 'full', 'Biller answered after all → Change', 'Customer', 'p', 'proposed'],
+    ['wont', 'ready', 'Undo (today only before the deadline)', 'Customer', 'c', 'existing'],
+    ['wont', 'ready', 'Undo, any time', 'Customer', 'p', 'unresolved'],
+  ]
+  const LANES = ['Open', 'Left the app', 'With the Biller', 'Closed']
+  let ver = 'proposed'
+  let sel = 'ready'
+
+  function renderLanes() {
+    const box = $('#lanes')
+    const vKey = ver === 'current' ? 'c' : 'p'
+    const outs = T.filter((t) => t[0] === sel && t[4].includes(vKey)).map((t) => t[1])
+    box.innerHTML = LANES.map((name, i) => {
+      const items = Object.entries(S).filter(([, s]) => s.lane === i && s.v.includes(ver))
+      return `<div class="lane"><div class="lane-h"><span>${name}</span>${i < 3 ? '<span aria-hidden="true">→</span>' : ''}</div>` +
+        items.map(([id, s]) => {
+          const gone = s.gone === ver
+          const cls = ['st', id === sel ? 'sel' : '', outs.includes(id) ? 'next' : '', sel && id !== sel && !outs.includes(id) ? 'dim' : '', gone ? 'gone' : '', s.kind !== 'existing' && ver === 'proposed' ? 'newst' : ''].join(' ')
+          return `<button type="button" class="${cls}" data-st="${id}" aria-pressed="${id === sel}">
+            <span class="row" style="gap:6px">${chip(s.tone, s.label)}${s.flag ? `<span class="flag">${warn}Past deadline</span>` : ''}</span>
+            <span class="st-sub">${gone ? 'Removed — becomes the past-deadline flag' : s.sub}</span></button>`
+        }).join('') + '</div>'
+    }).join('')
+    box.querySelectorAll('[data-st]').forEach((b) => b.addEventListener('click', () => { sel = b.dataset.st; render() }))
+  }
+
+  function renderExplain() {
+    const s = S[sel]
+    const vKey = ver === 'current' ? 'c' : 'p'
+    const gone = s.gone === ver
+    const outs = T.filter((t) => t[0] === sel && t[4].includes(vKey))
+    const ins = T.filter((t) => t[1] === sel && t[4].includes(vKey))
+    const row = (t, dir) => `<div class="tr-row"><span aria-hidden="true">${dir}</span><span><strong>${dir === '→' ? S[t[1]].label + (S[t[1]].flag ? ' (past deadline)' : '') : S[t[0]].label + (S[t[0]].flag ? ' (past deadline)' : '')}</strong> — ${t[2]} <span class="muted">· ${t[3]}</span> ${t[5] !== 'existing' ? tag(t[5]) : ''}</span></div>`
+    $('#explain').innerHTML = `
+      <div class="row between"><span class="row" style="gap:6px">${chip(s.tone, s.label)}${s.flag ? `<span class="flag">${warn}Past the dispute deadline</span>` : ''}</span>${gone ? tag('removed') : tag(s.kind)}</div>
+      <p class="small muted">${gone ? 'Not in the proposed model. A finding whose deadline passed stays Ready to dispute with a warning flag.' : 'As the finding card shows it: <em>' + s.sub + '</em>'}</p>
+      <dl class="facts">
+        <dt>Final?</dt><dd>${gone ? '—' : s.terminal}</dd>
+        <dt>Memo status</dt><dd>${gone ? '—' : s.memo}</dd>
+        <dt>Money</dt><dd>${gone ? '—' : s.money}</dd>
+        <dt>Whose move</dt><dd>${gone ? '—' : s.move}</dd>
+        <dt>Recovery rate</dt><dd>${gone ? '—' : s.rate}</dd>
+      </dl>
+      ${s.note ? `<p class="small">${s.note}</p>` : ''}
+      <div><div class="semi small">Can go to</div>${outs.length ? outs.map((t) => row(t, '→')).join('') : '<p class="small muted">Nowhere — it\'s final' + (sel === 'expired' ? ' (no workaround, n349).' : '.') + '</p>'}</div>
+      <div><div class="semi small">Arrives from</div>${ins.length ? ins.map((t) => row(t, '←')).join('') : '<p class="small muted">Published by Implentio.</p>'}</div>`
+  }
+
+  function renderMatrix() {
+    const order = ['ready', 'late', 'prepared', 'waiting', 'full', 'partial', 'denied', 'noans', 'wont']
+    $('#matrix').innerHTML = order.map((id) => {
+      const s = S[id]
+      return `<tr><td>${chip(s.tone, s.label)}${s.flag ? ' <span class="flag">past deadline</span>' : ''} ${s.kind !== 'existing' ? tag(s.kind) : ''}</td><td>${s.memo}</td><td>${s.money}</td><td>${s.move}</td><td>${s.rate}</td></tr>`
+    }).join('')
+  }
+
+  function render() {
+    renderLanes()
+    renderExplain()
+    $('#ver-caption').textContent = ver === 'current'
+      ? 'As built in src/domain/outcomes.ts — Expired closes a finding by the calendar.'
+      : 'Dashed = new or changed. Green ring = where the selected state can go next.'
+  }
+  document.addEventListener('toggle:ver', (e) => { ver = e.detail; if (!S[sel].v.includes(ver)) sel = 'ready'; render() })
+
+  // ---------- walkthrough ----------
+  const FIND = 'Fuel charge higher than your contract allows'
+  const PATHS = {
+    self: [
+      { t: 'Published', st: 'ready', line: 'Dispute by Sep 20, 2026 · 3 days remaining', memo: ['neutral', 'Ready to dispute'], who: 'You', money: 'Left to dispute', extra: 'Implentio publishes the credit memo. Nothing is selected (D6).' },
+      { t: 'You tick it', st: 'ready', line: 'Included in dispute · Dispute by Sep 20, 2026', memo: ['neutral', 'Ready to dispute'], who: 'You', money: 'Left to dispute', extra: 'The selection bar appears: "1 finding · $35.10 · Review & send". A draft, not a status.' },
+      { t: 'The email leaves the app', st: 'prepared', line: 'Not confirmed as sent · Dispute by Sep 20, 2026', memo: ['neutral', 'Ready to dispute'], who: 'You: "Did you send it?"', money: 'Left to dispute', extra: 'You copied it into your mail app. The memo leads with the amber "Email to QuickBox prepared" card.' },
+      { t: '"I sent it"', st: 'waiting', line: 'Sent to QuickBox on Sep 17, 2026', memo: ['info', 'Waiting on Biller'], who: 'QuickBox', money: 'Waiting on Biller', extra: 'A dispute card appears: "Dispute sent to QuickBox · Sep 17, 2026 · 1 finding · $35.10".' },
+      { t: 'QuickBox answers', st: 'denied', line: '“Fuel surcharge matches the published index.” · Answered Sep 24, 2026', memo: ['success', 'Done'], who: '—', money: 'Not recovered', extra: 'You record Denied with QuickBox\'s reason and the day they answered (04). If others are still open, the memo stays Ready to dispute.' },
+      { t: 'It becomes history', st: 'denied', line: 'Counted in Credit outcomes → Fuel charge · QuickBox', memo: ['success', 'Done'], who: '—', money: 'Not recovered', extra: 'Credit outcomes (05) now shows 1 answered fuel-charge dispute with QuickBox. Guidance (06) stays silent until there are at least 3.' },
+    ],
+    late: [
+      { t: 'Published', st: 'ready', line: 'Dispute by Sep 20, 2026 · 3 days remaining', memo: ['neutral', 'Ready to dispute'], who: 'You', money: 'Left to dispute', extra: 'Same start.' },
+      { t: 'The deadline passes', st: 'late', line: 'Past the dispute deadline (Sep 20, 2026) · QuickBox may refuse it', memo: ['neutral', 'Ready to dispute'], who: 'You', money: 'Depends on option (5a)', extra: 'Today this is where it would become Expired. Proposed: it stays selectable, with a warning.' },
+      { t: 'You send it anyway', st: 'waiting', line: 'Sent to QuickBox on Oct 2, 2026 · sent after the deadline', memo: ['info', 'Waiting on Biller'], who: 'QuickBox', money: 'Waiting on Biller', extra: 'Step 1 of the dialog says "QuickBox may refuse disputes sent after Sep 20". The dispute card carries the existing "sent after the deadline" flag.' },
+      { t: 'QuickBox answers', st: 'partial', line: '$20.00 collected · $15.10 not recovered · Answered Oct 20, 2026', memo: ['success', 'Done'], who: '—', money: 'Recovered + Not recovered', extra: 'Late disputes can still pay. Guidance at the past-deadline flag would need its own "late disputes with QuickBox" slice to reach the Pattern tier (6+ answers); until then nothing is shown there (06, Q-G1).' },
+    ],
+  }
+  let path = 'self'
+  let step = 0
+  function renderWalk() {
+    const steps = PATHS[path]
+    $('#steps').innerHTML = steps.map((s, i) => `<li><button type="button" data-i="${i}" ${i === step ? 'aria-current="step"' : ''}><b>${i + 1}</b>${s.t}</button></li>`).join('')
+    $('#steps').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { step = +b.dataset.i; renderWalk() }))
+    const s = steps[step]
+    const st = S[s.st]
+    $('#walk-view').innerHTML = `
+      <div class="row between"><span class="row" style="gap:8px">${chip(s.memo[0], s.memo[1])}<span class="small muted">memo status</span></span><span class="small muted">Money: <strong>${s.money}</strong> · Whose move: <strong>${s.who}</strong></span></div>
+      <div class="card">
+        <div class="mini-finding">
+          <div class="stack s8">
+            <div class="row" style="gap:8px">${step === 1 || (path !== 'late' && step === 2 && s.st === 'ready') ? '<input type="checkbox" checked aria-label="Included" style="accent-color:var(--brand);width:16px;height:16px">' : ''}<h3>${FIND}</h3><span class="tag">Fuel surcharge</span></div>
+            <div class="small muted row" style="gap:14px"><span>DHL, UPS</span><span>172 packages</span><span>6 invoices</span></div>
+            ${s.st === 'late' ? `<span class="flag">${warn}Past the dispute deadline · QuickBox may refuse it</span>` : ''}
+          </div>
+          <div class="stack s4" style="min-width:210px">
+            <span class="small muted">Overcharged</span><span class="money" style="font-size:22px">$35.10</span>
+            <span>${chip(st.tone, st.label)}</span>
+            <span class="small muted">${s.line}</span>
+          </div>
+        </div>
+      </div>
+      <p class="small">${s.extra}</p>
+      <div class="row"><button class="btn sm" type="button" ${step === 0 ? 'disabled' : ''} id="wb">Back</button><button class="btn sm primary" type="button" ${step === steps.length - 1 ? 'disabled' : ''} id="wn">Next step</button></div>`
+    $('#wb').onclick = () => { step = Math.max(0, step - 1); renderWalk() }
+    $('#wn').onclick = () => { step = Math.min(steps.length - 1, step + 1); renderWalk() }
+  }
+  document.addEventListener('toggle:path', (e) => { path = e.detail; step = 0; renderWalk() })
+
+  // ---------- options on CM-2026-0517 ----------
+  const TOTAL = 22250
+  function buckets(opt, answered) {
+    const b = { open: 0, late: 0, waiting: answered ? 0 : 2700, recovered: 11700, notRec: 2800 + (answered ? 2700 : 0), notDisp: 0 }
+    if (opt === 'now') b.notDisp = 5050
+    else if (opt === 'B') b.late = 5050
+    else b.open = 5050
+    return b
+  }
+  const BL = [['open', 'Left to dispute', 'var(--c-open)'], ['late', 'Past deadline', 'var(--ds-yellow-500)'], ['waiting', 'Waiting on Biller', 'var(--c-wait)'], ['recovered', 'Recovered', 'var(--c-good)'], ['notRec', 'Not recovered', 'var(--c-bad)'], ['notDisp', 'Not disputed', 'var(--c-none)']]
+  function renderOpt() {
+    const opt = document.body.dataset.opt || 'now'
+    const answered = $('#answered').checked
+    const b = buckets(opt, answered)
+    const waitingLeft = !answered
+    let status, statusTone, line, left, leftSub, sortNote
+    if (opt === 'now') { status = waitingLeft ? 'Waiting on Biller' : 'Done'; statusTone = waitingLeft ? 'info' : 'success'; left = 0; leftSub = 'of $22,250.00 overcharged'; line = waitingLeft ? 'Active dispute · Sent Aug 22 · 26 days ago' : 'Closed · Last answer Sep 17'; sortNote = waitingLeft ? 'Listed under waiting.' : 'Folds into Finished.' }
+    if (opt === 'A') { status = 'Ready to dispute'; statusTone = 'neutral'; left = 5050; leftSub = 'of $22,250.00 overcharged'; line = 'Not disputed yet · Past the dispute deadline (May 15)'; sortNote = 'Sorted by amount left to dispute — can sit above memos with live deadlines.' }
+    if (opt === 'B') { status = waitingLeft ? 'Waiting on Biller' : 'Done'; statusTone = waitingLeft ? 'info' : 'success'; left = 0; leftSub = '$5,050.00 past deadline, can still be disputed'; line = waitingLeft ? 'Active dispute · Sent Aug 22 · 26 days ago' : 'Closed · 2 findings past deadline can still be disputed'; sortNote = waitingLeft ? 'Listed under waiting.' : 'Folds into Finished — the $5,050 is out of sight.' }
+    if (opt === 'C') { status = 'Needs a decision'; statusTone = 'attention'; left = 5050; leftSub = 'of $22,250.00 overcharged'; line = '2 findings passed their deadline · Dispute anyway or won\'t pursue?'; sortNote = 'Pinned near the top until decided (a return of "Action needed").' }
+    if (opt === 'D') { status = 'Ready to dispute'; statusTone = 'neutral'; left = 5050; leftSub = 'all $5,050.00 past the deadline (May 15)'; line = 'Not disputed yet · Past the dispute deadline'; sortNote = 'Sorted after memos with live deadlines; never folds without a decision.' }
+    const segs = BL.filter(([k]) => b[k] > 0).map(([k, l, c]) => `<span style="width:${(b[k] / TOTAL) * 100}%;background:${c}" title="${l} ${money(b[k])}"></span>`).join('')
+    const legend = BL.filter(([k]) => b[k] > 0 && k !== 'open').map(([k, l, c]) => `<span class="small"><span class="sw" style="background:${c}"></span>${money(b[k])} ${l.toLowerCase()}</span>`).join(' · ')
+    $('#opt-tracker').innerHTML = `
+      <div class="trow">
+        <div class="stack s4"><a href="#states" class="semi" style="font-size:16px">CM-2026-0517</a><span class="small muted">QuickBox · Apr 16 – Apr 30, 2026</span></div>
+        <div class="stack s4"><span class="big-left" style="color:${left ? 'var(--brand)' : 'var(--faint)'}">${money(left)}</span><span class="small muted">${leftSub}</span></div>
+        <div class="stack s8">${chip(statusTone, status)}<span class="small muted">${line}</span></div>
+      </div>
+      <div class="bar tall">${segs}</div>
+      <div class="row" style="gap:6px 14px">${legend}</div>
+      <p class="tiny muted">${sortNote}</p>`
+    const card = (title, term, amt) => {
+      const expired = opt === 'now'
+      const decide = opt === 'C'
+      return `<div class="card"><div class="mini-finding">
+        <div class="stack s8"><div class="row" style="gap:8px">${expired ? '' : '<input type="checkbox" aria-label="Include ' + title + '" style="accent-color:var(--brand);width:16px;height:16px">'}<h3>${title}</h3><span class="tag">${term}</span></div>
+          ${expired ? '' : `<span class="flag">${warn}Past the dispute deadline (May 15, 2026) · QuickBox may refuse it</span>`}
+          ${decide ? '<div class="row"><button class="btn sm" type="button">Dispute anyway</button><button class="btn sm" type="button">Won\'t pursue</button></div>' : ''}
+        </div>
+        <div class="stack s4" style="min-width:220px"><span class="small muted">Overcharged</span><span class="money" style="font-size:20px">${money(amt)}</span>
+          ${expired ? `${chip('muted', 'Expired')}<span class="small muted">Dispute window closed May 15, 2026 · ${money(amt)} not disputed</span>` : `${chip(decide ? 'attention' : 'neutral', decide ? 'Needs a decision' : 'Ready to dispute')}${decide ? '' : '<button class="lnk sm bold" type="button">Won\'t pursue</button>'}`}
+        </div></div></div>`
+    }
+    $('#opt-memo').innerHTML = card('Home-delivery fee charged incorrectly', 'Residential surcharge', 3200) + card('Multi-package rate higher than expected', 'Multi-driver', 1850) +
+      (opt === 'now' ? '' : '<div class="row"><button class="btn sm" type="button">Won\'t pursue the rest (2 findings · $5,050.00)</button><span class="k k-proposed">Proposed</span></div>')
+    const V = {
+      now: [['Finding', 'Closed by the calendar; no checkbox (n349)'], ['Memo', waitingLeft ? 'Waiting on Biller' : 'Done'], ['Money', '$5,050 "Not disputed"'], ['Meeting', 'Conflicts — this is what changes']],
+      A: [['Finding', 'Open, flagged, selectable'], ['Memo', 'Ready to dispute until every finding is decided'], ['Money', '$5,050 Left to dispute'], ['Risk', 'Old memos never finish; "Left to dispute" fills with money people have given up on']],
+      B: [['Finding', 'Open, flagged, selectable'], ['Memo', waitingLeft ? 'Waiting on Biller' : 'Done — next to disputable findings'], ['Money', 'New sixth bucket "Past deadline"'], ['Risk', 'Calendar closure one level up; Done → Waiting if disputed late (review F1)']],
+      C: [['Finding', 'Asks once: dispute anyway or won\'t pursue'], ['Memo', '"Needs a decision"'], ['Money', '$5,050 Left to dispute until answered'], ['Risk', 'Brings back "Action needed", removed 2026-09-25']],
+      D: [['Finding', 'Open, flagged, selectable'], ['Memo', 'Ready to dispute; sorts after live deadlines'], ['Money', 'Left to dispute, with "past the deadline" sub-line'], ['Risk', 'Never Done without a decision; relies on "Won\'t pursue the rest"']],
+    }[opt]
+    $('#opt-verdict').innerHTML = V.map(([k, v]) => `<div class="box"><span class="tiny muted semi" style="text-transform:uppercase;letter-spacing:.05em">${k}</span><span class="small">${v}</span></div>`).join('')
+  }
+  document.addEventListener('toggle:opt', renderOpt)
+
+  // ---------- catalogue ----------
+  function renderCatalogue() {
+    const order = ['ready', 'late', 'prepared', 'waiting', 'full', 'partial', 'denied', 'noans', 'wont', 'expired']
+    $('#catalogue').innerHTML = order.map((id) => {
+      const s = S[id]
+      const label = id === 'expired' ? tag('removed') : tag(s.kind)
+      return `<li><div class="row between"><span class="row" style="gap:6px">${chip(s.tone, s.label)}${s.flag ? `<span class="flag">${warn}Past deadline</span>` : ''}</span>${label}</div><span class="small muted">${s.sub}</span></li>`
+    }).join('')
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    $('#answered').addEventListener('change', renderOpt)
+    renderMatrix()
+    renderCatalogue()
+    render()
+    renderWalk()
+    renderOpt()
+  })
+})()
+</script>
+</body>
+</html>

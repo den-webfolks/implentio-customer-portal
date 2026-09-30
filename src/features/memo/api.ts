@@ -59,7 +59,10 @@ export function useSetEmailAccountStatus() {
   const ds = useDataSource()
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: { provider: EmailProvider; status: 'connected' | 'not_connected' | 'expired' }) => ds.setEmailAccountStatus(input.provider, input.status),
+    mutationFn: (input: {
+      provider: EmailProvider
+      status: 'connected' | 'not_connected' | 'expired'
+    }) => ds.setEmailAccountStatus(input.provider, input.status),
     onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.account }),
   })
 }

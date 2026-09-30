@@ -28,27 +28,21 @@ export interface EmailClaim {
   title: string
   amountN: number
   packages: number
-  /** What was overcharged, in everyday words: "shipping", "fuel", … */
+  /** What was overcharged, in everyday words: "shipping", "fuel", …; empty
+   *  when Implentio says the money came from other charges than the name. */
   charge: string
-  /** Set when the charge word belongs in the example ("was charged $3.40 for fuel"). */
-  chargeInExample: boolean
   example: ClaimExample | null
   /** The attached file that lists every package. */
   fileName: string
 }
 
-type ChargeField = 'b' | 'f' | 'r' | 'd' | 'o'
-
-/** The package field each charge kind reads its example from; null = the package total. */
-const EXAMPLE_FIELD: Record<string, ChargeField | null> = { base: 'b', fuel: 'f', res: 'r', das: 'd', other: 'o', multi: null }
-
-const CHARGE_WORD: Record<string, { charge: string; inExample: boolean }> = {
-  base: { charge: 'shipping', inExample: false },
-  fuel: { charge: 'fuel', inExample: true },
-  res: { charge: 'home delivery', inExample: true },
-  das: { charge: 'remote-area delivery', inExample: true },
-  multi: { charge: 'shipping and fuel', inExample: false },
-  other: { charge: 'other charges', inExample: true },
+const CHARGE_WORD: Record<string, string> = {
+  base: 'shipping',
+  fuel: 'fuel',
+  res: 'home delivery',
+  das: 'remote-area delivery',
+  multi: 'shipping and fuel',
+  other: 'other charges',
 }
 
 /** The package that best shows the overcharge: the largest net variance. */
@@ -56,38 +50,37 @@ export function largestPackage(g: Pick<FindingGroup, 'services'>): PackageRecord
   return g.services.flatMap((s) => s.pkgs).sort((a, b) => b.tv - a.tv)[0] ?? null
 }
 
-/** The billed and contract amounts the example compares, for the finding's charge. */
-export function exampleAmounts(p: PackageRecord, chargeKey: string): { billedN: number; contractN: number } {
-  const field = EXAMPLE_FIELD[chargeKey] ?? null
-  if (field && p[field][0] > 0) return { billedN: p[field][0], contractN: p[field][1] }
-  return { billedN: p.ti, contractN: p.te }
-}
-
 export function claimFromFinding(g: FindingGroup, fileName: string): EmailClaim {
-  const word = CHARGE_WORD[g.chargeKey] ?? CHARGE_WORD.other!
   const top = largestPackage(g)
   return {
     id: g.id,
     title: findingProblem(g).replace(/\byour\b/g, 'our'),
     amountN: g.varN,
     packages: g.packages,
-    charge: word.charge,
-    chargeInExample: word.inExample,
-    example: top ? { tracking: top.t, ...exampleAmounts(top, g.chargeKey) } : null,
+    // A finding whose name doesn't match its money (driverConfirmed: false)
+    // isn't claimed as that charge in the Biller's email.
+    charge: g.driverConfirmed === false ? '' : (CHARGE_WORD[g.chargeKey] ?? CHARGE_WORD.other!),
+    // Whole-package amounts, like the attached file and "Show me why": a
+    // finding's money can sit in other charges than the one it's named after.
+    example: top ? { tracking: top.t, billedN: top.ti, contractN: top.te } : null,
     fileName,
   }
 }
 
 export const COMPLETE_MEMO_CLAIM_TITLE = 'Complete credit memo'
 
-export function claimForWholeMemo(input: { amountN: number; packages: number; invoices: number; fileName: string }): EmailClaim {
+export function claimForWholeMemo(input: {
+  amountN: number
+  packages: number
+  invoices: number
+  fileName: string
+}): EmailClaim {
   return {
     id: 'complete',
     title: `${COMPLETE_MEMO_CLAIM_TITLE} — ${plural(input.packages, 'package')} on ${plural(input.invoices, 'invoice')}`,
     amountN: input.amountN,
     packages: input.packages,
     charge: 'shipping',
-    chargeInExample: false,
     example: null,
     fileName: input.fileName,
   }
@@ -150,11 +143,11 @@ export interface EmailBlocks {
 const overchargeWord = (n: number) => (n === 1 ? '1 overcharge' : `${n} overcharges`)
 
 export function claimBody(c: EmailClaim): string {
-  if (c.id === 'complete') return `${plural(c.packages, 'package')} were charged more than our contract allows across the credit memo.`
-  const first = `${plural(c.packages, 'package')} ${c.packages === 1 ? 'was' : 'were'} charged more for ${c.charge} than our contract allows.`
+  if (c.id === 'complete')
+    return `${plural(c.packages, 'package')} were charged more than our contract allows across the credit memo.`
+  const first = `${plural(c.packages, 'package')} ${c.packages === 1 ? 'was' : 'were'} charged more${c.charge ? ` for ${c.charge}` : ''} than our contract allows.`
   if (!c.example) return first
-  const forWhat = c.chargeInExample ? ` for ${c.charge}` : ''
-  return `${first} For example, tracking ${c.example.tracking} was charged ${fmtMoney(c.example.billedN)}${forWhat}; our contract says ${fmtMoney(c.example.contractN)}.`
+  return `${first} For example, tracking ${c.example.tracking} was billed ${fmtMoney(c.example.billedN)} in total; our contract says ${fmtMoney(c.example.contractN)}.`
 }
 
 export function buildEmailBlocks(input: EmailInput): EmailBlocks {
@@ -164,7 +157,11 @@ export function buildEmailBlocks(input: EmailInput): EmailBlocks {
     ? `We're requesting a credit of ${fmtMoney(input.amountN)} for the complete credit memo, detailed below.`
     : `We're requesting a credit of ${fmtMoney(input.amountN)} for the ${overchargeWord(claims.length)} below.`
   return {
-    opening: [`Hi ${input.greetingName},`, '', `We reviewed our parcel invoices for ${input.period} (credit memo ${input.memoId}) and found charges that don't match our contract.`].join('\n'),
+    opening: [
+      `Hi ${input.greetingName},`,
+      '',
+      `We reviewed our parcel invoices for ${input.period} (credit memo ${input.memoId}) and found charges that don't match our contract.`,
+    ].join('\n'),
     request,
     claims: claims.map((c, i) => ({
       id: c.id,
@@ -175,9 +172,16 @@ export function buildEmailBlocks(input: EmailInput): EmailBlocks {
     })),
     attachmentLines: [
       `A one-page summary is attached as ${input.summaryFile}.`,
-      ...(input.completeFile ? [`The complete credit memo is attached as ${input.completeFile}.`] : []),
+      ...(input.completeFile
+        ? [`The complete credit memo is attached as ${input.completeFile}.`]
+        : []),
     ],
-    closing: ['Could you review these and confirm which credits you\'ll issue?', '', 'Thank you,', input.sender].join('\n'),
+    closing: [
+      "Could you review these and confirm which credits you'll issue?",
+      '',
+      'Thank you,',
+      input.sender,
+    ].join('\n'),
   }
 }
 
@@ -194,7 +198,10 @@ export interface EmailEdits {
  *  with its example and file. The extra-attachment lines stay out of it and
  *  always follow the current file list. */
 export function evidenceText(blocks: EmailBlocks): string {
-  return [blocks.request, ...blocks.claims.map((c) => [c.heading, c.body, c.fileSentence].join('\n'))]
+  return [
+    blocks.request,
+    ...blocks.claims.map((c) => [c.heading, c.body, c.fileSentence].join('\n')),
+  ]
     .map((p) => p.trim())
     .filter(Boolean)
     .join('\n\n')
@@ -202,13 +209,27 @@ export function evidenceText(blocks: EmailBlocks): string {
 
 /** The whole email as plain text — what is copied, sent and saved. */
 export function emailText(blocks: EmailBlocks, edits?: Partial<EmailEdits>): string {
-  const parts = [edits?.opening ?? blocks.opening, edits?.evidence ?? evidenceText(blocks), blocks.attachmentLines.join('\n'), edits?.closing ?? blocks.closing]
-  return parts.map((p) => p.trim()).filter(Boolean).join('\n\n')
+  const parts = [
+    edits?.opening ?? blocks.opening,
+    edits?.evidence ?? evidenceText(blocks),
+    blocks.attachmentLines.join('\n'),
+    edits?.closing ?? blocks.closing,
+  ]
+  return parts
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .join('\n\n')
 }
 
 /** Every attachment the email names, in order. */
-export function attachmentNames(input: Pick<EmailInput, 'claims' | 'summaryFile' | 'completeFile'>): string[] {
-  return [...input.claims.map((c) => c.fileName), input.summaryFile, ...(input.completeFile ? [input.completeFile] : [])]
+export function attachmentNames(
+  input: Pick<EmailInput, 'claims' | 'summaryFile' | 'completeFile'>,
+): string[] {
+  return [
+    ...input.claims.map((c) => c.fileName),
+    input.summaryFile,
+    ...(input.completeFile ? [input.completeFile] : []),
+  ]
 }
 
 export function defaultSubject(input: { period: string; memoId: string }): string {
@@ -216,7 +237,11 @@ export function defaultSubject(input: { period: string; memoId: string }): strin
 }
 
 /** "You're asking QuickBox for $9,357.30 back for 2 overcharges." */
-export function positionSentence(input: { provider: string; amountN: number; claims: readonly EmailClaim[] }): string {
+export function positionSentence(input: {
+  provider: string
+  amountN: number
+  claims: readonly EmailClaim[]
+}): string {
   const whole = input.claims.length === 1 && input.claims[0]?.id === 'complete'
   const what = whole ? 'your whole credit memo' : overchargeWord(input.claims.length)
   return `You're asking ${input.provider} for ${fmtMoney(input.amountN)} back for ${what}. Each file lists the packages that prove it. Click one to look.`
@@ -232,16 +257,20 @@ export interface ClaimFileRow {
   differenceN: number
 }
 
-/** Every package of a finding, with the billed and contract amounts for its
- *  charge — the four plain columns of the attached file and its preview. */
-export function claimFileRows(g: Pick<FindingGroup, 'services' | 'chargeKey'>): ClaimFileRow[] {
+/** Every package of a finding with its whole bill and whole contract price,
+ *  so the file adds up to the finding's amount. One file everywhere: the
+ *  email attachment, "Show me why" and the package list. */
+export function claimFileRows(g: Pick<FindingGroup, 'services'>): ClaimFileRow[] {
   return g.services
     .flatMap((s) => s.pkgs)
     .sort((a, b) => b.tv - a.tv)
-    .map((p) => {
-      const { billedN, contractN } = exampleAmounts(p, g.chargeKey)
-      return { tracking: p.t, invoice: p.inv, billedN, contractN, differenceN: r2(billedN - contractN) }
-    })
+    .map((p) => ({
+      tracking: p.t,
+      invoice: p.inv,
+      billedN: p.ti,
+      contractN: p.te,
+      differenceN: r2(p.ti - p.te),
+    }))
 }
 
 const csvCell = (v: string | number) => {
@@ -251,7 +280,18 @@ const csvCell = (v: string | number) => {
 
 export function claimCsv(rows: readonly ClaimFileRow[]): string {
   const lines = ['Tracking,Invoice,Billed,Contract,Difference']
-  for (const r of rows) lines.push([r.tracking, r.invoice, r.billedN.toFixed(2), r.contractN.toFixed(2), r.differenceN.toFixed(2)].map(csvCell).join(','))
+  for (const r of rows)
+    lines.push(
+      [
+        r.tracking,
+        r.invoice,
+        r.billedN.toFixed(2),
+        r.contractN.toFixed(2),
+        r.differenceN.toFixed(2),
+      ]
+        .map(csvCell)
+        .join(','),
+    )
   return lines.join('\r\n') + '\r\n'
 }
 
@@ -262,7 +302,10 @@ export function summaryLines(input: EmailInput): string[] {
     `Credit memo ${input.memoId} · ${input.provider}`,
     `Credit requested: ${fmtMoney(input.amountN)}`,
     '',
-    ...input.claims.flatMap((c, i) => [`${i + 1}) ${c.title}`, `   ${fmtMoney(c.amountN)} · ${plural(c.packages, 'package')} · ${c.fileName}`]),
+    ...input.claims.flatMap((c, i) => [
+      `${i + 1}) ${c.title}`,
+      `   ${fmtMoney(c.amountN)} · ${plural(c.packages, 'package')} · ${c.fileName}`,
+    ]),
     '',
     `Prepared in Implentio for ${input.sender}.`,
   ]
@@ -296,14 +339,21 @@ function composeBase(provider: ComposeProvider, f: ComposeFields, withBody: bool
       .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
       .join('&')
   const body = withBody ? f.body : ''
-  if (provider === 'gmail') return `https://mail.google.com/mail/?view=cm&fs=1&${q({ to: f.to, cc: f.cc, su: f.subject, body })}`
-  const host = provider === 'outlook' ? 'https://outlook.office.com/mail/deeplink/compose' : 'https://outlook.live.com/mail/0/deeplink/compose'
+  if (provider === 'gmail')
+    return `https://mail.google.com/mail/?view=cm&fs=1&${q({ to: f.to, cc: f.cc, su: f.subject, body })}`
+  const host =
+    provider === 'outlook'
+      ? 'https://outlook.office.com/mail/deeplink/compose'
+      : 'https://outlook.live.com/mail/0/deeplink/compose'
   return `${host}?${q({ to: f.to, cc: f.cc, subject: f.subject, body })}`
 }
 
 /** The compose link, and whether the message text fit in it. When it didn't,
  *  the caller copies the text to the clipboard and says so. */
-export function composeLink(provider: ComposeProvider, f: ComposeFields): { url: string; bodyIncluded: boolean } {
+export function composeLink(
+  provider: ComposeProvider,
+  f: ComposeFields,
+): { url: string; bodyIncluded: boolean } {
   const full = composeBase(provider, f, true)
   if (full.length <= COMPOSE_URL_MAX) return { url: full, bodyIncluded: true }
   return { url: composeBase(provider, f, false), bodyIncluded: false }

@@ -58,9 +58,37 @@ test('axe: memo with disputes waiting on the Biller', async ({ page }) => {
   expect(await scan(page)).toEqual([])
 })
 
-test('axe: memo with a close deadline and an expired finding', async ({ page }) => {
+test('axe: memo with a close deadline and a finding past its deadline', async ({ page }) => {
   await page.goto('/memos/CM-2026-0630?scenario=dispute-deadline')
   await page.waitForLoadState('networkidle')
+  expect(await scan(page)).toEqual([])
+})
+
+test('axe: "Show why" open with an explanation, the charts, and the package list with a row open', async ({
+  page,
+}) => {
+  await page.goto('/memos/CM-2026-0630')
+  const card = page.locator('#finding-eg-base')
+  await card.getByRole('button', { name: 'Show why' }).click()
+  await card
+    .getByRole('region', { name: 'How one package was priced' })
+    .getByRole('button', { name: 'Shipping price, what is this?' })
+    .click()
+  expect(await scan(page)).toEqual([])
+  // A word that explains itself in a popover.
+  await card
+    .getByRole('region', { name: 'What makes up the overcharge' })
+    .getByRole('button', { name: 'Fuel charge, what is this?' })
+    .click()
+  expect(await scan(page)).toEqual([])
+  await card.getByRole('button', { name: /^See all/ }).click()
+  const modal = page.getByRole('dialog', { name: /^All 510 packages/ })
+  await modal
+    .getByRole('button', { name: /how this package was priced$/ })
+    .first()
+    .click()
+  // Let the dialog and the panel's summary bar finish fading in: axe measures contrast mid-fade.
+  await page.waitForTimeout(400)
   expect(await scan(page)).toEqual([])
 })
 

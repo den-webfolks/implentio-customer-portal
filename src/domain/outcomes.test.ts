@@ -5,8 +5,7 @@ import {
   creditsRealized,
   disputeStatus,
   findingPhase,
-  groupEligible,
-  groupExpired,
+  groupPastDeadline,
   groupStatusLine,
   memoStatus,
   outcomesSummary,
@@ -31,25 +30,50 @@ const group = (over: Partial<OutcomeGroup>): OutcomeGroup => ({
   ...over,
 })
 
-describe('eligibility', () => {
-  it('pursued groups stay eligible past the deadline', () => {
-    const g = group({ pursuit: 'pursued', disputeDeadline: '2026-01-01' })
-    expect(groupEligible(g, NOW)).toBe(true)
-    expect(groupExpired(g, NOW)).toBe(false)
-  })
-
-  it('unpursued groups expire after the deadline day ends', () => {
-    expect(groupExpired(group({ disputeDeadline: '2026-09-16' }), NOW)).toBe(true)
-    expect(groupExpired(group({ disputeDeadline: '2026-09-17' }), NOW)).toBe(false)
-    expect(groupExpired(group({}), NOW)).toBe(false)
+describe('past the deadline', () => {
+  it('flags an unsent finding once the deadline day ends — sent ones never', () => {
+    expect(groupPastDeadline(group({ disputeDeadline: '2026-09-16' }), NOW)).toBe(true)
+    expect(groupPastDeadline(group({ disputeDeadline: '2026-09-17' }), NOW)).toBe(false)
+    expect(groupPastDeadline(group({}), NOW)).toBe(false)
+    expect(
+      groupPastDeadline(group({ pursuit: 'pursued', disputeDeadline: '2026-01-01' }), NOW),
+    ).toBe(false)
   })
 })
 
-const awaitingC = { status: 'awaiting' as const, amountN: null, date: null, reason: '', history: [] }
-const fullC = (amountN: number) => ({ status: 'full' as const, amountN, date: '2026-09-12', reason: '', history: [] })
-const partialC = (amountN: number) => ({ status: 'partial' as const, amountN, date: '2026-09-13', reason: '', history: [] })
-const declinedC = { status: 'not_issued' as const, amountN: 0, date: '2026-09-14', reason: 'No', history: [] }
-const sent = { pursuit: 'pursued' as const, pursuedAt: 'Sep 8, 2026', pursuedTs: '2026-09-08T16:24:00' }
+const awaitingC = {
+  status: 'awaiting' as const,
+  amountN: null,
+  date: null,
+  reason: '',
+  history: [],
+}
+const fullC = (amountN: number) => ({
+  status: 'full' as const,
+  amountN,
+  date: '2026-09-12',
+  reason: '',
+  history: [],
+})
+const partialC = (amountN: number) => ({
+  status: 'partial' as const,
+  amountN,
+  date: '2026-09-13',
+  reason: '',
+  history: [],
+})
+const declinedC = {
+  status: 'not_issued' as const,
+  amountN: 0,
+  date: '2026-09-14',
+  reason: 'No',
+  history: [],
+}
+const sent = {
+  pursuit: 'pursued' as const,
+  pursuedAt: 'Sep 8, 2026',
+  pursuedTs: '2026-09-08T16:24:00',
+}
 
 describe('status line', () => {
   it('maps collection statuses', () => {
@@ -57,7 +81,9 @@ describe('status line', () => {
       key: 'fully_collected',
       secondary: 'Sent to QuickBox on Sep 8, 2026 · Collected September 12, 2026',
     })
-    expect(groupStatusLine(group({ ...sent, collection: awaitingC }), NOW).key).toBe('awaiting_outcome')
+    expect(groupStatusLine(group({ ...sent, collection: awaitingC }), NOW).key).toBe(
+      'awaiting_outcome',
+    )
     expect(groupStatusLine(group({ ...sent, collection: partialC(40) }), NOW).secondary).toBe(
       'Sent to QuickBox on Sep 8, 2026 · $40.00 collected · $60.00 not recovered · September 13, 2026',
     )
@@ -72,37 +98,38 @@ describe('status line', () => {
     })
   })
 
-  it('labels a passed deadline Expired', () => {
+  it('keeps a passed deadline Ready to dispute, with a warning instead of a countdown', () => {
     expect(groupStatusLine(group({ disputeDeadline: '2026-09-16' }), NOW)).toMatchObject({
-      key: 'expired',
-      label: 'Expired',
-      secondary: 'Dispute window closed September 16, 2026 · $100.00 not disputed',
-      showAction: false,
+      key: 'eligible',
+      label: 'Ready to dispute',
+      secondary: 'Past the dispute deadline (September 16, 2026) · QuickBox may refuse it',
+      actionLabel: 'Won’t pursue',
+      pastDeadline: true,
     })
   })
 
-  it('keeps "Not pursued" after the deadline and only offers Undo while it is open', () => {
-    expect(groupStatusLine(group({ pursuit: 'excluded', disputeDeadline: '2026-09-20' }), NOW)).toMatchObject({
-      key: 'not_pursued',
-      actionLabel: 'Undo',
-      showAction: true,
-    })
-    expect(groupStatusLine(group({ pursuit: 'excluded', disputeDeadline: '2026-09-01' }), NOW)).toMatchObject({
-      key: 'not_pursued',
-      secondary: 'You chose not to pursue this',
-      showAction: false,
-    })
+  it('offers Undo on "Won’t pursue" before and after the deadline', () => {
+    for (const disputeDeadline of ['2026-09-20', '2026-09-01'])
+      expect(groupStatusLine(group({ pursuit: 'excluded', disputeDeadline }), NOW)).toMatchObject({
+        key: 'not_pursued',
+        secondary: 'You chose not to pursue this',
+        actionLabel: 'Undo',
+        showAction: true,
+      })
   })
 })
 
 describe('finding phase', () => {
   it('sorts findings into open / waiting / closed', () => {
-    expect(findingPhase(group({ disputeDeadline: '2026-09-20' }), NOW)).toBe('open')
-    expect(findingPhase(group({ ...sent, collection: awaitingC }), NOW)).toBe('waiting')
-    expect(findingPhase(group({ ...sent, collection: partialC(10) }), NOW)).toBe('closed')
-    expect(findingPhase(group({ ...sent, collection: declinedC }), NOW)).toBe('closed')
-    expect(findingPhase(group({ pursuit: 'excluded' }), NOW)).toBe('closed')
-    expect(findingPhase(group({ disputeDeadline: '2026-09-01' }), NOW)).toBe('closed')
+    expect(findingPhase(group({ disputeDeadline: '2026-09-20' }))).toBe('open')
+    expect(findingPhase(group({ ...sent, collection: awaitingC }))).toBe('waiting')
+    expect(findingPhase(group({ ...sent, collection: partialC(10) }))).toBe('closed')
+    expect(findingPhase(group({ ...sent, collection: declinedC }))).toBe('closed')
+    expect(findingPhase(group({ pursuit: 'excluded' }))).toBe('closed')
+  })
+
+  it('never closes a finding by the calendar', () => {
+    expect(findingPhase(group({ disputeDeadline: '2026-09-01' }))).toBe('open')
   })
 })
 
@@ -118,17 +145,24 @@ describe('recovery buckets', () => {
   ]
 
   it('splits money into buckets that add up to the total identified', () => {
-    const b = recoveryBuckets(items, NOW)
-    expect(b).toEqual({ open: 500, awaiting: 300, collected: 240, notRecovered: 110, notDisputed: 35 })
+    const b = recoveryBuckets(items)
+    // Past the deadline (f) is still left to dispute; only Won't pursue (g) is not disputed.
+    expect(b).toEqual({
+      open: 525,
+      awaiting: 300,
+      collected: 240,
+      notRecovered: 110,
+      notDisputed: 10,
+    })
     const total = items.reduce((s, g) => s + g.amountN, 0)
     expect(b.open + b.awaiting + b.collected + b.notRecovered + b.notDisputed).toBeCloseTo(total, 2)
   })
 
   it('matches a partly collected finding in both Collected and Not recovered', () => {
     const d = items[3]!
-    expect(bucketMatch(d, 'collected', NOW)).toBe(true)
-    expect(bucketMatch(d, 'notRecovered', NOW)).toBe(true)
-    expect(bucketMatch(d, 'awaiting', NOW)).toBe(false)
+    expect(bucketMatch(d, 'collected')).toBe(true)
+    expect(bucketMatch(d, 'notRecovered')).toBe(true)
+    expect(bucketMatch(d, 'awaiting')).toBe(false)
   })
 })
 
@@ -142,13 +176,17 @@ describe('memo status', () => {
   it('is Ready to dispute with open findings and reports the draft selection', () => {
     const items = [open('a', '2026-09-27'), open('b', '2026-09-30')]
     expect(memoStatus(items, { now: NOW })).toMatchObject({ key: 'ready', hasDraft: false })
-    expect(memoStatus(items, { draft: { excludedIds: ['a', 'b'], draftDate: null }, now: NOW })).toMatchObject({
+    expect(
+      memoStatus(items, { draft: { excludedIds: ['a', 'b'], draftDate: null }, now: NOW }),
+    ).toMatchObject({
       key: 'ready',
       hasDraft: false,
       nextDeadline: '2026-09-27',
       daysLeft: 10,
     })
-    expect(memoStatus(items, { draft: { excludedIds: ['b'], draftDate: 'Sep 16, 2026' }, now: NOW })).toMatchObject({
+    expect(
+      memoStatus(items, { draft: { excludedIds: ['b'], draftDate: 'Sep 16, 2026' }, now: NOW }),
+    ).toMatchObject({
       key: 'ready',
       hasDraft: true,
       draftDate: 'Sep 16, 2026',
@@ -157,43 +195,97 @@ describe('memo status', () => {
   })
 
   it('stays Ready to dispute however close the deadline is — urgency is the countdown, not a status', () => {
-    expect(memoStatus([open('a', '2026-09-17')], { now: NOW })).toMatchObject({ key: 'ready', daysLeft: 0 })
-    expect(memoStatus([open('a', '2026-09-19')], { now: NOW })).toMatchObject({ key: 'ready', daysLeft: 2 })
+    expect(memoStatus([open('a', '2026-09-17')], { now: NOW })).toMatchObject({
+      key: 'ready',
+      daysLeft: 0,
+    })
+    expect(memoStatus([open('a', '2026-09-19')], { now: NOW })).toMatchObject({
+      key: 'ready',
+      daysLeft: 2,
+    })
+  })
+
+  it('stays Ready to dispute past the deadline; counts down only to live deadlines', () => {
+    expect(
+      memoStatus([open('a', '2026-09-01'), open('b', '2026-09-10')], { now: NOW }),
+    ).toMatchObject({
+      key: 'ready',
+      nextDeadline: null,
+      daysLeft: null,
+      pastDeadline: { count: 2, amountN: 200, deadline: '2026-09-10' },
+    })
+    expect(
+      memoStatus([open('a', '2026-09-01'), open('b', '2026-09-20')], { now: NOW }),
+    ).toMatchObject({
+      nextDeadline: '2026-09-20',
+      daysLeft: 3,
+      pastDeadline: { count: 1, amountN: 100 },
+    })
   })
 
   it('is Waiting on Biller when nothing is open and outcomes are pending, however long ago it was sent', () => {
-    const recent = { pursuit: 'pursued' as const, pursuedTs: '2026-09-15T08:55:00', collection: awaitingC }
-    const items = [group({ id: 'a', ...recent }), group({ id: 'b', ...sent, collection: fullC(100) })]
-    expect(memoStatus(items, { now: NOW })).toMatchObject({ key: 'waiting', waiting: { count: 1 }, closed: { count: 1 } })
-    expect(memoStatus([group({ id: 'a', ...sent, collection: awaitingC })], { now: NOW })?.key).toBe('waiting')
+    const recent = {
+      pursuit: 'pursued' as const,
+      pursuedTs: '2026-09-15T08:55:00',
+      collection: awaitingC,
+    }
+    const items = [
+      group({ id: 'a', ...recent }),
+      group({ id: 'b', ...sent, collection: fullC(100) }),
+    ]
+    expect(memoStatus(items, { now: NOW })).toMatchObject({
+      key: 'waiting',
+      waiting: { count: 1 },
+      closed: { count: 1 },
+    })
+    expect(
+      memoStatus([group({ id: 'a', ...sent, collection: awaitingC })], { now: NOW })?.key,
+    ).toBe('waiting')
   })
 
   it('is Done once every finding is closed — partly collected counts as final', () => {
     const items = [
       group({ id: 'a', ...sent, collection: partialC(40) }),
       group({ id: 'b', ...sent, collection: declinedC }),
-      group({ id: 'c', disputeDeadline: '2026-09-01' }),
-      group({ id: 'd', pursuit: 'excluded' }),
+      group({ id: 'd', pursuit: 'excluded', disputeDeadline: '2026-09-01' }),
     ]
-    expect(memoStatus(items, { now: NOW })).toMatchObject({ key: 'done', collectedN: 40, notRecoveredN: 160 })
+    expect(memoStatus(items, { now: NOW })).toMatchObject({
+      key: 'done',
+      collectedN: 40,
+      notRecoveredN: 160,
+    })
   })
 })
 
 describe('prepared email', () => {
   const prepared = { prepared: true, preparedAt: '2026-09-17T09:12:00' }
 
-  it('reserves the finding: not Expired, no Won’t pursue, still open money', () => {
+  it('reserves the finding: no Won’t pursue, still open money, no past-deadline warning (it may have gone on time)', () => {
     const g = group({ ...prepared, disputeDeadline: '2026-09-15' })
-    expect(groupExpired(g, NOW)).toBe(false)
-    expect(findingPhase(g, NOW)).toBe('open')
-    expect(groupStatusLine(g, NOW)).toMatchObject({ key: 'prepared', label: 'In a prepared email', showAction: false })
-    expect(recoveryBuckets([g], NOW).open).toBe(100)
+    expect(findingPhase(g)).toBe('open')
+    const sl = groupStatusLine(g, NOW)
+    expect(sl).toMatchObject({
+      key: 'prepared',
+      label: 'In a prepared email',
+      showAction: false,
+      secondary: 'Not confirmed as sent · Deadline was September 15, 2026',
+    })
+    expect(sl.pastDeadline).toBeUndefined()
+    expect(recoveryBuckets([g]).open).toBe(100)
+    expect(memoStatus([{ ...g, id: 'p' }], { now: NOW })?.pastDeadline.count).toBe(0)
   })
 
   it('is never in the draft', () => {
     const items = [group({ id: 'p', ...prepared }), group({ id: 'o', amountN: 50 })]
-    const st = memoStatus(items, { draft: { excludedIds: [], draftDate: 'Sep 16, 2026' }, now: NOW })
-    expect(st).toMatchObject({ key: 'ready', prepared: { count: 1, amountN: 100 }, selected: { count: 1, amountN: 50 } })
+    const st = memoStatus(items, {
+      draft: { excludedIds: [], draftDate: 'Sep 16, 2026' },
+      now: NOW,
+    })
+    expect(st).toMatchObject({
+      key: 'ready',
+      prepared: { count: 1, amountN: 100 },
+      selected: { count: 1, amountN: 50 },
+    })
   })
 })
 
@@ -221,8 +313,22 @@ describe('tracker helpers', () => {
 describe('outcomes summary', () => {
   it('totals pursued/eligible/collected and rates', () => {
     const rows = [
-      group({ pursuit: 'pursued', amountN: 9200, collection: { status: 'full', amountN: 9200, date: '2026-09-01', reason: '', history: [] } }),
-      group({ pursuit: 'pursued', amountN: 4100, collection: { status: 'partial', amountN: 2500, date: '2026-09-03', reason: '', history: [] } }),
+      group({
+        pursuit: 'pursued',
+        amountN: 9200,
+        collection: { status: 'full', amountN: 9200, date: '2026-09-01', reason: '', history: [] },
+      }),
+      group({
+        pursuit: 'pursued',
+        amountN: 4100,
+        collection: {
+          status: 'partial',
+          amountN: 2500,
+          date: '2026-09-03',
+          reason: '',
+          history: [],
+        },
+      }),
       group({ amountN: 3200 }),
     ].map((g, i) => ({ ...g, id: `g${i}`, memoId: 'CM-1', memoVersion: 'Version 1' }))
     const s = outcomesSummary(rows)
@@ -238,7 +344,11 @@ describe('outcomes summary', () => {
 describe('memo derivations', () => {
   it('overlays download state on report state', () => {
     const memo = { id: 'CM-1', status: 'complete' as const, report: 'ready' as const }
-    expect(deriveReportState(memo, [])).toMatchObject({ report: 'ready', isNew: true, canDownload: true })
+    expect(deriveReportState(memo, [])).toMatchObject({
+      report: 'ready',
+      isNew: true,
+      canDownload: true,
+    })
     expect(deriveReportState(memo, ['CM-1'])).toMatchObject({ report: 'downloaded', isNew: false })
     expect(
       deriveReportState({ id: 'CM-2', status: 'processing', report: 'generating' }, ['CM-2']),

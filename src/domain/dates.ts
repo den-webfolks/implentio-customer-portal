@@ -58,7 +58,9 @@ function startOfDay(d: Date): Date {
 /** Calendar days from today to `deadline` (ISO date): 0 on the deadline day,
  *  negative once it has passed. */
 export function daysUntilDeadline(deadline: string, now: Date): number {
-  return Math.round((new Date(deadline + 'T00:00:00').getTime() - startOfDay(now).getTime()) / DAY_MS)
+  return Math.round(
+    (new Date(deadline + 'T00:00:00').getTime() - startOfDay(now).getTime()) / DAY_MS,
+  )
 }
 
 /** Calendar days from `since` to today (0 on the same day). */

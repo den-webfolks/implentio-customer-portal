@@ -7,11 +7,23 @@
  *  (.local/review-and-send-plan.html) and DESIGN-SYSTEM.md. */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PaperAirplaneIcon } from '@heroicons/react/24/outline'
-import type { AccountSettings, DisputeRecord, EmailProvider, FindingGroup, HandoffMethod, MemoDetail } from '@/domain/types'
+import type {
+  AccountSettings,
+  DisputeRecord,
+  EmailProvider,
+  FindingGroup,
+  HandoffMethod,
+  MemoDetail,
+} from '@/domain/types'
 import { fmtMoney } from '@/domain/money'
 import { plural } from '@/domain/plural'
 import { daysUntilDeadline, fmtDateShort, isoDate } from '@/domain/dates'
-import { composeLink, evidenceText, type ComposeProvider, type EmailEdits } from '@/domain/dispute-email'
+import {
+  composeLink,
+  evidenceText,
+  type ComposeProvider,
+  type EmailEdits,
+} from '@/domain/dispute-email'
 import { useClock } from '@/lib/clock'
 import { buildEml, blobToBase64 } from '@/lib/eml'
 import { saveBlob } from '@/lib/download'
@@ -22,8 +34,24 @@ import { Link } from '@/ui/Link/Link'
 import { Banner } from '@/ui/Banner/Banner'
 import { Stepper } from '@/ui/Display/Display'
 import { TextField } from '@/ui/Form/TextField'
-import { useAccountForDispute, useConfirmDisputeSent, useDiscardPreparedDispute, usePrepareDispute, useRecordDisputeSent, useSaveBillerContact, useSetEmailAccountStatus } from '../api'
-import { attachmentsZip, billerContact, buildEmailModel, changedSinceHandoff, snapshotOf, subjectFor, type AttachmentSpec } from './email'
+import {
+  useAccountForDispute,
+  useConfirmDisputeSent,
+  useDiscardPreparedDispute,
+  usePrepareDispute,
+  useRecordDisputeSent,
+  useSaveBillerContact,
+  useSetEmailAccountStatus,
+} from '../api'
+import {
+  attachmentsZip,
+  billerContact,
+  buildEmailModel,
+  changedSinceHandoff,
+  snapshotOf,
+  subjectFor,
+  type AttachmentSpec,
+} from './email'
 import { RecipientsHeader, StepSelection, type RecipientFields } from './Steps'
 import { StepEmail } from './StepEmail'
 import { StepReview, type ConnectState, type EditTarget, type Route } from './StepReview'
@@ -82,7 +110,16 @@ export function ReviewSendModal(props: ReviewSendModalProps) {
   return <ReviewSendInner {...props} account={accountQ.data} />
 }
 
-function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, focusPrompt = false, onChange, onClose, account }: ReviewSendModalProps & { account: AccountSettings }) {
+function ReviewSendInner({
+  detail,
+  groups: groupsAtOpen,
+  openGroups,
+  prepared,
+  focusPrompt = false,
+  onChange,
+  onClose,
+  account,
+}: ReviewSendModalProps & { account: AccountSettings }) {
   const memo = detail.memo
   const now = useClock().now()
   const showToast = useToast()
@@ -96,17 +133,24 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
   // The prepared email owns the selection until it's answered; otherwise the
   // findings ticked when the dialog opened (fixed: sending changes them).
   const [record, setRecord] = useState<DisputeRecord | null>(prepared)
-  const [groups] = useState<FindingGroup[]>(() => (prepared ? detail.findingGroups.filter((g) => prepared.groupIds.includes(g.id)) : groupsAtOpen))
+  const [groups] = useState<FindingGroup[]>(() =>
+    prepared ? detail.findingGroups.filter((g) => prepared.groupIds.includes(g.id)) : groupsAtOpen,
+  )
   const wholeMemo = detail.findingsUnavailable
   const nothingSelected = !wholeMemo && groups.length === 0 && !prepared
   const contact = billerContact(account, memo.provider)
   const draft = drafts.get(memo.id)
 
   const [includeComplete, setIncludeComplete] = useState(draft?.includeComplete ?? false)
-  const model = useMemo(() => buildEmailModel({ detail, groups, account, includeComplete }), [detail, groups, account, includeComplete])
+  const model = useMemo(
+    () => buildEmailModel({ detail, groups, account, includeComplete }),
+    [detail, groups, account, includeComplete],
+  )
   const evidenceKey = model.groupIds.join('|')
   // Edited evidence belongs to the findings it was written for; say so when it's dropped.
-  const [evidenceReset] = useState(() => draft?.edits.evidence !== undefined && draft.evidenceKey !== evidenceKey)
+  const [evidenceReset] = useState(
+    () => draft?.edits.evidence !== undefined && draft.evidenceKey !== evidenceKey,
+  )
   const [editsRaw, setEditsRaw] = useState<Partial<EmailEdits>>(() => {
     const saved = draft?.edits ?? {}
     if (evidenceReset) return { opening: saved.opening, closing: saved.closing }
@@ -121,14 +165,28 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
     setEditsRaw({
       ...(next.opening !== model.blocks.opening ? { opening: next.opening } : {}),
       ...(next.closing !== model.blocks.closing ? { closing: next.closing } : {}),
-      ...(next.evidence !== undefined && next.evidence !== evidenceText(model.blocks) ? { evidence: next.evidence } : {}),
+      ...(next.evidence !== undefined && next.evidence !== evidenceText(model.blocks)
+        ? { evidence: next.evidence }
+        : {}),
     })
   const [fields, setFields] = useState<RecipientFields>(
     () =>
       draft?.fields ??
       (prepared
-        ? { to: prepared.to, cc: prepared.cc, subject: prepared.subject, csmOptIn: false, saveContact: false }
-        : { to: contact?.email ?? '', cc: contact?.cc ?? '', subject: subjectFor(memo), csmOptIn: false, saveContact: !contact }),
+        ? {
+            to: prepared.to,
+            cc: prepared.cc,
+            subject: prepared.subject,
+            csmOptIn: false,
+            saveContact: false,
+          }
+        : {
+            to: contact?.email ?? '',
+            cc: contact?.cc ?? '',
+            subject: subjectFor(memo),
+            csmOptIn: false,
+            saveContact: !contact,
+          }),
   )
   useEffect(() => {
     drafts.set(memo.id, { edits: editsRaw, evidenceKey, fields, includeComplete })
@@ -170,7 +228,15 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
   // link names, or to "I sent it" when asked to.
   const focusField = (target: EditTarget | 'cc' | null) => {
     const el =
-      target === 'to' ? toRef.current : target === 'cc' ? ccRef.current : target === 'subject' ? subjectRef.current : target === 'evidence' ? document.getElementById('rs-evidence') : titleRef.current
+      target === 'to'
+        ? toRef.current
+        : target === 'cc'
+          ? ccRef.current
+          : target === 'subject'
+            ? subjectRef.current
+            : target === 'evidence'
+              ? document.getElementById('rs-evidence')
+              : titleRef.current
     el?.focus()
   }
   useEffect(() => {
@@ -184,25 +250,58 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
     requestAnimationFrame(() => focusField(target))
   }, [step, focusPrompt])
 
-  const connected = (['gmail', 'outlook'] as const).find((p) => account.emailAccounts[p].status === 'connected') ?? null
-  const mailbox = connected ? { provider: connected, name: connected === 'gmail' ? 'Gmail' : 'Outlook', email: account.emailAccounts[connected].address ?? account.user.email } : null
+  const connected =
+    (['gmail', 'outlook'] as const).find((p) => account.emailAccounts[p].status === 'connected') ??
+    null
+  const mailbox = connected
+    ? {
+        provider: connected,
+        name: connected === 'gmail' ? 'Gmail' : 'Outlook',
+        email: account.emailAccounts[connected].address ?? account.user.email,
+      }
+    : null
   // A connected mailbox is the default route; the prepared email is manual by definition.
   // A prepared email can still go from the connected mailbox (review F2).
   const effectiveRoute: Route = route === 'choose' && mailbox ? 'connected' : route
   const unanswered = !!record && record.state === 'prepared' && phase !== 'sent'
 
-  const snapshot = snapshotOf(model, { to: fields.to.trim(), cc: fields.cc.trim(), subject: fields.subject.trim(), edits })
+  const snapshot = snapshotOf(model, {
+    to: fields.to.trim(),
+    cc: fields.cc.trim(),
+    subject: fields.subject.trim(),
+    edits,
+  })
   const changed = changedSinceHandoff(snapshot, record)
-  const invalidTo = !fields.to.trim() ? `Add ${memo.provider}’s billing email address.` : invalidAddress(fields.to) ? `“${invalidAddress(fields.to)}” isn’t an email address.` : null
-  const invalidCc = invalidAddress(fields.cc) ? `“${invalidAddress(fields.cc)}” isn’t an email address.` : null
+  const invalidTo = !fields.to.trim()
+    ? `Add ${memo.provider}’s billing email address.`
+    : invalidAddress(fields.to)
+      ? `“${invalidAddress(fields.to)}” isn’t an email address.`
+      : null
+  const invalidCc = invalidAddress(fields.cc)
+    ? `“${invalidAddress(fields.cc)}” isn’t an email address.`
+    : null
   const recipientsOk = !invalidTo && !invalidCc
-  const bodyFitsLink = composeLink('gmail', { to: snapshot.to, cc: snapshot.cc, subject: snapshot.subject, body: snapshot.body }).bodyIncluded
+  const bodyFitsLink = composeLink('gmail', {
+    to: snapshot.to,
+    cc: snapshot.cc,
+    subject: snapshot.subject,
+    body: snapshot.body,
+  }).bodyIncluded
 
-  const deadlineIso = groups.map((g) => g.disputeDeadline).filter((d): d is string => !!d).sort()[0] ?? null
+  const deadlineIso =
+    groups
+      .map((g) => g.disputeDeadline)
+      .filter((d): d is string => !!d)
+      .sort()[0] ?? null
   const daysLeft = deadlineIso ? daysUntilDeadline(deadlineIso, now) : null
   const late = daysLeft != null && daysLeft < 0
   const notIncludedGroups = openGroups.filter((g) => !groups.some((s) => s.id === g.id))
-  const notIncluded = notIncludedGroups.length ? { count: notIncludedGroups.length, amountN: notIncludedGroups.reduce((s, g) => s + g.varN, 0) } : null
+  const notIncluded = notIncludedGroups.length
+    ? {
+        count: notIncludedGroups.length,
+        amountN: notIncludedGroups.reduce((s, g) => s + g.varN, 0),
+      }
+    : null
 
   // The customer comes back to the tab or window: put them on "I sent it",
   // unless they're in the middle of something (review F8).
@@ -211,7 +310,8 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
     const back = () => {
       if (document.visibilityState === 'hidden') return
       const active = document.activeElement
-      if (!active || active === document.body || active.getAttribute('role') === 'dialog') requestAnimationFrame(() => sentRef.current?.focus())
+      if (!active || active === document.body || active.getAttribute('role') === 'dialog')
+        requestAnimationFrame(() => sentRef.current?.focus())
     }
     document.addEventListener('visibilitychange', back)
     window.addEventListener('focus', back)
@@ -226,7 +326,8 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
     focusTarget.current = target
     setStep(next)
   }
-  const editFromReview = (target: EditTarget) => go(target === 'selection' ? SELECTION : EMAIL, target === 'selection' ? null : target)
+  const editFromReview = (target: EditTarget) =>
+    go(target === 'selection' ? SELECTION : EMAIL, target === 'selection' ? null : target)
   /** Show the address errors and put the customer on the first one. */
   const showRecipientErrors = () => {
     setTouched({ to: true, cc: true })
@@ -237,7 +338,10 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
 
   const toggleCsm = (on: boolean) => {
     const recipients = [account.csm?.email, account.supportEmail].filter((e): e is string => !!e)
-    const parts = fields.cc.split(',').map((x) => x.trim()).filter(Boolean)
+    const parts = fields.cc
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean)
     for (const r of recipients) {
       const i = parts.findIndex((p) => p.toLowerCase() === r.toLowerCase())
       if (on && i < 0) parts.push(r)
@@ -276,14 +380,25 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
     setRoute('manual')
     return rec
   }
-  const fail = (what: string) => showToast('danger', `${what} Try again, or contact your Implentio customer representative.`)
+  const fail = (what: string) =>
+    showToast('danger', `${what} Try again, or contact your Implentio customer representative.`)
 
   const openEml = async () => {
     try {
       const attachments = await Promise.all(
-        model.attachments.map(async (a) => ({ name: a.name, mimeType: a.mimeType, base64: await blobToBase64(await a.build()) })),
+        model.attachments.map(async (a) => ({
+          name: a.name,
+          mimeType: a.mimeType,
+          base64: await blobToBase64(await a.build()),
+        })),
       )
-      const eml = buildEml({ to: snapshot.to, cc: snapshot.cc, subject: snapshot.subject, body: snapshot.body, attachments })
+      const eml = buildEml({
+        to: snapshot.to,
+        cc: snapshot.cc,
+        subject: snapshot.subject,
+        body: snapshot.body,
+        attachments,
+      })
       saveBlob(new Blob([eml], { type: 'message/rfc822' }), `${memo.id} dispute email.eml`)
       await handoff('eml')
     } catch {
@@ -291,7 +406,12 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
     }
   }
   const openCompose = async (p: ComposeProvider) => {
-    const link = composeLink(p, { to: snapshot.to, cc: snapshot.cc, subject: snapshot.subject, body: snapshot.body })
+    const link = composeLink(p, {
+      to: snapshot.to,
+      cc: snapshot.cc,
+      subject: snapshot.subject,
+      body: snapshot.body,
+    })
     // Open first, in the click: an await before it reads as a popup to some browsers.
     const opened = window.open(link.url, '_blank', 'noopener')
     if (!link.bodyIncluded) {
@@ -299,7 +419,10 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
         await navigator.clipboard.writeText(snapshot.body)
         showToast('neutral', 'Message copied — paste it into the email.')
       } catch {
-        showToast('danger', 'The message is too long for the link and couldn’t be copied. Use “Copy each part”.')
+        showToast(
+          'danger',
+          'The message is too long for the link and couldn’t be copied. Use “Copy each part”.',
+        )
       }
     }
     if (opened === null) {
@@ -345,15 +468,39 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
     }
     timer.current = setTimeout(() => {
       // A prepared email sent from the mailbox settles the prepared record.
-      if (record && record.state === 'prepared') confirmSent.mutate({ disputeId: record.id, sentOn: isoDate(now), via: 'connected', senderEmail: mailbox.email, ...snapshot }, done)
-      else recordSent.mutate({ memoId: memo.id, scope: model.scope, groupIds: model.groupIds, via: 'connected', ...snapshot, senderEmail: mailbox.email }, done)
+      if (record && record.state === 'prepared')
+        confirmSent.mutate(
+          {
+            disputeId: record.id,
+            sentOn: isoDate(now),
+            via: 'connected',
+            senderEmail: mailbox.email,
+            ...snapshot,
+          },
+          done,
+        )
+      else
+        recordSent.mutate(
+          {
+            memoId: memo.id,
+            scope: model.scope,
+            groupIds: model.groupIds,
+            via: 'connected',
+            ...snapshot,
+            senderEmail: mailbox.email,
+          },
+          done,
+        )
     }, SEND_DELAY_MS)
   }
   const startConnect = (p: EmailProvider) => {
     setConnect({ status: 'connecting', provider: p })
     clearTimeout(timer.current)
     timer.current = setTimeout(() => {
-      setEmailStatus.mutate({ provider: p, status: 'connected' }, { onSuccess: () => setConnect({ status: 'idle', provider: null }) })
+      setEmailStatus.mutate(
+        { provider: p, status: 'connected' },
+        { onSuccess: () => setConnect({ status: 'idle', provider: null }) },
+      )
     }, CONNECT_DELAY_MS)
   }
   const cancelConnect = () => {
@@ -397,7 +544,15 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
 
   const sentOnField = (size: 'small' | 'medium') => (
     <div className={styles.promptDate}>
-      <TextField label="Sent on" type="date" size={size} min={preparedDay} max={isoDate(now)} value={sentOn} onChange={(e) => setSentOn(e.target.value)} />
+      <TextField
+        label="Sent on"
+        type="date"
+        size={size}
+        min={preparedDay}
+        max={isoDate(now)}
+        value={sentOn}
+        onChange={(e) => setSentOn(e.target.value)}
+      />
     </div>
   )
   const showSent = step === REVIEW && unanswered && effectiveRoute !== 'connected'
@@ -415,7 +570,9 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
     if (phase === 'sent') requestAnimationFrame(() => sentTitleRef.current?.focus())
   }, [phase])
   const deadlineText = deadlineIso ? fmtDateShort(new Date(deadlineIso + 'T00:00:00')) : ''
-  const lateNote = late ? `On or before ${deadlineText} counts as on time; after that ${memo.provider} may refuse it.` : ''
+  const lateNote = late
+    ? `On or before ${deadlineText} counts as on time; after that ${memo.provider} may refuse it.`
+    : ''
 
   // ---- footer --------------------------------------------------------------------
   let footer: React.ReactNode
@@ -435,19 +592,33 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
   } else if (showSent) {
     footerStart = <Button onClick={() => go(step - 1)}>Back</Button>
     footer = (
-      <Button ref={sentRef} variant="primary" loading={confirmSent.isPending} disabled={!sentArmed} onClick={iSentIt}>
+      <Button
+        ref={sentRef}
+        variant="primary"
+        loading={confirmSent.isPending}
+        disabled={!sentArmed}
+        onClick={iSentIt}
+      >
         I sent it
       </Button>
     )
   } else {
-    footerStart = step === SELECTION ? <Button onClick={requestClose}>Cancel</Button> : <Button onClick={() => go(step - 1)}>Back</Button>
+    footerStart =
+      step === SELECTION ? (
+        <Button onClick={requestClose}>Cancel</Button>
+      ) : (
+        <Button onClick={() => go(step - 1)}>Back</Button>
+      )
     footer =
       step === SELECTION ? (
         <Button variant="primary" onClick={() => go(EMAIL)}>
           Next: check the email
         </Button>
       ) : step === EMAIL ? (
-        <Button variant="primary" onClick={() => (recipientsOk ? go(REVIEW) : showRecipientErrors())}>
+        <Button
+          variant="primary"
+          onClick={() => (recipientsOk ? go(REVIEW) : showRecipientErrors())}
+        >
           Next: review
         </Button>
       ) : effectiveRoute === 'connected' ? (
@@ -472,7 +643,10 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
       )
   }
 
-  const sentTitle = sentVia === 'connected' ? `Request submitted to ${memo.provider} from ${mailbox?.email ?? 'your mailbox'}` : `Sent and recorded — ${memo.provider} dispute`
+  const sentTitle =
+    sentVia === 'connected'
+      ? `Request submitted to ${memo.provider} from ${mailbox?.email ?? 'your mailbox'}`
+      : `Sent and recorded — ${memo.provider} dispute`
 
   return (
     <>
@@ -491,7 +665,8 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
         <div className={styles.body}>
           {nothingSelected ? (
             <p className="ds-body-base" style={{ margin: 0 }}>
-              Nothing is selected yet. Tick the findings you want to dispute on the memo page, then choose Review &amp; send.
+              Nothing is selected yet. Tick the findings you want to dispute on the memo page, then
+              choose Review &amp; send.
             </p>
           ) : phase === 'sent' ? (
             <>
@@ -503,11 +678,13 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
                   </span>
                 }
               >
-                {wholeMemo ? 'Complete credit memo' : plural(groups.length, 'finding')} · {fmtMoney(model.amountN)}
+                {wholeMemo ? 'Complete credit memo' : plural(groups.length, 'finding')} ·{' '}
+                {fmtMoney(model.amountN)}
                 {record?.sentAfterDeadline ? ' · sent after the deadline' : ''}
               </Banner>
               <p className="ds-body-base" style={{ margin: 0 }}>
-                <strong className="ds-w-semi">What happens next:</strong> this dispute now shows as waiting on {memo.provider}. When they reply, record their answer on the memo page.
+                <strong className="ds-w-semi">What happens next:</strong> this dispute now shows as
+                waiting on {memo.provider}. When they reply, record their answer on the memo page.
               </p>
               {sentVia === 'manual' && !mailbox && (
                 <p className="ds-body-base" style={{ margin: 0 }}>
@@ -525,7 +702,10 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
               {step === SELECTION && (
                 <StepSelection
                   model={model}
-                  deadline={deadlineIso && daysLeft != null ? { date: deadlineIso, daysLeft } : null}
+                  provider={memo.provider}
+                  deadline={
+                    deadlineIso && daysLeft != null ? { date: deadlineIso, daysLeft } : null
+                  }
                   notIncluded={notIncluded}
                   canChange={!wholeMemo && !record}
                   onChange={onChange}
@@ -572,7 +752,10 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
                   provider={memo.provider}
                   snapshot={snapshot}
                   mailbox={mailbox}
-                  accountStatus={{ gmail: account.emailAccounts.gmail.status, outlook: account.emailAccounts.outlook.status }}
+                  accountStatus={{
+                    gmail: account.emailAccounts.gmail.status,
+                    outlook: account.emailAccounts.outlook.status,
+                  }}
                   route={effectiveRoute}
                   onRoute={setRoute}
                   onEdit={editFromReview}
@@ -623,7 +806,8 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
           }
         >
           <p className="ds-body-base" style={{ margin: 0 }}>
-            It’s saved, and this memo keeps asking until you answer. {late ? lateNote : `Tell us what happened so we can track ${memo.provider}’s answer.`}
+            It’s saved, and this memo keeps asking until you answer.{' '}
+            {late ? lateNote : `Tell us what happened so we can track ${memo.provider}’s answer.`}
           </p>
           {sentOnField('medium')}
         </Modal>
@@ -645,7 +829,9 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
           }
         >
           <p className="ds-body-base" style={{ margin: 0 }}>
-            {late ? lateNote : `You prepared it on ${fmtDateShort(new Date(preparedDay + 'T00:00:00'))}. Pick the day it went out.`}
+            {late
+              ? lateNote
+              : `You prepared it on ${fmtDateShort(new Date(preparedDay + 'T00:00:00'))}. Pick the day it went out.`}
           </p>
           {sentOnField('medium')}
         </Modal>
@@ -667,8 +853,10 @@ function ReviewSendInner({ detail, groups: groupsAtOpen, openGroups, prepared, f
           }
         >
           <p className="ds-body-base" style={{ margin: 0 }}>
-            {model.rows.map((r) => r.title).join(', ')} ({fmtMoney(model.amountN)}) {model.rows.length === 1 ? 'becomes' : 'become'} selectable again
-            {late ? ', or Expired where the deadline has passed' : ''}. The prepared email stays in this memo’s activity as discarded.
+            {model.rows.map((r) => r.title).join(', ')} ({fmtMoney(model.amountN)}){' '}
+            {model.rows.length === 1 ? 'becomes' : 'become'} selectable again
+            {late ? ', marked past the dispute deadline' : ''}. The prepared email stays in this
+            memo’s activity as discarded.
           </p>
         </Modal>
       )}

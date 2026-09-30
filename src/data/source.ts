@@ -131,8 +131,9 @@ export interface AppDataSource {
   recordGroupOutcome(input: { groupId: string; collection: Collection }): Promise<void>
   /** Record or edit the outcome of a whole-memo dispute. */
   recordMemoDisputeOutcome(input: { disputeId: string; collection: Collection }): Promise<void>
-  /** "Won't pursue" a finding, or undo that decision. */
-  setGroupNotPursued(input: { groupId: string; notPursued: boolean }): Promise<void>
+  /** "Won't pursue" one or more findings (e.g. "Won't pursue the rest"), or
+   *  undo that decision. Sent and reserved findings are left alone. */
+  setGroupNotPursued(input: { groupIds: string[]; notPursued: boolean }): Promise<void>
   /** Update the dispute draft (unselected groups + draft-start date). */
   setDisputeDraft(input: { excludedIds: string[]; draftDate: string | null }): Promise<void>
 

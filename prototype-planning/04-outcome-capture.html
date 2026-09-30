@@ -1,0 +1,1698 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04 · Outcome capture — Implentio planning</title>
+<style id="kit">
+/* Planning kit — shared by every prototype-planning/*.html file.
+   Inlined into each file's style block with id="kit" by sync-kit.mjs, so
+   every file stays self-contained (never write a closing style tag here). Edit here, then run:
+     node prototype-planning/_kit/sync-kit.mjs
+   Token values are copied from src/styles/tokens.css (--ds-*). */
+
+:root {
+  --ds-purple-700: #34287c; --ds-purple-600: #4535a5; --ds-purple-500: #5642ce;
+  --ds-purple-300: #bbb3eb; --ds-purple-100: #eeecfa;
+  --ds-orange-700: #913806; --ds-orange-500: #f25e0a; --ds-orange-100: #feefe6;
+  --ds-neutral-900: #10103e; --ds-neutral-800: #393863; --ds-neutral-700: #61608b;
+  --ds-neutral-600: #9a98b7; --ds-neutral-500: #bab8d1; --ds-neutral-400: #cccadc;
+  --ds-neutral-300: #e0dfec; --ds-neutral-200: #eceafa; --ds-neutral-100: #f6f4fe;
+  --ds-neutral-50: #f7f6f9; --ds-neutral-0: #ffffff;
+  --ds-red-500: #aa261b; --ds-red-100: #fbd8d6; --ds-green-500: #3a802f; --ds-green-100: #d3edce;
+  --ds-yellow-500: #9c6d11; --ds-yellow-100: #ffeac2;
+  --ds-blue-800: #1f4366; --ds-blue-500: #477db2; --ds-blue-300: #9dcaf5; --ds-blue-100: #d9ecff;
+
+  --fg: var(--ds-neutral-900); --muted: var(--ds-neutral-700); --faint: var(--ds-neutral-600);
+  --bg: var(--ds-neutral-50); --surface: var(--ds-neutral-0);
+  --line: rgba(16, 16, 62, 0.1); --line-2: rgba(16, 16, 62, 0.16); --line-3: rgba(16, 16, 62, 0.24);
+  --brand: var(--ds-purple-500); --brand-dark: var(--ds-purple-600); --brand-soft: var(--ds-purple-100);
+  --money: var(--ds-orange-700); --accent-soft: var(--ds-orange-100);
+  --focus: var(--ds-blue-300);
+
+  --t-neutral-fg: var(--ds-purple-500); --t-neutral-bg: var(--ds-purple-100);
+  --t-info-fg: var(--ds-blue-800); --t-info-bg: var(--ds-blue-100);
+  --t-success-fg: #2e6a28; --t-success-bg: var(--ds-green-100);
+  --t-attention-fg: #7f5a14; --t-attention-bg: var(--ds-yellow-100);
+  --t-danger-fg: var(--ds-red-500); --t-danger-bg: var(--ds-red-100);
+  --t-muted-fg: var(--ds-neutral-700); --t-muted-bg: var(--ds-neutral-50);
+
+  /* chart colours = the app's TONE_CHART_COLOR */
+  --c-open: var(--ds-purple-500); --c-wait: var(--ds-blue-500); --c-good: var(--ds-green-500);
+  --c-part: var(--ds-yellow-500); --c-bad: var(--ds-red-500); --c-none: var(--ds-neutral-500);
+
+  --r-s: 4px; --r-m: 6px; --r-l: 8px; --r-xl: 12px;
+  --shadow: 0 1px 0 rgba(27, 31, 35, 0.04);
+  --shadow-pop: 0 1px 0 rgba(27, 31, 35, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+  --font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* planning-layer colours (annotations, never product UI) */
+  --k-existing: #5d5c78; --k-existing-bg: #eceaf3;
+  --k-confirmed: #1f4366; --k-confirmed-bg: #d9ecff;
+  --k-proposed: #913806; --k-proposed-bg: #feefe6;
+  --k-unresolved: #7f5a14; --k-unresolved-bg: #ffeac2;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 400 14px/1.5 var(--font); letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums;
+}
+h1, h2, h3, h4 { margin: 0; letter-spacing: -0.02em; font-weight: 600; line-height: 1.25; }
+h1 { font-size: 28px; letter-spacing: -0.03em; }
+h2 { font-size: 21px; }
+h3 { font-size: 16px; }
+h4 { font-size: 14px; }
+p { margin: 0; }
+a { color: var(--brand); text-decoration: none; font-weight: 500; }
+a:hover { text-decoration: underline; }
+button { font: inherit; letter-spacing: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+ul, ol { margin: 0; padding-inline-start: 20px; }
+li + li { margin-top: 4px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
+
+/* ---------- document shell ---------- */
+.doc { max-width: 1200px; margin: 0 auto; padding: 28px 24px 96px; display: flex; flex-direction: column; gap: 40px; }
+.doc-head { display: flex; flex-direction: column; gap: 10px; }
+.crumbs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 13px; }
+.crumbs a { font-weight: 500; }
+.eyebrow { font: 600 12px/1.3 var(--font); letter-spacing: 0.05em; text-transform: uppercase; color: var(--brand); }
+.lede { font-size: 16px; color: var(--muted); max-width: 80ch; }
+.toc {
+  position: sticky; top: 0; z-index: 50; display: flex; gap: 6px; flex-wrap: wrap;
+  padding: 10px 0; margin: -10px 0 0; background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(6px); border-bottom: 1px solid var(--line);
+}
+.toc a { padding: 4px 10px; border-radius: 99px; font-size: 13px; color: var(--muted); border: 1px solid var(--line); background: var(--surface); }
+.toc a:hover { color: var(--brand); border-color: var(--ds-purple-300); text-decoration: none; }
+.sec { display: flex; flex-direction: column; gap: 16px; scroll-margin-top: 64px; }
+.sec-head { display: flex; flex-direction: column; gap: 6px; }
+.sec-num { font: 600 12px/1 var(--font); color: var(--faint); letter-spacing: 0.05em; text-transform: uppercase; }
+.sub { display: flex; flex-direction: column; gap: 12px; }
+.prose { max-width: 78ch; }
+.prose > * + * { margin-top: 8px; }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+.small { font-size: 13px; }
+.tiny { font-size: 12px; }
+.semi { font-weight: 600; }
+.medium { font-weight: 500; }
+.nowrap { white-space: nowrap; }
+.money { color: var(--money); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* layout helpers */
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.row.top { align-items: flex-start; }
+.between { justify-content: space-between; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.stack.s4 { gap: 4px; } .stack.s8 { gap: 8px; } .stack.s16 { gap: 16px; } .stack.s24 { gap: 24px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+.grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+
+/* ---------- planning layer (annotations) ---------- */
+.k { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 99px; font: 600 11px/18px var(--font); letter-spacing: 0.02em; white-space: nowrap; vertical-align: middle; }
+.k::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.k-existing { color: var(--k-existing); background: var(--k-existing-bg); }
+.k-confirmed { color: var(--k-confirmed); background: var(--k-confirmed-bg); }
+.k-proposed { color: var(--k-proposed); background: var(--k-proposed-bg); }
+.k-unresolved { color: var(--k-unresolved); background: var(--k-unresolved-bg); }
+.cx { display: inline-block; padding: 1px 7px; border-radius: var(--r-s); font: 600 11px/18px var(--font); border: 1px solid currentColor; white-space: nowrap; }
+.cx-change { color: var(--k-confirmed); }
+.cx-compat { color: var(--ds-green-500); }
+.cx-conflict { color: var(--ds-red-500); }
+.cx-verify { color: var(--k-unresolved); }
+.legend { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); }
+
+/* .note and .q are block containers: inline text inside them flows normally. */
+.note {
+  border: 1px dashed var(--line-3); border-radius: var(--r-l); background: #fffdf7;
+  padding: 12px 14px; font-size: 13px; color: var(--ds-neutral-800);
+}
+.note > .note-label { display: block; margin-bottom: 6px; font: 600 11px/1 var(--font); letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+.note > * + *:not(.note-label) { margin-top: 6px; }
+.q {
+  border-inline-start: 3px solid var(--ds-yellow-500); background: var(--k-unresolved-bg);
+  border-radius: 0 var(--r-m) var(--r-m) 0; padding: 10px 12px; font-size: 13px;
+}
+.q > b:first-child { display: block; margin-bottom: 4px; color: var(--k-unresolved); }
+.q > * + * { margin-top: 4px; }
+.problem { border-inline-start: 3px solid var(--ds-red-500); background: #fff6f5; border-radius: 0 var(--r-m) var(--r-m) 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.box.tint { background: var(--ds-neutral-100); }
+
+/* planning tables */
+.ptable { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); overflow: hidden; }
+.ptable th { text-align: start; font-weight: 600; color: var(--muted); background: var(--ds-neutral-50); padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+.ptable td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ptable tr:last-child td { border-bottom: 0; }
+.scroll-x { overflow-x: auto; border-radius: var(--r-l); }
+.d { display: inline-block; padding: 0 6px; border-radius: var(--r-s); font: 600 11px/18px var(--font); white-space: nowrap; }
+.d-have { background: var(--ds-green-100); color: #2e6a28; }
+.d-verify { background: var(--ds-yellow-100); color: #7f5a14; }
+.d-missing { background: var(--ds-red-100); color: var(--ds-red-500); }
+.d-new { background: var(--ds-blue-100); color: var(--ds-blue-800); }
+
+details.more { border: 1px solid var(--line); border-radius: var(--r-l); background: var(--surface); }
+details.more > summary { cursor: pointer; padding: 10px 14px; font-weight: 600; list-style: none; display: flex; gap: 8px; align-items: center; }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::before { content: '▸'; color: var(--faint); transition: transform 120ms; }
+details.more[open] > summary::before { transform: rotate(90deg); }
+details.more > .more-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+/* compare columns */
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; align-items: start; }
+.compare > .col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.col-head { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+
+/* segmented control & tabs (planning + app) */
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--r-l); background: var(--ds-neutral-200); flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; padding: 5px 12px; border-radius: var(--r-m); cursor: pointer; font-weight: 500; color: var(--muted); font-size: 13px; }
+.seg button[aria-pressed='true'], .seg button[aria-selected='true'] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow-pop); }
+.tabs { display: flex; gap: 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { border: 0; background: none; padding: 8px 2px 10px; cursor: pointer; color: var(--muted); font-weight: 500; font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button[aria-selected='true'] { color: var(--brand); border-bottom-color: var(--brand); }
+[data-panel][hidden] { display: none !important; }
+
+/* ---------- product UI mock (looks like the app) ---------- */
+/* Inline labels never stretch when they sit in a flex column. */
+.chip, .tag, .k, .cx, .d, .owner, .flag { width: fit-content; max-width: 100%; }
+.frame { border: 1px solid var(--line-2); border-radius: var(--r-xl); background: var(--bg); overflow: hidden; box-shadow: var(--shadow-pop); }
+.frame-bar { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--surface); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--faint); }
+.frame-bar::before { content: ''; width: 34px; height: 8px; background: radial-gradient(circle, var(--ds-neutral-400) 3.5px, transparent 4px) 0 0 / 12px 8px repeat-x; }
+.frame-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.frame.narrow { max-width: 420px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow); padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+.card.flat { box-shadow: none; }
+.card.accent { border-inline-start: 3px solid var(--brand); }
+.card.waiting { background: #f3f8fe; border-color: #d4e4f5; border-inline-start: 3px solid var(--ds-blue-500); }
+.card.warn { background: #fffaf0; border-color: #f1ddb2; border-inline-start: 3px solid var(--ds-yellow-500); }
+.card.implentio { background: #f7f5fe; border-color: #ddd8f6; border-inline-start: 3px solid var(--brand); }
+
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--r-m); font: 500 12px/20px var(--font); white-space: nowrap; background: var(--t-neutral-bg); color: var(--t-neutral-fg); vertical-align: middle; }
+.chip.lg { font-size: 14px; line-height: 24px; padding: 2px 10px; }
+.chip.info { background: var(--t-info-bg); color: var(--t-info-fg); }
+.chip.success { background: var(--t-success-bg); color: var(--t-success-fg); }
+.chip.attention { background: var(--t-attention-bg); color: var(--t-attention-fg); }
+.chip.danger { background: var(--t-danger-bg); color: var(--t-danger-fg); }
+.chip.muted { background: var(--t-muted-bg); color: var(--t-muted-fg); box-shadow: inset 0 0 0 1px var(--line); }
+.tag { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 99px; font: 500 12px/20px var(--font); border: 1px solid var(--line-2); color: var(--fg); background: var(--surface); white-space: nowrap; }
+.owner { display: inline-flex; align-items: center; gap: 5px; font: 500 12px/20px var(--font); color: var(--brand-dark); }
+.owner .dot { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--brand); color: #fff; font: 700 10px/1 var(--font); }
+.owner.you .dot { background: var(--ds-neutral-700); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 7px 12px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); color: var(--fg); font: 500 14px/1.46 var(--font); cursor: pointer; box-shadow: var(--shadow); white-space: nowrap; }
+.btn:hover { box-shadow: 0 1px 0 rgba(27, 31, 35, 0.12); }
+.btn.primary { background: var(--brand); border-color: var(--line); color: #fff; }
+.btn.primary:hover { background: var(--brand-dark); }
+.btn.sm { min-height: 32px; padding: 5px 11px; font-size: 13px; }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.lnk { border: 0; background: none; padding: 0; color: var(--brand); font-weight: 500; cursor: pointer; font-size: inherit; text-align: start; }
+.lnk:hover { text-decoration: underline; }
+.lnk.sm { font-size: 13px; }
+.lnk.bold { font-weight: 600; }
+
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat .lbl { font-size: 12px; color: var(--muted); }
+.stat .val { font-size: 18px; font-weight: 600; }
+.stat .val.big { font-size: 28px; letter-spacing: -0.03em; }
+.hero-amt { font: 600 34px/1.05 var(--font); letter-spacing: -0.03em; color: var(--money); }
+
+.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tbl th { text-align: start; color: var(--muted); font-weight: 400; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: bottom; }
+.tbl td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.tbl tbody tr:hover td { background: var(--ds-neutral-50); }
+.tbl .num, .tbl th.num { text-align: end; }
+.tbl tr.total td { font-weight: 600; background: var(--ds-neutral-50); }
+.tbl td.diff { color: var(--money); font-weight: 600; }
+.tbl tr.hl td { background: #fff8e8; }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label, .field .flabel { font-size: 13px; font-weight: 500; }
+.input, .textarea, .select { width: 100%; border: 1px solid var(--line-2); border-radius: var(--r-m); padding: 7px 10px; font: 400 14px/1.4 var(--font); background: var(--surface); color: var(--fg); }
+.textarea { min-height: 72px; resize: vertical; }
+.hint { font-size: 12px; color: var(--muted); }
+.radios { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.radios label { display: inline-flex; align-items: center; gap: 8px; padding: 5px 11px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); cursor: pointer; font-size: 14px; }
+.radios input { accent-color: var(--brand); margin: 0; }
+.radios label:has(input:checked) { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+.choice { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-l); background: var(--surface); cursor: pointer; }
+.choice input { accent-color: var(--brand); margin-top: 3px; }
+.choice:has(input:checked) { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); background: #fbfaff; }
+.check { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
+.check input { accent-color: var(--brand); width: 16px; height: 16px; margin: 0; }
+
+.banner { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--r-l); border: 1px solid var(--line); font-size: 13.5px; }
+.banner.info { background: var(--ds-blue-100); border-color: #bcd8f5; }
+.banner.warn { background: var(--ds-yellow-100); border-color: #f1d9a4; }
+.banner.good { background: var(--ds-green-100); border-color: #b9dcb2; }
+.banner.brand { background: var(--brand-soft); border-color: var(--ds-purple-300); }
+
+.stepper { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.stepper .step { display: inline-flex; align-items: center; gap: 6px; }
+.stepper .step b { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--ds-neutral-200); color: var(--muted); font-size: 11px; }
+.stepper .step.on { color: var(--fg); font-weight: 600; }
+.stepper .step.on b { background: var(--brand); color: #fff; }
+.stepper .step.done b { background: var(--ds-green-500); color: #fff; }
+.stepper .sep { width: 24px; height: 1px; background: var(--line-2); }
+
+.modal { border: 1px solid var(--line-2); border-radius: var(--r-xl); background: var(--surface); box-shadow: 0 12px 40px rgba(16, 16, 62, 0.18); display: flex; flex-direction: column; overflow: hidden; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.modal-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--line); background: var(--ds-neutral-50); flex-wrap: wrap; }
+.overlay-hint { background: rgba(16, 16, 62, 0.28); padding: 20px; border-radius: var(--r-xl); }
+
+/* bars */
+.bar { display: flex; height: 10px; border-radius: 99px; overflow: hidden; background: var(--ds-neutral-200); gap: 2px; }
+.bar > span { display: block; height: 100%; }
+.bar.thin { height: 8px; }
+.bar.tall { height: 14px; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; vertical-align: middle; margin-inline-end: 4px; }
+
+/* timeline */
+.tl { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; }
+.tl li { position: relative; padding: 0 0 14px 22px; margin: 0; }
+.tl li::before { content: ''; position: absolute; left: 4px; top: 5px; width: 9px; height: 9px; border-radius: 50%; background: var(--surface); border: 2px solid var(--line-3); }
+.tl li::after { content: ''; position: absolute; left: 8px; top: 16px; bottom: 0; width: 1px; background: var(--line-2); }
+.tl li:last-child::after { display: none; }
+.tl li.done::before { background: var(--ds-green-500); border-color: var(--ds-green-500); }
+.tl li.now::before { background: var(--brand); border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+.tl li.todo { color: var(--faint); }
+
+/* ---------- diagrams ---------- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; row-gap: 12px; }
+.flow .node { padding: 8px 12px; border-radius: var(--r-l); border: 1px solid var(--line-2); background: var(--surface); font-weight: 500; font-size: 13px; display: flex; flex-direction: column; gap: 2px; justify-content: center; min-width: 96px; }
+.flow .node small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.flow .arrow { align-self: center; color: var(--faint); padding: 0 6px; font-size: 16px; }
+.node.n-open { border-color: var(--ds-purple-300); background: var(--ds-purple-100); }
+.node.n-wait { border-color: #bcd8f5; background: var(--ds-blue-100); }
+.node.n-good { border-color: #b9dcb2; background: var(--ds-green-100); }
+.node.n-bad { border-color: #f0b8b3; background: var(--ds-red-100); }
+.node.n-part { border-color: #f1d9a4; background: var(--ds-yellow-100); }
+.node.n-muted { border-color: var(--line-2); background: var(--ds-neutral-50); color: var(--muted); }
+.node.n-new { border-style: dashed; border-color: var(--ds-orange-500); background: #fff8f3; }
+.node.n-gone { border-style: dashed; color: var(--faint); background: repeating-linear-gradient(135deg, #fff, #fff 6px, #f6f5f9 6px, #f6f5f9 12px); text-decoration: line-through; }
+
+/* print-ish */
+@media print { .toc { position: static; } body { background: #fff; } }
+@media (max-width: 640px) { .doc { padding: 16px 16px 64px; gap: 28px; } h1 { font-size: 23px; } .frame-body { padding: 14px; } }
+</style>
+<style>
+/* page-specific styles only; prefer kit classes */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.cap { display: block; font-size: 13px; line-height: 1.7; color: var(--muted); }
+.cap b { color: var(--fg); font-weight: 600; }
+
+/* ---- dispute card mock (mirrors src/features/memo/DisputeCard.tsx) ---- */
+.dc { container-type: inline-size; gap: 14px; padding: 18px 22px; }
+.dc.done { border-inline-start: 3px solid var(--ds-green-500); }
+.dc-head { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.dc-ico { width: 40px; height: 40px; border-radius: 50%; background: var(--surface); color: var(--ds-blue-800); display: grid; place-items: center; flex: none; box-shadow: inset 0 0 0 1px var(--line); }
+.dc.done .dc-ico { color: var(--ds-green-500); }
+.dc-ico svg { width: 20px; height: 20px; }
+.dc-title { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dc-title h4 { font-size: 16px; }
+.dc-sub { color: var(--muted); }
+.dc-rows { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-m); padding: 4px 16px; display: flex; flex-direction: column; }
+.dc-rows-head { font-weight: 600; padding: 12px 0 0; }
+.orow { display: grid; grid-template-columns: minmax(0, 1fr) 96px minmax(0, 448px); grid-template-areas: 'title amount answer'; column-gap: 16px; row-gap: 8px; align-items: start; padding: 12px 0; }
+.orow + .orow { border-top: 1px solid var(--line); }
+.orow.hl { background: #fffaf0; margin: 0 -16px; padding: 12px 16px; }
+.rt { grid-area: title; color: var(--brand); font-weight: 500; padding-top: 5px; min-width: 0; }
+.rt.plain { color: var(--fg); }
+.ra { grid-area: amount; text-align: end; font-weight: 600; padding-top: 5px; white-space: nowrap; }
+.rans { grid-area: answer; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+@container (max-width: 800px) {
+  .orow { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'title amount' 'answer answer'; }
+}
+.opts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.opt { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 4px 11px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); color: var(--fg); font: 400 14px/1.4 var(--font); cursor: pointer; white-space: nowrap; }
+.opt::before { content: ''; width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--line-3); flex: none; box-sizing: border-box; }
+.opt:hover { border-color: var(--ds-purple-300); }
+.opt[aria-pressed='true'], .opt.on { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+.opt[aria-pressed='true']::before, .opt.on::before { border-color: var(--brand); background: radial-gradient(circle, var(--brand) 3.5px, transparent 4px); }
+span.opt { cursor: default; }
+.iconbtn { width: 32px; height: 32px; display: inline-grid; place-items: center; border: 1px solid transparent; background: none; border-radius: var(--r-m); color: var(--muted); cursor: pointer; padding: 0; }
+.iconbtn:hover, .iconbtn[aria-expanded='true'] { background: var(--ds-neutral-100); border-color: var(--line); }
+.iconbtn svg { width: 20px; height: 20px; }
+.dline { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dsel { font: 500 13px/1.3 var(--font); color: var(--fg); border: 1px solid var(--line-2); border-radius: var(--r-s); padding: 3px 6px; background: var(--surface); max-width: 100%; }
+span.dsel { display: inline-flex; gap: 4px; align-items: center; }
+.dsel.bad { border-color: var(--ds-red-500); box-shadow: inset 0 0 0 1px var(--ds-red-500); }
+.sline { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; }
+.meta { font-size: 13px; color: var(--muted); display: flex; gap: 4px 14px; flex-wrap: wrap; align-items: center; }
+.meta .grp { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.push { margin-inline-start: auto; }
+@media (max-width: 640px) { .dc { padding: 14px 12px; } .dc-rows { padding: 4px 12px; } .orow.hl { margin: 0 -12px; padding: 12px; } .opt { padding: 4px 9px; gap: 6px; font-size: 13.5px; } }
+.quote { color: var(--fg); overflow-wrap: anywhere; }
+.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rform { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-m); background: var(--ds-neutral-50); }
+.rform .textarea { min-height: 60px; }
+.opt-label { color: var(--muted); font-weight: 400; }
+.money-in { position: relative; width: 140px; }
+.money-in > .cur { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+.money-in .input { padding-left: 22px; }
+.input.bad, .textarea.bad { border-color: var(--ds-red-500); box-shadow: inset 0 0 0 1px var(--ds-red-500); }
+.err { color: var(--ds-red-500); font-size: 12px; }
+.suggest { font-size: 13px; background: var(--brand-soft); border-radius: var(--r-m); padding: 6px 10px; display: flex; gap: 4px 8px; flex-wrap: wrap; align-items: baseline; }
+.more-pop { border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); box-shadow: var(--shadow-pop); padding: 6px; display: flex; flex-direction: column; gap: 2px; max-width: 360px; }
+.more-pop .mi { text-align: start; border: 0; background: none; padding: 6px 8px; border-radius: var(--r-s); cursor: pointer; font: 500 14px/1.4 var(--font); color: var(--fg); }
+.more-pop .mi:hover:not([aria-disabled='true']) { background: var(--ds-neutral-100); }
+.more-pop .mi[aria-disabled='true'] { color: var(--faint); cursor: not-allowed; }
+.more-pop .tiny { padding: 0 8px 4px; }
+.dc-details { display: flex; flex-direction: column; gap: 12px; }
+.dc-box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-m); padding: 10px 16px; }
+.dl { display: grid; grid-template-columns: fit-content(150px) minmax(0, 1fr); column-gap: 16px; margin: 0; font-size: 13.5px; }
+.dl dt { color: var(--muted); padding: 6px 0; border-bottom: 1px solid var(--line); }
+.dl dd { margin: 0; padding: 6px 0; border-bottom: 1px solid var(--line); font-weight: 500; overflow-wrap: anywhere; }
+.dl dt:nth-last-of-type(1), .dl dd:last-of-type { border-bottom: 0; }
+.hist { list-style: none; padding: 0; margin: 6px 0 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.hist li + li { margin-top: 0; padding-top: 8px; border-top: 1px solid var(--line); }
+.hist .when { color: var(--muted); }
+.handled { display: inline-flex; align-items: center; gap: 6px; font: 500 12px/20px var(--font); color: var(--brand-dark); }
+.handled .dot { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--brand); color: #fff; font: 700 10px/1 var(--font); }
+
+/* ---- planning helpers ---- */
+.pctl { display: flex; gap: 10px 16px; flex-wrap: wrap; align-items: center; padding: 8px 12px; border: 1px dashed var(--line-3); border-radius: var(--r-l); background: #fffdf7; font-size: 13px; }
+.pctl .note-label { font: 600 11px/1 var(--font); letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+.mail { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; }
+.mail-head { display: flex; flex-direction: column; gap: 2px; padding-bottom: 8px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.mail-head b { color: var(--fg); }
+.mail ul { padding-inline-start: 18px; }
+.store { margin: 0; font: 12px/1.6 var(--mono); background: var(--ds-neutral-100); border: 1px solid var(--line); border-radius: var(--r-l); padding: 12px 14px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ds-neutral-800); }
+.store .c { color: var(--faint); }
+.store .nw { background: var(--ds-blue-100); color: var(--ds-blue-800); border-radius: 3px; padding: 0 3px; }
+.store .k2 { color: var(--ds-purple-600); }
+.mini .frame-body { padding: 12px; gap: 10px; }
+.mini .frame-bar { font-size: 11.5px; }
+.mini-quote { border-inline-start: 3px solid var(--ds-red-500); padding: 2px 0 2px 10px; font-size: 13.5px; }
+.strip-flow .node { min-width: 120px; }
+.later-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 14px; align-items: start; }
+.chipbtn { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--line-2); border-radius: 99px; background: var(--surface); font: 500 13px/20px var(--font); color: var(--fg); }
+.chipbtn .n { color: var(--faint); font-weight: 400; }
+.flow-steps { counter-reset: s; list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.flow-steps li { counter-increment: s; position: relative; padding-inline-start: 30px; font-size: 13.5px; }
+.flow-steps li + li { margin-top: 0; }
+.flow-steps li::before { content: counter(s); position: absolute; left: 0; top: 1px; width: 20px; height: 20px; border-radius: 50%; background: var(--brand-soft); color: var(--brand); font: 600 11px/20px var(--font); text-align: center; }
+.two-att { display: grid; gap: 10px; }
+.att { border: 1px solid var(--line); border-radius: var(--r-m); background: var(--surface); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+.att-h { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: center; }
+.state-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .state-grid { grid-template-columns: minmax(0, 1fr); } }
+.ptable td .k, .ptable td .cx { margin: 1px 0; }
+.ptable.model td:first-child { white-space: nowrap; }
+.ptable.wide { min-width: 760px; }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; font-size: 13px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; }
+.timeline-mini { display: flex; flex-wrap: wrap; gap: 0; align-items: stretch; row-gap: 10px; }
+</style>
+</head>
+<body>
+<main class="doc">
+  <header class="doc-head">
+    <nav class="crumbs" aria-label="Planning files"><a href="00-overview.html">← Overview</a><span>·</span><a href="../docs/client-app-prototype-plan.md">Plan document</a><span>·</span><span>Exploration 04 of 06</span></nav>
+    <div class="eyebrow">Planning exploration · not production UI</div>
+    <h1>Outcome capture</h1>
+    <p class="lede">How does a customer record QuickBox's answer (the amount, the date QuickBox answered, and why) quickly enough that they actually do it, and precisely enough that Credit outcomes (05) and guidance (06) can learn from it?</p>
+    <div class="legend"><span class="k k-existing">Existing</span><span class="k k-confirmed">Newly confirmed</span><span class="k k-proposed">Proposed</span><span class="k k-unresolved">Unresolved</span><span>· Mock data is labelled; package rows and history are synthetic.</span></div>
+  </header>
+  <nav class="toc" aria-label="Sections">
+    <a href="#problem">1 Problem</a><a href="#compare">2 Current vs proposed</a><a href="#model">3 Proposed model</a><a href="#flow">4 Main flow</a><a href="#states">5 States</a><a href="#edge">6 Edge cases</a><a href="#data">7 Data</a><a href="#questions">8 Open questions</a>
+  </nav>
+
+  <!-- ============================== 1 PROBLEM ============================== -->
+  <section class="sec" id="problem">
+    <div class="sec-head"><span class="sec-num">1</span><h2>Problem</h2></div>
+    <div class="prose">
+      <p>Today the customer records QuickBox's answer on the dispute card, one finding at a time, right in the card. The client likes this, and it stays. The weak part is <b>what gets saved</b>. Right now it's too little and partly wrong, so 05 and 06 would learn the wrong lessons from it.</p>
+    </div>
+    <div class="grid2">
+      <div class="problem">
+        <div class="row"><b>L4 · The reason for a denial is rarely captured</b><span class="k k-existing">Existing</span></div>
+        <p class="small">Clicking <i>Denied</i> saves the answer immediately. The reason is optional and only asked for afterwards, through an "Add reason" link ("What did the Biller say?"). Once the row says Denied, the job feels done. A partial answer has a <code>reason</code> field in the data, but nothing in the UI fills it.</p>
+      </div>
+      <div class="problem">
+        <div class="row"><b>L3 · The date is when someone logged it, not when QuickBox answered</b><span class="k k-existing">Existing</span></div>
+        <p class="small">One-click answers save today's date, and it can't be edited. n344 asks for a date on partial answers. Any "how fast does QuickBox answer" number would really measure how late the customer logged it:</p>
+        <div class="flow timeline-mini" aria-label="Example of the date problem">
+          <div class="node n-wait">Sep 8<small>Dispute sent</small></div><span class="arrow" aria-hidden="true">→</span>
+          <div class="node n-good">Sep 10<small>QuickBox answers</small></div><span class="arrow" aria-hidden="true">→</span>
+          <div class="node n-muted">Sep 17<small>Tori logs it</small></div>
+        </div>
+        <p class="small muted">Saved today: <code>date: "2026-09-17"</code>, so it reads as <b>"QuickBox took 9 days"</b>. The truth is 2 days.</p>
+      </div>
+      <div class="problem">
+        <div class="row"><b>L2 · A dispute QuickBox never answers can't be closed</b><span class="k k-existing">Existing</span></div>
+        <p class="small">It stays <i>Waiting on Biller</i> forever, or someone records <i>Denied</i> just to clear it. That false denial has no reason, and 05 would count it and 06 would repeat it. "No reply yet" was removed on 2026-09-25, but it was only a reminder, not a way to close the dispute.</p>
+      </div>
+      <div class="problem" style="border-color: var(--ds-blue-500); background: #f3f8fe;">
+        <div class="row"><b>Meeting: capture why a dispute was denied</b><span class="k k-confirmed">Newly confirmed</span><span class="cx cx-compat">Compatible addition</span></div>
+        <p class="small">"Free text is enough for now." Denials should become reusable history: what QuickBox said, for which kind of finding, and when. That history stays <b>within this customer's account</b> (n347), and it is the customer's report, not Implentio's judgement (n350).</p>
+      </div>
+    </div>
+    <div class="box tint">
+      <div class="row"><b>What stays: the parts the client liked</b><span class="k k-confirmed">Newly confirmed</span><span class="k k-existing">Existing</span></div>
+      <ul class="small">
+        <li>Answers are recorded <b>finding by finding, right in the dispute card</b>, with no dialog. The columns stay fixed (finding | amount | answer), only one row is open at a time, and Enter saves, Escape cancels.</li>
+        <li><b>No whole-dispute shortcut</b> like "all collected" (user feedback, 2026-09-24).</li>
+        <li><b>Change</b> on a recorded answer, with the history of who changed what (n345).</li>
+        <li>The labels <i>Fully collected</i>, <i>Partly collected</i> and <i>Denied</i>, and the card statuses <i>Waiting on Biller</i>, <i>Some outcomes recorded</i> and <i>Done</i>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============================== 2 COMPARE ============================== -->
+  <section class="sec" id="compare">
+    <div class="sec-head"><span class="sec-num">2</span><h2>Current vs proposed</h2></div>
+    <p class="prose muted">The same dispute and the same answers from QuickBox. The mock data is the golden memo's Sep 8 dispute (scenario "dispute-awaiting"), with answers added for illustration.</p>
+    <div class="compare">
+      <div class="col">
+        <div class="col-head">Current <span class="k k-existing">Existing</span></div>
+        <div class="frame"><div class="frame-bar">Memo CM-2026-0630 · Summary &amp; findings</div><div class="frame-body" data-mount="cmp-current"></div></div>
+        <ul class="small">
+          <li>Every date says <b>Sep 17</b>, the day Tori logged it, and nothing on the row lets her fix it.</li>
+          <li>The denial has no reason, only an "Add reason" link that is easy to skip.</li>
+          <li>The partial answer saved an amount but not why the rest wasn't paid.</li>
+          <li>The row doesn't say who recorded the answer. Only "Show details" does.</li>
+        </ul>
+      </div>
+      <div class="col">
+        <div class="col-head">Proposed <span class="k k-proposed">Proposed</span></div>
+        <div class="frame"><div class="frame-bar">Memo CM-2026-0630 · Summary &amp; findings</div><div class="frame-body" data-mount="cmp-proposed"></div></div>
+        <ul class="small">
+          <li>Every row shows <b>QuickBox answered on [date ▾]</b> when you answer and after you save. It starts at today, and the date you last picked carries over to the next row.</li>
+          <li><i>Denied</i> asks "What did QuickBox say?" <b>before</b> saving. It's optional, but it's asked for.</li>
+          <li><i>Partly collected</i> asks for the amount, the date and "Why not the full amount?" (optional).</li>
+          <li>Each recorded answer says who recorded it. The <b>⋯</b> menu adds <i>Closed, no answer</i> after N days <span class="k k-unresolved">Unresolved</span>.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="compare">
+      <div class="col">
+        <div class="cap"><b>Clicking Denied, today:</b> the answer is saved at once and dated today. The reason can be added later, through a link.</div>
+        <div class="frame"><div class="frame-body" data-mount="cmp-current-denied"></div></div>
+      </div>
+      <div class="col">
+        <div class="cap"><b>Clicking Denied, proposed:</b> a short form opens first. Saving without a reason is allowed.</div>
+        <div class="frame"><div class="frame-body" data-mount="cmp-proposed-denied"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== 3 MODEL ============================== -->
+  <section class="sec" id="model">
+    <div class="sec-head"><span class="sec-num">3</span><h2>Proposed model</h2></div>
+    <p class="prose muted">Each answer asks only for what it needs. Fully collected stays one click. The two answers that lose money ask one short question before saving. Every answer stores the date QuickBox answered and who recorded it.</p>
+    <div class="scroll-x">
+      <table class="ptable model wide">
+        <thead><tr><th>Answer</th><th>Asks for</th><th>How it saves</th><th>Answer date</th><th>What it means</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="chip success">Fully collected</span></td>
+            <td>Nothing else</td>
+            <td><b>One click</b></td>
+            <td>Shown in the row before you click (today by default). Can be edited on the saved row.</td>
+            <td>Final. <b>Change</b> keeps the history (n345).</td>
+            <td><span class="k k-existing">Existing</span> one click<br><span class="k k-proposed">Proposed</span> visible date</td>
+          </tr>
+          <tr>
+            <td><span class="chip attention">Partly collected</span></td>
+            <td><b>Amount</b> (required, "Up to $35.10"; the full amount is saved as Fully collected)<br>"Why not the full amount?" <span class="muted">(optional)</span></td>
+            <td>Short inline form → Save</td>
+            <td>Required. Defaults to today. It's the row's date field.</td>
+            <td>Final (D5). The unpaid part is <i>Not recovered</i>. Disputing the rest again is Q-S4.</td>
+            <td><span class="k k-existing">Existing</span> amount<br><span class="k k-proposed">Proposed</span> date, reason</td>
+          </tr>
+          <tr>
+            <td><span class="chip danger">Denied</span></td>
+            <td>"What did QuickBox say?" (a text box, <b>optional but asked for</b>, with an example as placeholder text)<br>Offers "Use the same reason" when another row in this dispute was denied</td>
+            <td>Short inline form <b>before</b> saving → Save as denied</td>
+            <td>Required. Defaults to today. Can't be before the send date or after today.</td>
+            <td>Final. Whether it can be disputed again is C8 / Q-S4.</td>
+            <td><span class="k k-proposed">Proposed</span><br><span class="k k-unresolved">Unresolved</span> re-dispute</td>
+          </tr>
+          <tr>
+            <td><span class="chip muted">Closed, no answer</span></td>
+            <td>Note <span class="muted">(optional)</span>, e.g. "Chased twice, no reply"</td>
+            <td>Row <b>⋯</b> menu → short form → Close it. Offered only after the dispute has waited <b>N days</b> (30?)</td>
+            <td>None, since QuickBox never answered. It stores the day you closed it.</td>
+            <td>Final, but <b>Change</b> works if QuickBox answers late. Money and rate treatment is Unresolved (below).</td>
+            <td><span class="k k-proposed">Proposed</span><br><span class="k k-unresolved">Unresolved</span> Q-S3 · <span class="cx cx-conflict">C9</span></td>
+          </tr>
+          <tr>
+            <td class="muted">Every answer</td>
+            <td colspan="4">Shows who recorded it: <b>"Recorded by Tori Matthews"</b>, or <b>"Recorded by Implentio"</b> for disputes Implentio handles (03). Every other view (finding card, 05, 06, activity) keeps that label on each answer and reason: <b>"Customer-entered · Recorded by Tori Matthews"</b> or <b>"QuickBox's reason, recorded by Implentio"</b> (C11). There is no blanket "Recorded by your team" label, because it becomes false once Implentio can record answers (n350, D8).</td>
+            <td><span class="k k-proposed">Proposed</span><br><span class="cx cx-conflict">C11</span> for Implentio</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid2">
+      <div class="box" id="why-date">
+        <div class="row"><h3>The answer date is always visible</h3><span class="k k-proposed">Proposed</span></div>
+        <p class="small">While a finding waits, its row shows <b>QuickBox answered on [Sep 17, 2026 ▾]</b> under the three answers, set to today. Change it <b>before</b> clicking (the one-click answer uses it), or <b>after</b> clicking, on the saved row. It isn't hidden behind a later "Change date".</p>
+        <p class="small">When one email answers several findings, you pick the date once and it <b>carries over</b> to the other rows in the card.</p>
+        <p class="small">The date picker only allows dates from the day the dispute was sent up to today.</p>
+        <div class="note"><span class="note-label">Why this matters</span>
+          If every one-click answer is dated the day it was logged, "typical time to answer" in <a href="05-credit-outcomes.html">05 Credit outcomes</a> and "QuickBox usually answers within…" in <a href="06-historical-guidance.html">06 guidance</a> would measure <b>the customer's delay in logging it</b>, not QuickBox's. The recording time is still kept separately (<code>recordedAt</code>), for the audit trail only.</div>
+      </div>
+      <div class="box">
+        <div class="row"><h3>Who recorded it, and Implentio-handled disputes</h3><span class="k k-unresolved">Unresolved</span><span class="cx cx-conflict">C11 · Potential conflict</span></div>
+        <p class="small">Every answer shows who recorded it. When Implentio handles the dispute (03), <b>who records QuickBox's answer</b> conflicts with n344 ("customer-entered, never inferred by Implentio"), n350 (the customer's report, not Implentio's), n347 and D8 ("Recorded by your team"). Q-O4 decides. The two options:</p>
+        <div class="grid2" style="gap:10px">
+          <div class="stack s8">
+            <div class="cap"><b>(a) Implentio records it</b>, and the customer can correct it</div>
+            <div data-mount="impl-a"></div>
+            <p class="tiny muted">Data arrives without waiting on the customer. But the answer is Implentio's report, which breaks n344 and n350 as written.</p>
+          </div>
+          <div class="stack s8">
+            <div class="cap"><b>(b) Implentio reports it</b>, and the customer confirms it</div>
+            <div data-mount="impl-b"></div>
+            <p class="tiny muted">Keeps n344 and n350. It adds a step, and unconfirmed answers leave 05 without data.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="box" id="no-answer">
+      <div class="row"><h3>"Closed, no answer": why it exists and what it must not do</h3><span class="k k-proposed">Proposed</span><span class="k k-unresolved">Unresolved · Q-S3</span><span class="cx cx-conflict">C9 · Potential conflict</span></div>
+      <div class="grid2">
+        <div class="stack s8 small">
+          <p><b>Why:</b> without it, the only way to finish a dispute QuickBox ignored is a false <i>Denied</i>. That pollutes the denial reasons in 05, and it makes "Which Billers respond?" (the response rate, Q-D2) impossible to measure.</p>
+          <p><b>When:</b> offered only after the dispute has waited <b>N days</b>, shown as <b>after 30 days?</b> <span class="k k-unresolved">Unresolved</span>. Before that, the ⋯ menu shows it greyed out, with the date it becomes available.</p>
+          <p><b>How:</b> it's hidden in the row's ⋯ menu, not added as a fourth answer, so it never competes with the three real answers. The note is optional.</p>
+          <p><b>Conflict C9:</b> on 2026-09-25 the team removed "No reply yet" and the 7-day reminder ("keep only what the prototype had"). This is different: the customer <b>chooses</b> it, and nothing reminds them. It is still a new state, though, and needs sign-off.</p>
+        </div>
+        <div class="stack s8">
+          <p class="small"><b>Money and recovery rate: Unresolved.</b> The tracker's rate is recovered ÷ (recovered + not recovered). "No answer" <b>must not quietly count as Not recovered</b> until Q-S3 decides:</p>
+          <div class="scroll-x"><table class="ptable">
+            <thead><tr><th>Option</th><th>Money bucket</th><th>Recovery rate</th></tr></thead>
+            <tbody>
+              <tr><td>A: its own line</td><td>A new "No answer" line, kept out of <i>Not recovered</i></td><td>Left out</td></tr>
+              <tr><td>B: counted as lost, rate apart</td><td><i>Not recovered</i></td><td>Left out of both parts of the rate (an exception to the rule)</td></tr>
+              <tr><td>C: counted as a loss</td><td><i>Not recovered</i></td><td>Counts as a failure. This mixes "QuickBox said no" with "QuickBox said nothing"</td></tr>
+            </tbody>
+          </table></div>
+          <p class="tiny muted">The plan's proposed rate C5 (recovered ÷ answered) leaves "no answer" out by definition, because nothing was answered. The mocks below show the amount on its own line, "Closed, no answer $X", as a placeholder.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="box" id="taxonomy">
+      <div class="row"><h3>Reason categories: later, maybe</h3><span class="k k-unresolved">Later, maybe</span><span class="small muted">Not proposed for now. Free text now <span class="k k-proposed">Proposed</span></span></div>
+      <div class="grid2">
+        <div class="stack s8">
+          <div class="cap">Mock: the Denied form suggests reasons learned from <b>this account's</b> past free text</div>
+          <div class="rform" style="background: var(--surface)">
+            <div class="field"><span class="flabel">What did QuickBox say? <span class="opt-label">Optional, but it helps next time</span></span>
+              <div class="row" style="gap:6px">
+                <span class="chipbtn">Allowed by contract addendum <span class="n">3</span></span>
+                <span class="chipbtn">Missing rate sheet <span class="n">2</span></span>
+                <span class="chipbtn">Past the dispute window <span class="n">1</span></span>
+                <span class="chipbtn">Carrier charge, not Biller <span class="n">1</span></span>
+              </div>
+              <div class="textarea" style="min-height:48px; color: var(--faint)">Or type what they said…</div>
+            </div>
+          </div>
+          <p class="tiny muted">The counts are mock history. The chips only prefill the text box and never replace the Biller's own words.</p>
+        </div>
+        <div class="stack s8 small">
+          <p><b>Why wait (UX reasons):</b></p>
+          <ul>
+            <li><b>There isn't enough data.</b> The demo account has about 1 recorded denial. Categories would be guessed, not learned.</li>
+            <li><b>Customers word it differently.</b> Forcing a category too early makes people pick the nearest wrong one, and QuickBox's exact words are lost. Those words are what makes a reason useful in 06.</li>
+            <li><b>Free text can be grouped later.</b> 05 groups reasons by hand or by keyword. When the same phrasing keeps coming back, suggestions become worth offering, and an optional <code>reasonTag</code> can be added (plan G, 05).</li>
+            <li>Categories shared <b>across customers</b> would be pooled knowledge (C4, n347). They are not part of this.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== 4 FLOW ============================== -->
+  <section class="sec" id="flow">
+    <div class="sec-head"><span class="sec-num">4</span><h2>Main flow: record QuickBox's answer</h2></div>
+    <div class="grid2">
+      <div class="stack s8">
+        <div class="cap"><b>QuickBox's reply</b> (mock email, synthetic address)</div>
+        <div class="mail">
+          <div class="mail-head"><span><b>QuickBox Billing</b> &lt;billing@quickbox.example&gt;</span><span>Sep 16, 2026 · Re: Billing dispute — CM-2026-0630</span></div>
+          <p>Hi Tori, we reviewed your dispute from Sep 8:</p>
+          <ul>
+            <li>Base freight: agreed. A credit of $9,322.20 will be on your next invoice.</li>
+            <li>Fuel surcharge: applied per contract addendum 3, so no credit.</li>
+            <li>Delivery area surcharge: 2 of the 3 ZIP codes weren't remote, so we'll credit $3.12. The third is on our remote-area list.</li>
+            <li>Base freight + fuel: same as the fuel surcharge, per the addendum.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="stack s8">
+        <div class="cap"><b>Try it</b> <span class="k k-proposed">Proposed</span></div>
+        <ol class="flow-steps">
+          <li>Set <b>QuickBox answered on</b> to <b>Sep 16</b> on the first row, then click <b>Fully collected</b>. It saves in one click, and Sep 16 carries over to the other rows.</li>
+          <li>Click <b>Denied</b> on the fuel row. Type the reason and press <kbd>Enter</kbd>, or <kbd>Esc</kbd> to cancel.</li>
+          <li>Click <b>Partly collected</b> on the remote-area row. Enter 3.12 (try 5 or 4.68 to see the checks) and add why.</li>
+          <li>Click <b>Denied</b> on the last row and use <b>"Use the same reason"</b>.</li>
+          <li>Watch the card status go from <i>Waiting on Biller</i> to <i>Some outcomes recorded</i> to <i>Done</i>. Then open <b>Show details</b> for the history, or use <b>Change</b> to see how edits are recorded.</li>
+          <li>Switch to <b>31 days</b> and open <b>⋯</b> to try <i>Closed, no answer</i>.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="pctl" role="group" aria-label="Planning controls">
+      <span class="note-label">Planning controls, not product UI</span>
+      <button type="button" class="btn sm" id="flow-reset">Reset the card</button>
+      <span class="row" style="gap:6px"><span class="small">Time since sending:</span>
+        <span class="seg" role="group" aria-label="Simulate time since sending"><button type="button" data-sim="9" aria-pressed="true">9 days (demo today)</button><button type="button" data-sim="31" aria-pressed="false">31 days (simulated)</button></span></span>
+    </div>
+    <div class="frame"><div class="frame-bar">Memo CM-2026-0630 · Summary &amp; findings · 2 disputes sent (showing the Sep 8 dispute)</div>
+      <div class="frame-body" id="flow-mount"></div>
+    </div>
+    <p class="sr-only" aria-live="polite" id="flow-live"></p>
+    <div class="grid2">
+      <div class="stack s8">
+        <div class="cap"><b>What gets stored</b>, for the last row you saved <span class="d d-new">new</span> = a new field (see 7 Data)</div>
+        <pre class="store" id="flow-store"></pre>
+      </div>
+      <div class="stack s8">
+        <div class="cap"><b>What 05 and 06 can derive from it</b></div>
+        <div class="box" id="flow-derived"></div>
+      </div>
+    </div>
+
+    <div class="sub" id="later">
+      <div class="row"><h3>Where this answer shows up later</h3><span class="k k-proposed">Proposed</span></div>
+      <p class="prose small muted">This is how the data becomes knowledge. The denial captured above, <b>"Surcharge applied per contract addendum."</b> on the fuel charge, answered Sep 16, travels to four places. Each one quotes the entry and says who recorded it (n350, C11).</p>
+      <div class="flow strip-flow" aria-label="From capture to guidance">
+        <div class="node n-new">Captured<small>04 · the dispute card</small></div><span class="arrow" aria-hidden="true">→</span>
+        <div class="node">Stored<small>on the dispute's item</small></div><span class="arrow" aria-hidden="true">→</span>
+        <div class="node">Shown<small>finding card, activity</small></div><span class="arrow" aria-hidden="true">→</span>
+        <div class="node">Learned<small>05 · denial reasons</small></div><span class="arrow" aria-hidden="true">→</span>
+        <div class="node">Guides<small>06 · before the next dispute</small></div>
+      </div>
+      <div class="later-grid">
+        <div class="stack s8 mini">
+          <div class="cap"><b>① Finding card</b>, status column</div>
+          <div class="frame"><div class="frame-bar">Findings · Fuel charge</div><div class="frame-body">
+            <div class="stat"><span class="lbl">Overcharged</span><span class="val money" style="font-size:22px">$35.10</span></div>
+            <span><span class="chip danger">Denied</span></span>
+            <span class="small muted">Sent to QuickBox on Sep 8, 2026 · Answered Sep 16, 2026</span>
+            <div class="mini-quote">“Surcharge applied per contract addendum.”</div>
+            <span class="tiny muted">Customer-entered · Recorded by Tori Matthews</span>
+          </div></div>
+          <p class="tiny muted">Today the card says "Updated Sep 17, 2026" and shows no reason.</p>
+        </div>
+        <div class="stack s8 mini">
+          <div class="cap"><b>② Credit outcomes</b>, why QuickBox denied (<a href="05-credit-outcomes.html">05</a>)</div>
+          <div class="frame"><div class="frame-bar">Parcel Credit Tracker · Credit outcomes</div><div class="frame-body">
+            <div class="row between"><b class="small">Why QuickBox denied</b><span class="tiny muted">Your account only</span></div>
+            <div class="mini-quote">“Surcharge applied per contract addendum.”</div>
+            <span class="tiny muted">Customer-entered · Recorded by Tori Matthews</span>
+            <span class="tiny muted">Fuel charge · CM-2026-0630 · answered Sep 16 · 8 days after sending</span>
+            <hr>
+            <span class="tiny muted">1 denial with a reason · too few to show a pattern</span>
+          </div></div>
+          <p class="tiny muted">Each reason carries its own source. A reason Implentio recorded (C11, option a) would read "QuickBox's reason, recorded by Implentio". The page never shows one label for a mix of sources.</p>
+        </div>
+        <div class="stack s8 mini">
+          <div class="cap"><b>③ Activity log</b>, Disputes &amp; outcomes</div>
+          <div class="frame"><div class="frame-bar">Memo CM-2026-0630 · Activity &amp; exports</div><div class="frame-body">
+            <span class="tiny muted">Sep 17, 2026, 10:45 AM · Tori Matthews</span>
+            <span class="small">Outcome recorded: Fuel charge higher than your contract allows: <b>Denied</b> · QuickBox answered Sep 16 · “Surcharge applied per contract addendum.”</span>
+          </div></div>
+          <p class="tiny muted">The first part of that line exists today. The answer date and the reason are added.</p>
+        </div>
+        <div class="stack s8 mini">
+          <div class="cap"><b>④ Guidance</b> in the next fuel finding's <i>Show me why</i> (<a href="06-historical-guidance.html">06</a>)</div>
+          <div class="frame"><div class="frame-bar">Findings · Fuel charge · Show me why</div><div class="frame-body">
+            <div class="banner info" style="flex-direction:column; gap:4px">
+              <b class="small">Past disputes like this</b>
+              <span class="small">QuickBox denied 2 of your 3 fuel-charge disputes. Both times they said the surcharge is allowed by a contract addendum.</span>
+              <span class="tiny muted">Customer-entered reasons · recorded by Tori Matthews and Sam Okafor</span>
+              <span class="lnk sm">See the 3 disputes</span>
+            </div>
+          </div></div>
+          <p class="tiny muted"><b>Mock history.</b> Shown only from 3 answered cases, the "Early signal" tier (Q-G1), and only inside Show me why: where the customer chooses what to dispute (dialog step 1), only a collapsed Pattern-tier note may appear (plan review F9). With the 1 real case today, nothing appears.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== 5 STATES ============================== -->
+  <section class="sec" id="states">
+    <div class="sec-head"><span class="sec-num">5</span><h2>States</h2></div>
+    <p class="prose muted">Every row state that changes what the customer sees or what gets stored. Simple states show one row of the Sep 8 card. States that change the whole card show the card.</p>
+    <div data-tabs class="stack s16">
+      <div class="seg" role="tablist" aria-label="Row states">
+        <button type="button" data-tab="waiting">Waiting</button>
+        <button type="button" data-tab="full">Fully collected</button>
+        <button type="button" data-tab="partial">Partly · with reason</button>
+        <button type="button" data-tab="partial-no">Partly · no reason</button>
+        <button type="button" data-tab="denied">Denied · with reason</button>
+        <button type="button" data-tab="denied-no">Denied · reason skipped</button>
+        <button type="button" data-tab="noanswer">Closed, no answer</button>
+        <button type="button" data-tab="changed">Answer changed later</button>
+        <button type="button" data-tab="implentio">Recorded by Implentio</button>
+        <button type="button" data-tab="memo">Whole-memo dispute</button>
+      </div>
+
+      <div data-panel="waiting" class="state-grid">
+        <div data-mount="st-waiting"></div>
+        <div class="stack s8 small">
+          <div class="row"><b>Waiting on Biller</b><span class="k k-existing">Existing</span><span class="k k-proposed">Proposed</span> date line, ⋯</div>
+          <p>The three answers, plus <b>QuickBox answered on [today ▾]</b>. The ⋯ menu is shown open here: <i>Close, no answer</i> is greyed out until the dispute has waited 30 days (N is Unresolved).</p>
+          <dl class="kv"><dt>Card status</dt><dd>Waiting on Biller (every row waiting)</dd><dt>Stored</dt><dd><code>status: 'awaiting'</code></dd></dl>
+        </div>
+      </div>
+      <div data-panel="full" class="state-grid">
+        <div data-mount="st-full"></div>
+        <div class="stack s8 small">
+          <div class="row"><b>Fully collected</b><span class="k k-existing">Existing</span> one click · <span class="k k-proposed">Proposed</span> answer date, recorded by</div>
+          <p>Saved with the date shown in the row. The date stays editable on the saved row (the ▾). <b>Change</b> reopens the three answers.</p>
+          <dl class="kv"><dt>Stored</dt><dd><code>full · amountN 9322.20 · answeredOn 2026-09-16</code></dd><dt>Money</dt><dd>Recovered $9,322.20</dd></dl>
+        </div>
+      </div>
+      <div data-panel="partial" class="state-grid">
+        <div data-mount="st-partial"></div>
+        <div class="stack s8 small">
+          <div class="row"><b>Partly collected, with a reason</b><span class="k k-proposed">Proposed</span></div>
+          <p>Shows the amount against the disputed amount, and QuickBox's explanation for the rest.</p>
+          <dl class="kv"><dt>Money</dt><dd>Recovered $3.12 · Not recovered $1.56 (final, D5)</dd><dt>Stored</dt><dd><code>partial · 3.12 · answeredOn · reason</code></dd></dl>
+        </div>
+      </div>
+      <div data-panel="partial-no" class="state-grid">
+        <div data-mount="st-partial-no"></div>
+        <div class="stack s8 small">
+          <div class="row"><b>Partly collected, no reason</b><span class="k k-proposed">Proposed</span></div>
+          <p>Saving without a reason is allowed. The row says "No reason recorded" and offers <b>Add reason</b>. It never nags beyond that one link.</p>
+        </div>
+      </div>
+      <div data-panel="denied" class="state-grid">
+        <div data-mount="st-denied"></div>
+        <div class="stack s8 small">
+          <div class="row"><b>Denied, with a reason</b><span class="k k-proposed">Proposed</span></div>
+          <p>This is the entry that 05 groups and 06 quotes. The quote marks show these are QuickBox's words as the customer recorded them.</p>
+          <dl class="kv"><dt>Money</dt><dd>Not recovered $35.10</dd><dt>Re-dispute</dt><dd>C8 / Q-S4 <span class="k k-unresolved">Unresolved</span></dd></dl>
+        </div>
+      </div>
+      <div data-panel="denied-no" class="state-grid">
+        <div data-mount="st-denied-no"></div>
+        <div class="stack s8 small">
+          <div class="row"><b>Denied, reason skipped</b><span class="k k-proposed">Proposed</span></div>
+          <p>The form was saved with an empty reason. The row says <b>"No reason recorded · Add reason"</b>. 05 counts the denial but has no reason to group.</p>
+        </div>
+      </div>
+      <div data-panel="noanswer" class="state-grid">
+        <div data-mount="st-noanswer"></div>
+        <div class="stack s8 small">
+          <div class="row"><b>Closed, no answer</b><span class="k k-proposed">Proposed</span><span class="k k-unresolved">Unresolved</span></div>
+          <p>Muted chip, the optional note, and the day it was closed. There is no answer date, because QuickBox never answered. <b>Change</b> still works if they reply later (see 6 Edge cases). <span class="muted">Simulated date: 31 days after sending.</span></p>
+          <dl class="kv"><dt>Card status</dt><dd>Counts as recorded (the card can reach Done)</dd><dt>Money</dt><dd><b>Unresolved</b>. Not quietly counted as Not recovered (see 3).</dd></dl>
+        </div>
+      </div>
+      <div data-panel="changed" class="state-grid">
+        <div data-mount="st-changed"></div>
+        <div class="stack s8 small">
+          <div class="row"><b>Answer changed later</b><span class="k k-existing">Existing</span> Change + history · <span class="k k-proposed">Proposed</span> more detail</div>
+          <p>QuickBox first denied the fuel charge (answered Sep 11), then credited part of it after Tori followed up (answered Sep 16). Renee recorded the change. "Show details" lists who, when and <b>before → after</b>, including the answer dates (n345).</p>
+        </div>
+      </div>
+      <div data-panel="implentio" class="state-grid">
+        <div data-mount="st-implentio"></div>
+        <div class="stack s8 small">
+          <div class="row"><b>Recorded by Implentio</b><span class="k k-unresolved">Unresolved · Q-O4</span><span class="cx cx-conflict">C11</span></div>
+          <p>Mock: the same findings, as if Implentio had handled the dispute (03). This shows option (a), where Implentio records and the customer can correct. Option (b) is shown in section 3.</p>
+          <p>Whether the customer can record answers on waiting rows of an Implentio-handled dispute is also open.</p>
+        </div>
+      </div>
+      <div data-panel="memo" class="state-grid">
+        <div data-mount="st-memo"></div>
+        <div class="stack s8 small">
+          <div class="row"><b>Whole-memo dispute</b><span class="k k-existing">Existing</span></div>
+          <p>Mock from another scenario: the complete credit memo was disputed without a breakdown by finding. There is one row, <b>Complete credit memo</b>, and it isn't a link. The same answers, date and reason apply. The partial amount can go up to $9,387.70.</p>
+          <dl class="kv"><dt>Stored</dt><dd>On <code>DisputeRecord.collection</code> today (a single item under the proposed shape)</dd></dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== 6 EDGE ============================== -->
+  <section class="sec" id="edge">
+    <div class="sec-head"><span class="sec-num">6</span><h2>Edge cases</h2></div>
+    <div class="scroll-x">
+      <table class="ptable wide">
+        <thead><tr><th>#</th><th>Case</th><th>Proposed handling</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>E1</td><td>Amount more than disputed ($40 on $35.10)</td><td>The field shows "Up to $35.10" and Save is disabled (mock A).</td><td><span class="k k-existing">Existing</span></td></tr>
+          <tr><td>E2</td><td>Partial amount equals the full amount</td><td>Saved as <i>Fully collected</i>, as today. A hint says so before you save (mock A).</td><td><span class="k k-existing">Existing</span> rule · <span class="k k-proposed">Proposed</span> hint</td></tr>
+          <tr><td>E3</td><td>Partial amount of $0</td><td>"Nothing credited? Choose Denied instead." A partial answer must be above $0 (n344).</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td>E4</td><td>Answer date before the send date, or in the future</td><td>The picker only offers Sep 8 (sent) to today. A typed date outside that range shows "Pick a date from Sep 8, when you sent it, to today" (mock B).</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td>E5</td><td>One QuickBox email answers every finding at once</td><td>Still one answer per finding, with <b>no "all collected" shortcut</b> (2026-09-24). What makes it quick: the date carries over after the first row, and "Use the same reason" fills a repeated denial.</td><td><span class="k k-confirmed">Newly confirmed</span> no bulk · <span class="k k-proposed">Proposed</span> helpers</td></tr>
+          <tr><td>E6</td><td>QuickBox credits it later, after a denial</td><td><b>Change</b> → Partly or Fully collected, with the new answer date. The history keeps the denial (see "Answer changed later" in 5).</td><td><span class="k k-existing">Existing</span> Change · <span class="k k-proposed">Proposed</span> dates in history</td></tr>
+          <tr><td>E7</td><td>QuickBox answers after the row was closed as "no answer"</td><td><b>Change</b> → record the real answer with its date. The history keeps "Closed, no answer". The response time uses the real answer date (mock C).</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td>E8</td><td>Partial answer → a new dispute for the rest → denied</td><td>The data stores an answer <b>per dispute attempt</b>, on the dispute's item. If Q-S4 = yes, the finding's result <b>combines its attempts</b>: "Partly collected · $20.00 of $35.10 · the remaining $15.10 was disputed again and denied". The recovery rate counts the finding's money once. Attempts count only for history and time to answer (mock D). Whether a second dispute is allowed at all is Q-S4.</td><td><span class="k k-proposed">Proposed</span> data · <span class="k k-unresolved">Unresolved</span> Q-S4</td></tr>
+          <tr><td>E9</td><td>QuickBox pays more than was claimed</td><td>Today the amount can't go above the disputed amount. Options: cap it and add a note, or allow it with a "more than disputed" flag that 05 treats as full.</td><td><span class="k k-unresolved">Unresolved</span> Q-04e</td></tr>
+          <tr><td>E10</td><td>Implentio handled the dispute, and the customer disagrees with the answer Implentio recorded</td><td>With (a): the customer uses Change, and the history shows both versions and who recorded each. With (b): nothing is recorded until the customer confirms.</td><td><span class="k k-unresolved">Unresolved</span> Q-O4 · <span class="cx cx-conflict">C11</span></td></tr>
+          <tr><td>E11</td><td>The date QuickBox answered vs the date the credit actually shows up on an invoice</td><td>We capture <b>the answer date</b> now. The credit date could come later from ingested credit records (C10, n167). Which one does 05 need? <b>New question Q-04a.</b></td><td><span class="k k-unresolved">Unresolved</span> Q-04a</td></tr>
+          <tr><td>E12</td><td>Very long reason (pasted email)</td><td>Clamped to 2 lines on the card, with "Show all". The full text appears in the details and in 05. Soft limit of 1,000 characters (mock E).</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td>E13</td><td>The reason contains personal data (a QuickBox agent's name or email signature)</td><td>Note only: it's stored account-scoped (n347) and never pooled. The hint says "Their words are fine", not "paste the email". Attachments come later (Q-04d).</td><td><span class="k k-proposed">Proposed</span> note</td></tr>
+          <tr><td>E14</td><td>Customer-reported, not Implentio's judgement (n350)</td><td>Every answer and reason is labelled by who recorded it, in every view: "Customer-entered · Recorded by Tori Matthews", or "QuickBox's reason, recorded by Implentio" (C11). D8's blanket "Recorded by your team" caption is only true while customers are the only ones recording, so it has to change if C11 option (a) is chosen. No screen shows a reason that nobody entered.</td><td><span class="k k-existing">Existing</span> rule · <span class="k k-proposed">Proposed</span> labels · <span class="cx cx-conflict">C11</span></td></tr>
+          <tr><td>E15</td><td>Keyboard: arrowing through the answer options</td><td>Today's answers are a native radio group, and arrow keys select and fire the change, so arrowing onto <i>Fully collected</i> or <i>Denied</i> saves it. Proposed: only Fully collected saves at once, and only on click, Space or Enter. The mock uses buttons.</td><td><span class="cx cx-verify">Needs verification</span> · <span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td>E16</td><td>Two teammates record the same row (Tori, then Renee)</td><td>The last save wins. The history keeps both, and the row's "Recorded by Renee Alvarez" makes the change visible.</td><td><span class="k k-proposed">Proposed</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid2">
+      <div class="stack s8"><div class="cap"><b>A · E1, E2</b> Amount checks</div><div data-mount="edge-amount"></div></div>
+      <div class="stack s8"><div class="cap"><b>B · E4</b> Date outside the allowed range</div><div data-mount="edge-date"></div></div>
+      <div class="stack s8"><div class="cap"><b>C · E7</b> QuickBox answers after "Closed, no answer" <span class="muted">(simulated dates)</span></div><div data-mount="edge-late"></div></div>
+      <div class="stack s8"><div class="cap"><b>E · E12</b> Long reason, clamped</div><div data-mount="edge-long"></div></div>
+    </div>
+    <div class="stack s8">
+      <div class="cap"><b>D · E8</b> One finding, two dispute attempts <span class="k k-proposed">Proposed</span> data shape · <span class="k k-unresolved">Unresolved</span> Q-S4 <span class="muted">(simulated dates after Sep 17)</span></div>
+      <div class="grid2">
+        <div class="frame"><div class="frame-bar">Findings · Fuel charge higher than your contract allows</div><div class="frame-body">
+          <div class="row between top">
+            <div class="stack s4"><b>Fuel charge higher than your contract allows</b><span class="small muted">DHL, UPS · 172 packages · 6 invoices</span></div>
+            <div class="stack s4" style="align-items:flex-start"><span class="small muted">Overcharged</span><span class="money" style="font-size:20px">$35.10</span></div>
+          </div>
+          <div class="row" style="gap:6px 10px"><span class="chip attention">Partly collected</span><span class="small"><b>$20.00</b> of $35.10</span></div>
+          <span class="small muted">The remaining $15.10 was disputed again and denied.</span>
+          <div class="two-att">
+            <div class="att">
+              <div class="att-h"><b>Dispute 2 · sent Sep 18, 2026</b><span class="small">$15.10 (the unpaid part)</span></div>
+              <div class="sline"><span class="chip danger">Denied</span><span class="quote small">“Already credited what was owed under the addendum.”</span></div>
+              <span class="tiny muted">QuickBox answered Oct 2, 2026 · Recorded by Tori Matthews</span>
+            </div>
+            <div class="att">
+              <div class="att-h"><b>Dispute 1 · sent Sep 8, 2026</b><span class="small">$35.10</span></div>
+              <div class="sline"><span class="chip attention">Partly collected</span><span class="small">$20.00 of $35.10</span><span class="quote small">“Credited packages billed after Aug 1 only.”</span></div>
+              <span class="tiny muted">QuickBox answered Sep 16, 2026 · Recorded by Tori Matthews</span>
+            </div>
+          </div>
+        </div></div>
+        <div class="stack s8 small">
+          <p><b>How it reads</b> <span class="k k-proposed">Proposed</span>, only if Q-S4 = yes: the finding's result <b>combines its attempts</b>. It stays <i>Partly collected · $20.00 of $35.10</i>, and the line under it says the remaining $15.10 was disputed again and denied. It never shows a red Denied chip when money was recovered.</p>
+          <p><b>Money and rate:</b> the recovery rate counts <b>the finding's money once</b>: $35.10 answered, $20.00 recovered, $15.10 not recovered. The second attempt doesn't add another $15.10 to the amount disputed.</p>
+          <p><b>Why store it per attempt:</b> Q-S4 is open, but the data shouldn't assume "no". If the answer only lived on the finding, the second dispute would overwrite the first, and the $20.00 partial answer and its date would be lost.</p>
+          <p><b>For 05:</b> attempts count only for history and time to answer: two answers, each with its own date. If Q-S4 says "no", every finding has exactly one attempt, and nothing else changes.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== 7 DATA ============================== -->
+  <section class="sec" id="data">
+    <div class="sec-head"><span class="sec-num">7</span><h2>Data</h2></div>
+    <p class="prose small muted">Plan G, row 04: <span class="d d-have">Have</span> <code>collection {status, amountN, date, reason, changedBy/At, history}</code>. <span class="d d-new">New</span> <code>answeredOn</code> vs <code>changedAt</code>, <code>note</code>, <code>recordedBy {type}</code>, <code>status += 'no_answer'</code>, <code>attachments[]</code> (later). The plan review added the per-attempt shape.</p>
+    <div class="scroll-x">
+      <table class="ptable wide">
+        <thead><tr><th>UI element</th><th>Field</th><th>Today</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Answer chip (Fully / Partly / Denied)</td><td><code>answer.status</code></td><td><span class="d d-have">Have</span></td><td><code>collection.status</code>: <code>full · partial · not_issued · awaiting</code></td></tr>
+          <tr><td>Closed, no answer</td><td><code>status: 'no_answer'</code></td><td><span class="d d-new">New</span></td><td>Needs <code>COLLECTION_LABELS</code>, a muted tone, <code>disputeStatus</code> (counts as recorded), <code>findingPhase</code> (closed), <code>recoveryBuckets</code> (Unresolved)</td></tr>
+          <tr><td>Amount collected, "of $35.10"</td><td><code>answer.amountN</code> + the item's <code>amountN</code></td><td><span class="d d-have">Have</span></td><td><code>outcomeCollection</code> already turns a partial equal to the full amount into Fully collected</td></tr>
+          <tr><td>"QuickBox answered on [date ▾]"</td><td><code>answer.answeredOn</code></td><td><span class="d d-new">New</span></td><td>Today's <code>collection.date</code> is the recording day. Migrate the existing value as "answer date unknown, recorded on X", not as an answer date</td></tr>
+          <tr><td>Recording time (history, activity)</td><td><code>answer.recordedAt</code></td><td><span class="d d-have">Have</span></td><td>= <code>changedAt</code>. Audit only, never used for "time to answer"</td></tr>
+          <tr><td>"Recorded by Tori Matthews" / "Implentio"</td><td><code>answer.recordedBy {type: person | implentio | agent, name}</code></td><td><span class="d d-new">New</span></td><td>Today <code>changedBy</code> is a name string. The type is needed for 03, for agents later, and for the source label that every view shows next to an answer or reason (C11)</td></tr>
+          <tr><td>"What did QuickBox say?"</td><td><code>answer.reason</code></td><td><span class="d d-have">Have</span></td><td>Asked before saving (Proposed). Account-scoped (n347)</td></tr>
+          <tr><td>"Why not the full amount?"</td><td><code>answer.reason</code> on a partial answer</td><td><span class="d d-missing">Missing</span> UI</td><td>The field exists and <code>outcomeCollection</code> keeps it for partial answers, but nothing in the UI fills it</td></tr>
+          <tr><td>No-answer note</td><td><code>answer.note</code></td><td><span class="d d-new">New</span></td><td>Kept separate from <code>reason</code>, so a no-answer note never appears among the denial reasons in 05</td></tr>
+          <tr><td>"Waiting 9 days", ⋯ available from</td><td><code>DisputeRecord.sentAt</code> + N</td><td><span class="d d-have">Have</span> / <span class="d d-new">New</span></td><td>N (30?) is Unresolved (Q-S3). Store it as configuration, not in code</td></tr>
+          <tr><td>Show details → Outcome history</td><td><code>answer.history[]</code></td><td><span class="d d-have">Have</span></td><td>History entries need <code>answeredOn</code>, <code>recordedBy</code>, <code>note</code> too (<span class="d d-new">New</span>), to show before → after (n345)</td></tr>
+          <tr><td>"Handled by Implentio"</td><td><code>DisputeRecord.handledBy</code></td><td><span class="d d-new">New</span></td><td>From 03. Decides who records (Q-O4)</td></tr>
+          <tr><td>Two attempts on one finding</td><td><code>DisputeRecord.items[]</code></td><td><span class="d d-new">New</span></td><td>The answer lives on the dispute's item. The finding's result combines its attempts (E8): its money is counted once, and attempts count for history and time to answer</td></tr>
+          <tr><td>QuickBox's reply (paste or attach)</td><td><code>answer.attachments[]</code></td><td><span class="d d-new">New</span> later</td><td>Not in the first step (Q-04d)</td></tr>
+          <tr><td>Date the credit appeared on an invoice</td><td><code>creditPostedOn</code>?</td><td><span class="d d-verify">Verify</span></td><td>Only if Implentio ingests Biller credit records (C10, n167, n32). Q-04a</td></tr>
+          <tr><td>Whole-memo dispute</td><td><code>DisputeRecord.collection</code></td><td><span class="d d-have">Have</span></td><td>Becomes <code>items[0]</code> with <code>findingId: null</code> in the proposed shape</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid2">
+      <div class="stack s8">
+        <div class="cap"><b>Proposed shape</b>: answers per dispute attempt <span class="k k-proposed">Proposed</span></div>
+<pre class="store">DisputeRecord {
+  id, memoId, biller, sentAt, sentBy, via,
+  handledBy: 'customer' | 'implentio',        <span class="c">// 03</span> <span class="nw">new</span>
+  items: [{                                    <span class="nw">new</span>
+    findingId: 'fuel',                         <span class="c">// null = whole memo</span>
+    amountN: 35.10,                            <span class="c">// disputed in THIS attempt</span>
+    answer: {
+      status: 'awaiting' | 'full' | 'partial'
+            | 'not_issued' | 'no_answer',      <span class="nw">no_answer new</span>
+      amountN: 0,
+      answeredOn: '2026-09-16',                <span class="c">// QuickBox's date</span> <span class="nw">new</span>
+      reason: 'Surcharge applied per contract addendum.',
+      note: null,                              <span class="c">// no-answer note</span> <span class="nw">new</span>
+      recordedBy: { type: 'person', name: 'Tori Matthews' },  <span class="nw">new</span>
+      recordedAt: '2026-09-17T10:45',          <span class="c">// = changedAt</span>
+      history: [ /* earlier answers, same shape */ ],
+      attachments: []                          <span class="c">// later</span> <span class="nw">new</span>
+    }
+  }]
+}
+<span class="c">// Derived, not stored:</span>
+finding.result   = combine(attempts)          <span class="c">// only if Q-S4 = yes</span>
+  collected      = Σ collected over attempts
+  status         = latest waiting   → Waiting on Biller
+                   collected = amt  → Fully collected
+                   collected > 0    → Partly collected
+                   otherwise        → Denied / Closed, no answer
+recoveryRate     = counts each finding's money once
+daysToAnswer     = answeredOn − sentAt, per attempt  <span class="c">// 05, 06</span>
+loggingLag       = recordedAt − answeredOn    <span class="c">// internal only</span></pre>
+      </div>
+      <div class="stack s8">
+        <div class="cap"><b>Who reads what</b></div>
+        <div class="scroll-x"><table class="ptable">
+          <thead><tr><th>Reader</th><th>Uses</th></tr></thead>
+          <tbody>
+            <tr><td>Dispute card (04)</td><td>status, amountN, answeredOn, reason / note, recordedBy, history</td></tr>
+            <tr><td>Finding card status line</td><td>the combined result (E8): status and amount; answeredOn and reason of the latest answer (replaces "Updated {date}")</td></tr>
+            <tr><td>Tracker money buckets</td><td>status, amountN. <code>no_answer</code> is Unresolved (Q-S3)</td></tr>
+            <tr><td>05 Credit outcomes</td><td>outcome mix, recovery rate (C5), <b>days to answer</b> (answeredOn − sentAt), <b>response rate</b> (no_answer, Q-D2), reasons grouped</td></tr>
+            <tr><td>06 Guidance</td><td>counts per Biller × finding type, repeated reasons. The sample-size tiers come from 05</td></tr>
+            <tr><td>Activity log</td><td>recordedAt, recordedBy, before → after, answeredOn, reason</td></tr>
+          </tbody>
+        </table></div>
+        <div class="note"><span class="note-label">Code touch points (for estimating)</span>
+          <code>outcomeCollection</code> (answeredOn, note, no_answer) · <code>COLLECTION_LABELS</code> / <code>COLLECTION_TONE</code> · <code>disputeStatus</code> · <code>findingPhase</code> · <code>recoveryBuckets</code> · <code>groupStatusLine</code> ("Answered {date}") · <code>outcomesBy3pl</code> · <code>DisputeCard</code> · the fixture store's <code>nextCollection</code> and <code>outcomeText</code>.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== 8 QUESTIONS ============================== -->
+  <section class="sec" id="questions">
+    <div class="sec-head"><span class="sec-num">8</span><h2>Open questions</h2></div>
+    <div class="grid2">
+      <div class="q"><b>Q-S3 · Is "Closed, no answer" wanted?</b><span>If so, after how many days can it be chosen (30?), and how does it count: its own money line, or Not recovered? In the recovery rate: left out, or a failure? Until this is decided it must not quietly count as Not recovered. (C9)</span></div>
+      <div class="q"><b>Q-S4 · Can a denied finding, or the unpaid part of a partial answer, be disputed again?</b><span>If yes, is it a new dispute on the same finding? The proposed per-attempt data works either way (E8). (C8)</span></div>
+      <div class="q"><b>Q-D2 · Do we want to measure response rate and time to answer?</b><span>Both need the answer date and "Closed, no answer" from this feature. If not, the date is still worth capturing for n344 and the audit trail.</span></div>
+      <div class="q"><b>Q-O4 · Who records answers for disputes Implentio handles?</b><span>(a) Implentio records and the customer can correct, or (b) Implentio reports and the customer confirms. It conflicts with n344, n350, n347 and D8 (C11). Can the customer disagree, and whose version counts in 05?</span></div>
+      <div class="q"><b>Q-04a (new) · Which date do we want?</b><span>The date QuickBox <b>answered</b> (captured here), the date the credit <b>appeared on an invoice</b>, or both? The first measures how QuickBox responds, and the second measures cash. The credit date would need ingested credit records (C10).</span></div>
+      <div class="q"><b>Q-04b (new) · Should the denial reason be required, or optional but asked for?</b><span>Proposed: optional but asked for, before saving. Making it required risks filler like "n/a" and slows logging. Keeping it optional risks gaps in 05.</span></div>
+      <div class="q"><b>Q-04c (new) · Should we ask for a reason on partial answers?</b><span>Proposed: yes, optional ("Why not the full amount?"). The data model already keeps it. Is it useful enough for 05, or just more friction?</span></div>
+      <div class="q"><b>Q-04d (new) · Can people paste or attach QuickBox's reply now, or later?</b><span>Proposed: later. Free text first. Attachments raise storage, personal-data (E13) and retention questions.</span></div>
+      <div class="q"><b>Q-04e (new) · What if QuickBox pays more than was claimed?</b><span>Cap it at the disputed amount (today), or allow it with a flag? How does 05 count it? (E9)</span></div>
+      <div class="q"><b>Q-04f (new) · Should one action close every waiting row as "no answer"?</b><span>One row at a time is consistent with "no bulk answers" (2026-09-24). A card-level "Close the rest without an answer" is faster when QuickBox ignored the whole dispute. Is it acceptable?</span></div>
+      <div class="q"><b>Q-T1 · Wording</b><span>Is "Closed, no answer" the right name? The plan lists it with <i>collected / recovered</i>, <i>Handled by Implentio</i> and <i>Past deadline</i> for the PM.</span></div>
+    </div>
+  </section>
+</main>
+<script id="kit">
+/* Planning kit behaviour — inlined into each file's script block with
+   id="kit" by sync-kit.mjs (never write a closing script tag in this file).
+
+   [data-tabs]          container; its [data-tab="x"] buttons show the matching
+                        [data-panel="x"] inside the same container (nearest).
+   [data-toggle="grp"]  buttons with data-value; sets data-<grp>="value" on the
+                        element named by data-target (default: <body>) and
+                        aria-pressed on the buttons. CSS/JS react to it.
+   window.kit.money(n)  "$1,234.56"
+*/
+(function () {
+  const money = (n) =>
+    (n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  function initTabs(root) {
+    root.querySelectorAll('[data-tabs]').forEach((box) => {
+      const own = (el) => el.closest('[data-tabs]') === box
+      const tabs = [...box.querySelectorAll('[data-tab]')].filter(own)
+      const panels = [...box.querySelectorAll('[data-panel]')].filter(own)
+      const show = (key) => {
+        tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === key)))
+        panels.forEach((p) => (p.hidden = p.dataset.panel !== key))
+        box.dispatchEvent(new CustomEvent('tabchange', { detail: key }))
+      }
+      tabs.forEach((t) => {
+        t.setAttribute('role', 'tab')
+        t.addEventListener('click', () => show(t.dataset.tab))
+      })
+      const first = tabs.find((t) => t.getAttribute('aria-selected') === 'true') ?? tabs[0]
+      if (first) show(first.dataset.tab)
+    })
+  }
+
+  function initToggles(root) {
+    const groups = new Map()
+    root.querySelectorAll('[data-toggle]').forEach((b) => {
+      const g = b.dataset.toggle
+      if (!groups.has(g)) groups.set(g, [])
+      groups.get(g).push(b)
+    })
+    groups.forEach((btns, g) => {
+      const set = (v) => {
+        btns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === v)))
+        const targetSel = btns[0].dataset.target
+        const target = targetSel ? document.querySelector(targetSel) : document.body
+        if (target) target.dataset[g] = v
+        document.dispatchEvent(new CustomEvent('toggle:' + g, { detail: v }))
+      }
+      btns.forEach((b) => b.addEventListener('click', () => set(b.dataset.value)))
+      const first = btns.find((b) => b.getAttribute('aria-pressed') === 'true') ?? btns[0]
+      set(first.dataset.value)
+    })
+  }
+
+  window.kit = { money, initTabs, initToggles }
+  document.addEventListener('DOMContentLoaded', () => {
+    initTabs(document)
+    initToggles(document)
+  })
+})()
+</script>
+<script>
+/* page-specific behaviour (vanilla JS, no libraries) */
+(function () {
+  const money = window.kit.money
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const parts = (iso) => iso.split('-').map(Number)
+  const fmt = (iso) => { const [y, m, d] = parts(iso); return MON[m - 1] + ' ' + d + ', ' + y }
+  const fmtShort = (iso) => { const [, m, d] = parts(iso); return MON[m - 1] + ' ' + d }
+  const addDays = (iso, n) => { const t = new Date(iso + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10) }
+  const diffDays = (a, b) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000)
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+  const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's')
+
+  const SENT = '2026-09-08'
+  const TODAY = '2026-09-17'
+  const NO_ANSWER_DAYS = 30
+  const F = {
+    base: { id: 'base', title: 'Shipping price higher than your contract rate', short: 'Shipping price', amt: 9322.2 },
+    fuel: { id: 'fuel', title: 'Fuel charge higher than your contract allows', short: 'Fuel charge', amt: 35.1 },
+    das: { id: 'das', title: 'Remote-area fee charged incorrectly', short: 'Remote-area fee', amt: 4.68 },
+    multi: { id: 'multi', title: 'Shipping price and fuel charge both too high', short: 'Shipping price and fuel charge', amt: 3.08 },
+    memo: { id: 'memo', title: 'Complete credit memo', short: 'Complete credit memo', amt: 9387.7 },
+  }
+  const ORDER = ['base', 'fuel', 'das', 'multi']
+  const LABEL = { awaiting: 'Waiting on Biller', full: 'Fully collected', partial: 'Partly collected', not_issued: 'Denied', no_answer: 'Closed, no answer' }
+  const TONE = { awaiting: 'info', full: 'success', partial: 'attention', not_issued: 'danger', no_answer: 'muted' }
+  const ICON_PLANE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/></svg>'
+  const ICON_DOTS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/></svg>'
+  const CHEV = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>'
+
+  // ---------- tiny element helpers (live = real controls; static = look-alike spans) ----------
+  const ctl = (ctx, cls, label, attrs) =>
+    ctx.live ? '<button type="button" class="' + cls + '" ' + (attrs || '') + '>' + label + '</button>' : '<span class="' + cls + '">' + label + '</span>'
+  const chip = (status) => '<span class="chip ' + TONE[status] + '">' + LABEL[status] + '</span>'
+  const statusText = (a, f) => LABEL[a.status] + (a.status === 'partial' ? ' ' + money(a.amountN) + ' of ' + money(f.amt) : '')
+
+  function dateSel(ctx, f, value, act, extraCls) {
+    const today = ctx.today
+    if (!ctx.live) return '<span class="dsel' + (extraCls ? ' ' + extraCls : '') + '">' + fmt(value) + ' ' + CHEV + '</span>'
+    let opts = ''
+    for (let x = today; x >= ctx.sent; x = addDays(x, -1)) {
+      opts += '<option value="' + x + '"' + (x === value ? ' selected' : '') + '>' + fmt(x) + (x === today ? ' (today)' : x === ctx.sent ? ' (sent)' : '') + '</option>'
+    }
+    return '<select class="dsel" id="' + act + '-' + f.id + '" data-act="' + act + '" data-row="' + f.id + '">' + opts + '</select>'
+  }
+  const lbl = (ctx, forId, text) => (ctx.live ? '<label for="' + forId + '">' + text + '</label>' : '<span>' + text + '</span>')
+
+  // ---------- one finding row, proposed ----------
+  function rowProposed(f, s, ctx) {
+    const a = s.a
+    const o = s.open
+    let ans
+    if (o && o.mode === 'noanswer') ans = noAnswerForm(f, s, ctx)
+    else if (a && (!o || o.mode === 'reason')) ans = savedView(f, s, ctx) + (o ? reasonForm(f, s, ctx) : '')
+    else ans = answering(f, s, ctx)
+    const title = ctx.scope === 'memo' ? '<span class="rt plain">' + f.title + '</span>' : '<span class="rt">' + f.title + '</span>'
+    return '<div class="orow' + (s.hl ? ' hl' : '') + '" data-row="' + f.id + '">' + title + '<span class="ra">' + money(f.amt) + '</span><div class="rans">' + ans + '</div></div>'
+  }
+
+  function answering(f, s, ctx) {
+    const a = s.a
+    const o = s.open
+    if (ctx.implentioWaiting && !a) {
+      return '<div class="sline">' + chip('awaiting') + '<span class="small muted">Implentio records QuickBox’s answer here</span></div>'
+    }
+    const pressed = o ? (o.mode === 'change' ? a.status : o.mode === 'partial' ? 'partial' : o.mode === 'denied' ? 'not_issued' : null) : null
+    const opts = [['full', 'Fully collected'], ['partial', 'Partly collected'], ['not_issued', 'Denied']]
+      .map(([v, l]) => ctl(ctx, 'opt' + (!ctx.live && pressed === v ? ' on' : ''), l, 'data-act="answer" data-v="' + v + '" data-row="' + f.id + '" aria-pressed="' + (pressed === v) + '"'))
+      .join('')
+    const more = !a ? ctl(ctx, 'iconbtn', ICON_DOTS, 'data-act="more" data-row="' + f.id + '" aria-expanded="' + !!s.menu + '" aria-controls="more-' + f.id + '" aria-label="More options for ' + esc(f.title) + '"') : ''
+    const date = s.draftDate || ctx.defaultDate || ctx.today
+    let h = '<div class="opts" role="group" aria-label="QuickBox’s answer for ' + esc(f.title) + '">' + opts + more + '</div>'
+    if (s.menu && !a) h += morePop(f, s, ctx)
+    h += '<div class="dline">' + lbl(ctx, 'date-' + f.id, 'QuickBox answered on') + ' ' + dateSel(ctx, f, date, 'date', s.dateBad ? 'bad' : '') + '</div>'
+    if (s.dateBad) h += '<span class="err">Pick a date from Sep 8, when you sent it, to today</span>'
+    if (o && o.mode === 'partial') h += partialForm(f, s, ctx)
+    if (o && o.mode === 'denied') h += deniedForm(f, s, ctx)
+    if (o && o.mode === 'change') h += '<div class="row" style="gap:10px">' + ctl(ctx, 'lnk sm', 'Cancel', 'data-act="cancel" data-row="' + f.id + '"') + '<span class="tiny faint">Fully collected saves at once · Esc cancels</span></div>'
+    return h
+  }
+
+  function morePop(f, s, ctx) {
+    const waited = diffDays(ctx.sent, ctx.today)
+    const ok = waited >= NO_ANSWER_DAYS
+    const hint = ok
+      ? 'For a dispute QuickBox never answered. You can still change it if they reply.'
+      : 'Available from ' + fmt(addDays(ctx.sent, NO_ANSWER_DAYS)) + ', 30 days after you sent it'
+    return '<div class="more-pop" id="more-' + f.id + '">' + ctl(ctx, 'mi', 'Close: no answer from QuickBox', 'data-act="noanswer" data-row="' + f.id + '" aria-disabled="' + !ok + '"') + '<span class="tiny muted">' + hint + '</span></div>'
+  }
+
+  function partialForm(f, s, ctx) {
+    const o = s.open
+    const v = validateAmount(o.amount, f)
+    const msgCls = v.err ? 'err' : 'hint'
+    const msg = v.err || v.hint || 'Of ' + money(f.amt) + ' disputed'
+    const inp = ctx.live
+      ? '<input id="amt-' + f.id + '" class="input' + (v.err ? ' bad' : '') + '" inputmode="decimal" placeholder="0.00" autocomplete="off" value="' + esc(o.amount) + '" data-act="amt" data-row="' + f.id + '" aria-describedby="amt-msg-' + f.id + '" aria-invalid="' + !!v.err + '">'
+      : '<span class="input' + (v.err ? ' bad' : '') + '" style="display:block">' + (esc(o.amount) || '<span class="faint">0.00</span>') + '</span>'
+    const why = ctx.live
+      ? '<input id="why-' + f.id + '" class="input" placeholder="e.g. “Only 2 of 3 ZIP codes qualified.”" value="' + esc(o.why) + '" data-act="why" data-row="' + f.id + '">'
+      : '<span class="input" style="display:block">' + (esc(o.why) || '<span class="faint">e.g. “Only 2 of 3 ZIP codes qualified.”</span>') + '</span>'
+    return '<div class="rform" data-form="partial" data-row="' + f.id + '">' +
+      '<div class="field">' + lbl(ctx, 'amt-' + f.id, 'Amount collected') +
+        '<div class="row" style="gap:8px"><div class="money-in"><span class="cur" aria-hidden="true">$</span>' + inp + '</div><span class="small muted">of ' + money(f.amt) + '</span></div>' +
+        '<span id="amt-msg-' + f.id + '" class="' + msgCls + '">' + msg + '</span></div>' +
+      '<div class="field">' + lbl(ctx, 'why-' + f.id, 'Why not the full amount? <span class="opt-label">Optional</span>') + why + '</div>' +
+      '<div class="row" style="gap:10px">' + ctl(ctx, 'btn primary sm', 'Save', 'data-act="save-partial" data-row="' + f.id + '"' + (v.ok ? '' : ' disabled')) + ctl(ctx, 'lnk sm', 'Cancel', 'data-act="cancel" data-row="' + f.id + '"') + '<span class="tiny faint">Enter saves · Esc cancels</span></div>' +
+      '</div>'
+  }
+
+  function sameReasonFrom(fId, ctx) {
+    if (!ctx.rowsState) return null
+    const other = ORDER.filter((id) => id !== fId).map((id) => ({ id, a: ctx.rowsState[id] && ctx.rowsState[id].a })).filter((x) => x.a && x.a.status === 'not_issued' && x.a.reason)
+    return other.length ? other[other.length - 1] : null
+  }
+
+  function deniedForm(f, s, ctx) {
+    const o = s.open
+    const same = sameReasonFrom(f.id, ctx)
+    const ph = 'e.g. “The surcharge is allowed by contract addendum 3.”'
+    const ta = ctx.live
+      ? '<textarea id="say-' + f.id + '" class="textarea" rows="2" maxlength="1000" placeholder="' + esc(ph) + '" data-act="say" data-row="' + f.id + '" aria-describedby="say-hint-' + f.id + '">' + esc(o.say) + '</textarea>'
+      : '<span class="textarea" style="display:block">' + (esc(o.say) || '<span class="faint">' + esc(ph) + '</span>') + '</span>'
+    const sugg = same && (o.say || '') !== same.a.reason
+      ? '<div class="suggest"><span>Same answer as “' + esc(F[same.id].title) + '”?</span>' + ctl(ctx, 'lnk sm', 'Use the same reason', 'data-act="usesame" data-row="' + f.id + '" data-from="' + same.id + '"') + '<span class="tiny muted">“' + esc(same.a.reason) + '”</span></div>'
+      : ''
+    return '<div class="rform" data-form="denied" data-row="' + f.id + '">' +
+      '<div class="field">' + lbl(ctx, 'say-' + f.id, 'What did QuickBox say? <span class="opt-label">Optional, but it helps next time</span>') + ta +
+        '<span class="hint" id="say-hint-' + f.id + '">Their words are fine. Your team sees it later in Credit outcomes.</span></div>' + sugg +
+      '<div class="row" style="gap:10px">' + ctl(ctx, 'btn primary sm', 'Save as denied', 'data-act="save-denied" data-row="' + f.id + '"') + ctl(ctx, 'lnk sm', 'Cancel', 'data-act="cancel" data-row="' + f.id + '"') + '<span class="tiny faint">Enter saves · Shift+Enter for a new line · Esc cancels</span></div>' +
+      '</div>'
+  }
+
+  function reasonForm(f, s, ctx) {
+    const o = s.open
+    const q = s.a.status === 'partial' ? 'Why not the full amount?' : 'What did QuickBox say?'
+    const ta = ctx.live
+      ? '<textarea id="say-' + f.id + '" class="textarea" rows="2" maxlength="1000" data-act="say" data-row="' + f.id + '">' + esc(o.say) + '</textarea>'
+      : '<span class="textarea" style="display:block"></span>'
+    return '<div class="rform" data-form="reason" data-row="' + f.id + '"><div class="field">' + lbl(ctx, 'say-' + f.id, q) + ta + '</div>' +
+      '<div class="row" style="gap:10px">' + ctl(ctx, 'btn primary sm', 'Save', 'data-act="save-reason" data-row="' + f.id + '"') + ctl(ctx, 'lnk sm', 'Cancel', 'data-act="cancel" data-row="' + f.id + '"') + '</div></div>'
+  }
+
+  function noAnswerForm(f, s, ctx) {
+    const o = s.open
+    const waited = diffDays(ctx.sent, ctx.today)
+    const inp = ctx.live
+      ? '<input id="note-' + f.id + '" class="input" placeholder="e.g. “Chased twice by email, no reply.”" value="' + esc(o.note) + '" data-act="note" data-row="' + f.id + '">'
+      : '<span class="input" style="display:block">' + (esc(o.note) || '<span class="faint">e.g. “Chased twice by email, no reply.”</span>') + '</span>'
+    return '<div class="rform" data-form="noanswer" data-row="' + f.id + '"><b>Close without an answer</b>' +
+      '<p class="small muted">QuickBox hasn’t answered in ' + plural(waited, 'day') + '. This records “Closed, no answer”. If they reply later, use Change.</p>' +
+      '<div class="field">' + lbl(ctx, 'note-' + f.id, 'Note <span class="opt-label">Optional</span>') + inp + '</div>' +
+      '<div class="row" style="gap:10px">' + ctl(ctx, 'btn primary sm', 'Close it', 'data-act="save-noanswer" data-row="' + f.id + '"') + ctl(ctx, 'lnk sm', 'Cancel', 'data-act="cancel" data-row="' + f.id + '"') + '<span class="tiny faint">Enter saves · Esc cancels</span></div></div>'
+  }
+
+  function savedView(f, s, ctx) {
+    const a = s.a
+    const bits = [chip(a.status)]
+    if (a.status === 'partial') bits.push('<span class="small"><b>' + money(a.amountN) + '</b> of ' + money(f.amt) + ' collected</span>')
+    const text = a.status === 'no_answer' ? a.note : a.reason
+    if (text) {
+      const long = text.length > 110
+      const clamp = long && !s.expanded
+      bits.push('<span class="quote small' + (clamp ? ' clamp' : '') + '">“' + esc(text) + '”</span>')
+      if (long) bits.push(ctl(ctx, 'lnk sm', s.expanded ? 'Show less' : 'Show all', 'data-act="showall" data-row="' + f.id + '" aria-expanded="' + !!s.expanded + '"'))
+    } else if (a.status === 'not_issued' || a.status === 'partial') {
+      bits.push('<span class="small faint">No reason recorded</span>' + ctl(ctx, 'lnk sm', 'Add reason', 'data-act="addreason" data-row="' + f.id + '" aria-label="Add QuickBox’s reason for ' + esc(f.title) + '"'))
+    }
+    const by = a.byType === 'implentio' ? (a.reason ? 'QuickBox\u2019s reason, recorded by Implentio' : 'Recorded by Implentio') : 'Recorded by ' + a.by
+    let meta
+    if (a.status === 'no_answer') {
+      meta = '<span>Closed ' + fmt(a.closedOn) + ', ' + diffDays(ctx.sent, a.closedOn) + ' days after sending</span><span>' + by + '</span>'
+    } else {
+      meta = '<span class="grp">' + lbl(ctx, 'redate-' + f.id, 'QuickBox answered') + ' ' + dateSel(ctx, f, a.answeredOn, 'redate') + '</span><span>' + by + '</span>'
+    }
+    const change = ctx.hideChange ? '' : ctl(ctx, 'lnk sm push', ctx.changeLabel || 'Change', 'data-act="change" data-row="' + f.id + '" aria-label="Change the answer for ' + esc(f.title) + '"')
+    return '<div class="sline">' + bits.join('') + change + '</div><div class="meta">' + meta + '</div>'
+  }
+
+  // ---------- one finding row, as built today ----------
+  function rowCurrent(f, s) {
+    const a = s.a
+    let ans
+    if (!a) {
+      ans = '<div class="opts">' + ['Fully collected', 'Partly collected', 'Denied'].map((l) => '<span class="opt">' + l + '</span>').join('') + '</div>'
+    } else {
+      const detail = a.status === 'partial' ? money(a.amountN) + ' collected · ' : a.status === 'not_issued' && a.reason ? '“' + esc(a.reason) + '” · ' : ''
+      ans = '<div class="sline">' + chip(a.status) + '<span class="small muted">' + detail + fmt(a.recordedOn) + '</span>' +
+        (a.status === 'not_issued' && !a.reason ? '<span class="lnk sm">Add reason</span>' : '') + '<span class="lnk sm">Change</span></div>'
+      if (s.reasonOpen) {
+        ans += '<div class="row" style="gap:8px"><span class="input" style="flex:1 1 200px; color: var(--faint)">What did the Biller say?</span><span class="btn primary sm">Save</span><span class="lnk sm">Cancel</span></div>'
+      }
+    }
+    return '<div class="orow' + (s.hl ? ' hl' : '') + '"><span class="rt">' + f.title + '</span><span class="ra">' + money(f.amt) + '</span><div class="rans">' + ans + '</div></div>'
+  }
+
+  // ---------- the dispute card ----------
+  function cardHTML(c) {
+    const ctx = c.ctx
+    const rows = c.rows
+    const statuses = rows.map((r) => (r.s.a ? r.s.a.status : 'awaiting'))
+    const waitingN = statuses.filter((x) => x === 'awaiting').length
+    const st = waitingN === 0 ? 'done' : waitingN === rows.length ? 'awaiting' : 'partly'
+    const open = waitingN > 0
+    const total = rows.reduce((s, r) => s + r.f.amt, 0)
+    let col = 0, nr = 0, na = 0
+    rows.forEach((r) => {
+      const a = r.s.a
+      if (!a) return
+      if (a.status === 'full') col += r.f.amt
+      if (a.status === 'partial') { col += a.amountN; nr += r.f.amt - a.amountN }
+      if (a.status === 'not_issued') nr += r.f.amt
+      if (a.status === 'no_answer') na += r.f.amt
+    })
+    const waited = diffDays(ctx.sent, ctx.today)
+    const what = ctx.scope === 'memo' ? 'Complete credit memo' : plural(rows.length, 'finding')
+    const sub = open
+      ? what + ' · ' + money(total) + ' · ' + (waited <= 0 ? 'Sent today' : 'Waiting ' + plural(waited, 'day'))
+      : 'Collected ' + money(col) + ' · Not recovered ' + money(nr) + (na > 0.004 ? ' · Closed, no answer ' + money(na) : '')
+    const stChip = st === 'done' ? '<span class="chip success">Done</span>' : st === 'partly' ? '<span class="chip attention">Some outcomes recorded</span>' : '<span class="chip info">Waiting on Biller</span>'
+    const by = c.handledBy === 'implentio' ? ' by Implentio' : ''
+    const rowFn = c.variant === 'current' ? (r) => rowCurrent(r.f, r.s) : (r) => rowProposed(r.f, r.s, ctx)
+    let h = '<section class="card dc ' + (open ? 'waiting' : 'done') + '" aria-label="QuickBox dispute, ' + fmt(ctx.sent) + '">' +
+      '<div class="dc-head"><span class="dc-ico">' + ICON_PLANE + '</span><div class="dc-title"><h4>Dispute sent to QuickBox' + by + ' · ' + fmt(ctx.sent) + '</h4><span class="dc-sub">' + sub + '</span>' +
+      (c.handledBy === 'implentio' ? '<span class="handled"><span class="dot" aria-hidden="true">I</span>Handled by Implentio</span>' : '') + '</div>' + stChip + '</div>' +
+      '<div class="dc-rows">' + (open && !c.noHead ? '<div class="dc-rows-head">Record QuickBox’s answer for each finding</div>' : '') + rows.map(rowFn).join('') + '</div>'
+    if (!c.noDetails) {
+      h += '<div>' + ctl(ctx, 'lnk sm bold', (c.detailsOpen ? 'Hide details' : 'Show details') + ' ' + CHEV, 'data-act="details" aria-expanded="' + !!c.detailsOpen + '"') + '</div>'
+      if (c.detailsOpen) h += detailsHTML(c)
+    }
+    return h + '</section>'
+  }
+
+  function detailsHTML(c) {
+    const events = c.events || []
+    const hist = events.length
+      ? '<ul class="hist">' + events.map((e) => '<li><span class="when">' + e.at + ' · ' + esc(e.by) + '</span><br><span class="medium">' + esc(e.title) + ':</span> ' + e.text + '</li>').join('') + '</ul>'
+      : '<p class="small muted">Nothing recorded yet.</p>'
+    return '<div class="dc-details">' +
+      '<div class="dc-box"><dl class="dl"><dt>Sent by</dt><dd>' + (c.handledBy === 'implentio' ? 'Implentio' : 'Tori Matthews · from her connected Gmail') + '</dd><dt>Date and time</dt><dd>' + fmt(c.ctx.sent) + ', 2:14 PM</dd><dt>To</dt><dd><span class="lnk">billing@quickbox.example</span></dd><dt>Subject</dt><dd>Billing dispute: CM-2026-0630 (April – June 2026)</dd></dl></div>' +
+      '<div class="dc-box"><b class="small">Outcome history</b>' + hist + '</div>' +
+      '<span class="lnk sm bold">See all activity for this credit memo</span></div>'
+  }
+
+  // =====================================================================
+  // Interactive flow
+  // =====================================================================
+  const mount = document.getElementById('flow-mount')
+  const live = document.getElementById('flow-live')
+  const storeEl = document.getElementById('flow-store')
+  const derivedEl = document.getElementById('flow-derived')
+  const flow = {}
+
+  function resetFlow() {
+    flow.today = flow.today || TODAY
+    flow.rows = {}
+    ORDER.forEach((id) => (flow.rows[id] = { a: null, draftDate: null, expanded: false }))
+    flow.open = null
+    flow.menu = null
+    flow.details = false
+    flow.events = []
+    flow.clock = 0
+    flow.last = null
+    flow.lastDate = null
+  }
+
+  function stamp() {
+    const mins = 10 * 60 + 42 + 3 * flow.clock++
+    const h = Math.floor(mins / 60), m = mins % 60
+    const h12 = ((h + 11) % 12) + 1
+    return {
+      label: fmt(flow.today) + ', ' + h12 + ':' + String(m).padStart(2, '0') + ' ' + (h < 12 ? 'AM' : 'PM'),
+      iso: flow.today + 'T' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'),
+    }
+  }
+
+  const defaultDate = () => (flow.lastDate && flow.lastDate <= flow.today ? flow.lastDate : flow.today)
+  const dateFor = (id) => flow.rows[id].draftDate || defaultDate()
+
+  function flowCtx() {
+    return { live: true, today: flow.today, sent: SENT, defaultDate: defaultDate(), rowsState: flow.rows }
+  }
+
+  function render(focusSel) {
+    const ctx = flowCtx()
+    const rows = ORDER.map((id) => ({
+      f: F[id],
+      s: { ...flow.rows[id], open: flow.open && flow.open.id === id ? flow.open : null, menu: flow.menu === id },
+    }))
+    mount.innerHTML = cardHTML({ ctx, rows, variant: 'proposed', detailsOpen: flow.details, events: flow.events })
+    renderStore()
+    if (focusSel) {
+      const el = mount.querySelector(focusSel)
+      if (el) {
+        el.focus()
+        if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') { const n = el.value.length; try { el.setSelectionRange(n, n) } catch (e) { /* number-ish inputs */ } }
+      }
+    }
+  }
+
+  function say(msg) { live.textContent = msg }
+
+  function save(id, next, extra) {
+    const r = flow.rows[id]
+    const prev = r.a
+    const t = stamp()
+    const a = Object.assign({ reason: '', note: '', answeredOn: null, closedOn: null }, next, {
+      by: 'Tori Matthews', byType: 'person', recordedAt: t.iso,
+      history: prev ? prev.history.concat([{ status: prev.status, amountN: prev.amountN, answeredOn: prev.answeredOn, reason: prev.reason, note: prev.note, by: prev.by, recordedAt: prev.recordedAt }]) : [],
+    })
+    r.a = a
+    r.draftDate = null
+    if (a.answeredOn) flow.lastDate = a.answeredOn
+    const f = F[id]
+    let text = extra
+    if (!text) {
+      const from = prev ? statusText(prev, f) : 'Waiting on Biller'
+      text = esc(from) + ' → <b>' + esc(statusText(a, f)) + '</b>' +
+        (a.answeredOn ? ' · QuickBox answered ' + fmtShort(a.answeredOn) : ' · closed ' + fmtShort(a.closedOn)) +
+        (a.reason ? ' · “' + esc(a.reason) + '”' : '') + (a.note ? ' · note “' + esc(a.note) + '”' : '')
+    }
+    flow.events.unshift({ at: t.label, by: 'Tori Matthews', title: f.title, text })
+    flow.open = null
+    flow.menu = null
+    flow.last = id
+    say('Saved. ' + f.title + ': ' + statusText(a, f) + '.')
+    render('[data-act="change"][data-row="' + id + '"]')
+  }
+
+  function validateAmount(raw, f) {
+    const t = String(raw ?? '').trim().replace(/^\$/, '').replace(/,/g, '')
+    if (t === '') return { ok: false }
+    const n = Number(t)
+    if (!isFinite(n) || n < 0) return { ok: false, err: 'Enter an amount, like 12.50' }
+    if (n === 0) return { ok: false, err: 'Nothing credited? Choose Denied instead.' }
+    if (n > f.amt + 0.005) return { ok: false, err: 'Up to ' + money(f.amt) }
+    if (Math.abs(n - f.amt) < 0.005) return { ok: true, n, hint: 'That’s the full amount. It will be saved as Fully collected.' }
+    return { ok: true, n }
+  }
+
+  function openMode(id, mode, extra) {
+    flow.open = Object.assign({ id, mode, amount: '', why: '', say: '', note: '' }, extra || {})
+    flow.menu = null
+  }
+
+  mount.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]')
+    if (!b || b.tagName === 'SELECT' || b.tagName === 'INPUT' || b.tagName === 'TEXTAREA') return
+    const act = b.dataset.act
+    const id = b.dataset.row
+    const r = id ? flow.rows[id] : null
+    const f = id ? F[id] : null
+    if (act === 'answer') {
+      const v = b.dataset.v
+      const a = r.a
+      if (v === 'full') return save(id, { status: 'full', amountN: f.amt, answeredOn: dateFor(id), reason: '' })
+      if (v === 'partial') {
+        openMode(id, 'partial', { amount: a && a.status === 'partial' ? String(a.amountN) : '', why: a && a.status === 'partial' ? a.reason : '' })
+        return render('#amt-' + id)
+      }
+      if (v === 'not_issued') {
+        openMode(id, 'denied', { say: a && a.status === 'not_issued' ? a.reason : '' })
+        return render('#say-' + id)
+      }
+    }
+    if (act === 'change') {
+      r.draftDate = r.a.answeredOn || null
+      openMode(id, 'change')
+      return render('[data-act="answer"][data-row="' + id + '"][aria-pressed="true"]')
+    }
+    if (act === 'cancel') {
+      const was = flow.open
+      flow.open = null
+      if (was && was.mode === 'change') r.draftDate = null
+      say('Cancelled.')
+      const v = was && was.mode === 'partial' ? 'partial' : was && was.mode === 'denied' ? 'not_issued' : 'full'
+      return render(r.a ? '[data-act="change"][data-row="' + id + '"]' : '[data-act="answer"][data-row="' + id + '"][data-v="' + v + '"]')
+    }
+    if (act === 'addreason') { openMode(id, 'reason', { say: '' }); return render('#say-' + id) }
+    if (act === 'more') {
+      flow.menu = flow.menu === id ? null : id
+      if (flow.open && flow.open.id !== id) flow.open = null
+      return render(flow.menu ? '#more-' + id + ' .mi' : '[data-act="more"][data-row="' + id + '"]')
+    }
+    if (act === 'noanswer') {
+      if (b.getAttribute('aria-disabled') === 'true') { say('Available ' + NO_ANSWER_DAYS + ' days after sending.'); return }
+      openMode(id, 'noanswer')
+      return render('#note-' + id)
+    }
+    if (act === 'save-partial') {
+      const v = validateAmount(flow.open.amount, f)
+      if (!v.ok) return
+      if (Math.abs(v.n - f.amt) < 0.005) {
+        say('That is the full amount, so it was saved as Fully collected.')
+        return save(id, { status: 'full', amountN: f.amt, answeredOn: dateFor(id), reason: '' })
+      }
+      return save(id, { status: 'partial', amountN: Math.round(v.n * 100) / 100, answeredOn: dateFor(id), reason: (flow.open.why || '').trim() })
+    }
+    if (act === 'save-denied') return save(id, { status: 'not_issued', amountN: 0, answeredOn: dateFor(id), reason: (flow.open.say || '').trim() })
+    if (act === 'save-noanswer') return save(id, { status: 'no_answer', amountN: 0, answeredOn: null, closedOn: flow.today, note: (flow.open.note || '').trim() })
+    if (act === 'save-reason') {
+      const txt = (flow.open.say || '').trim()
+      if (!txt) { flow.open = null; return render('[data-act="change"][data-row="' + id + '"]') }
+      return save(id, Object.assign({}, r.a, { reason: txt }), 'Reason added: “' + esc(txt) + '”')
+    }
+    if (act === 'usesame') {
+      flow.open.say = flow.rows[b.dataset.from].a.reason
+      return render('#say-' + id)
+    }
+    if (act === 'showall') { r.expanded = !r.expanded; return render('[data-act="showall"][data-row="' + id + '"]') }
+    if (act === 'details') { flow.details = !flow.details; return render('[data-act="details"]') }
+  })
+
+  mount.addEventListener('change', (e) => {
+    const el = e.target
+    if (el.tagName !== 'SELECT') return
+    const id = el.dataset.row
+    const r = flow.rows[id]
+    if (el.dataset.act === 'date') {
+      r.draftDate = el.value
+      if (!r.a) flow.lastDate = el.value
+      say('QuickBox answered on ' + fmt(el.value) + '.')
+      return
+    }
+    if (el.dataset.act === 'redate' && r.a) {
+      const before = r.a.answeredOn
+      save(id, Object.assign({}, r.a, { answeredOn: el.value }), 'Answer date ' + fmtShort(before) + ' → <b>' + fmtShort(el.value) + '</b> (' + esc(statusText(r.a, F[id])) + ')')
+      const sel = mount.querySelector('#redate-' + id)
+      if (sel) sel.focus()
+    }
+  })
+
+  mount.addEventListener('input', (e) => {
+    const el = e.target
+    const k = el.dataset.act
+    if (!flow.open || !['amt', 'why', 'say', 'note'].includes(k)) return
+    const map = { amt: 'amount', why: 'why', say: 'say', note: 'note' }
+    flow.open[map[k]] = el.value
+    if (k === 'amt') {
+      const f = F[el.dataset.row]
+      const v = validateAmount(el.value, f)
+      const msg = mount.querySelector('#amt-msg-' + f.id)
+      msg.className = v.err ? 'err' : 'hint'
+      msg.textContent = v.err || v.hint || 'Of ' + money(f.amt) + ' disputed'
+      el.classList.toggle('bad', !!v.err)
+      el.setAttribute('aria-invalid', String(!!v.err))
+      const btn = mount.querySelector('[data-act="save-partial"][data-row="' + f.id + '"]')
+      if (btn) btn.disabled = !v.ok
+    }
+  })
+
+  mount.addEventListener('keydown', (e) => {
+    const el = e.target
+    if (e.key === 'Escape') {
+      if (flow.menu) { const id = flow.menu; flow.menu = null; e.preventDefault(); return render('[data-act="more"][data-row="' + id + '"]') }
+      if (flow.open) {
+        e.preventDefault()
+        const btn = mount.querySelector('[data-act="cancel"][data-row="' + flow.open.id + '"]')
+        if (btn) btn.click()
+      }
+      return
+    }
+    if (e.key === 'Enter' && !e.shiftKey && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+      const form = el.closest('[data-form]')
+      if (!form) return
+      e.preventDefault()
+      const btn = form.querySelector('[data-act^="save-"]')
+      if (btn && !btn.disabled) btn.click()
+    }
+  })
+
+  document.addEventListener('click', (e) => {
+    if (flow.menu && !e.target.closest('.more-pop') && !e.target.closest('[data-act="more"]')) { flow.menu = null; render() }
+  })
+
+  document.getElementById('flow-reset').addEventListener('click', () => {
+    resetFlow()
+    say('The card was reset.')
+    render()
+  })
+  const simBtns = [...document.querySelectorAll('[data-sim]')]
+  simBtns.forEach((b) => b.addEventListener('click', () => {
+    simBtns.forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
+    flow.today = b.dataset.sim === '31' ? addDays(SENT, 31) : TODAY
+    ORDER.forEach((id) => { const r = flow.rows[id]; if (r.draftDate && r.draftDate > flow.today) r.draftDate = null })
+    if (flow.lastDate && flow.lastDate > flow.today) flow.lastDate = null
+    say('Now ' + diffDays(SENT, flow.today) + ' days since sending.')
+    render()
+  }))
+
+  function renderStore() {
+    const id = flow.last
+    if (!id) {
+      storeEl.innerHTML = '<span class="c">// Nothing saved yet. Record an answer on the card above.</span>'
+      derivedEl.innerHTML = '<p class="small muted">Record an answer to see what it adds to Credit outcomes and guidance.</p>'
+      return
+    }
+    const f = F[id]
+    const a = flow.rows[id].a
+    const q = (v) => (v == null || v === '' ? 'null' : typeof v === 'number' ? v.toFixed(2) : '"' + esc(v) + '"')
+    const nw = ' <span class="nw">new</span>'
+    const st = a.status === 'no_answer' ? '"no_answer"' + nw : '"' + a.status + '"'
+    storeEl.innerHTML =
+      '<span class="c">// Sep 8 dispute · items[' + ORDER.indexOf(id) + '] · ' + esc(f.title) + '</span>\n' +
+      '{\n  findingId: "' + id + '",\n  amountN: ' + f.amt.toFixed(2) + ',          <span class="c">// disputed</span>\n  answer: {\n' +
+      '    status: ' + st + ',  <span class="c">// ' + LABEL[a.status] + '</span>\n' +
+      '    amountN: ' + q(a.amountN) + ',\n' +
+      '    answeredOn: ' + q(a.answeredOn) + ',' + nw + ' <span class="c">// QuickBox’s date</span>\n' +
+      '    reason: ' + q(a.reason) + ',\n' +
+      '    note: ' + q(a.note) + ',' + nw + '\n' +
+      '    recordedBy: { type: "person", name: "' + a.by + '" },' + nw + '\n' +
+      '    recordedAt: "' + a.recordedAt + '",  <span class="c">// changedAt</span>\n' +
+      '    history: [' + (a.history.length ? a.history.length + ' earlier ' + (a.history.length === 1 ? 'answer' : 'answers') : '') + ']\n  }\n}'
+    const waitedTo = a.answeredOn ? diffDays(SENT, a.answeredOn) : null
+    const lag = a.answeredOn ? diffDays(a.answeredOn, a.recordedAt.slice(0, 10)) : null
+    derivedEl.innerHTML = '<dl class="kv">' +
+      (a.answeredOn
+        ? '<dt>Days to answer</dt><dd><b>' + plural(waitedTo, 'day') + '</b> (Sep 8 → ' + fmtShort(a.answeredOn) + '). Feeds "typical time to answer" in 05</dd>' +
+          '<dt>Logging lag</dt><dd>' + plural(lag, 'day') + '. Internal only; today’s model would have reported ' + plural(diffDays(SENT, a.recordedAt.slice(0, 10)), 'day') + ' to answer</dd>'
+        : '<dt>Response</dt><dd><b>No answer</b> after ' + plural(diffDays(SENT, a.closedOn), 'day') + '. Feeds the response rate in 05 (Q-D2). Money and rate treatment Unresolved (Q-S3)</dd>') +
+      '<dt>Outcome mix</dt><dd>+1 ' + LABEL[a.status] + ' for QuickBox · ' + f.short + '</dd>' +
+      (a.status === 'not_issued'
+        ? '<dt>Denial reason</dt><dd>' + (a.reason ? '“' + esc(a.reason) + '”, grouped in 05, and quoted by 06 once it repeats' : '<span class="muted">None. 05 counts the denial but can’t say why</span>') + '</dd>'
+        : '') +
+      '</dl>'
+  }
+
+  flow.today = TODAY
+  resetFlow()
+  render()
+
+  // =====================================================================
+  // Static mocks (compare, model, states, edge cases)
+  // =====================================================================
+  const S = { live: false, today: TODAY, sent: SENT }
+  const ans = (o) => Object.assign({ reason: '', note: '', by: 'Tori Matthews', byType: 'person' }, o)
+  const DENY = 'Surcharge applied per contract addendum.'
+  const WHY_DAS = 'Only 2 of 3 ZIP codes qualified. The third is on QuickBox’s remote-area list.'
+  const box = (html) => '<div class="dc-rows" style="container-type:inline-size">' + html + '</div>'
+  const put = (key, html) => { const el = document.querySelector('[data-mount="' + key + '"]'); if (el) el.innerHTML = html }
+  const row = (id, s, ctx) => rowProposed(F[id], Object.assign({ a: null }, s), Object.assign({}, S, ctx || {}))
+
+  // 2 · compare
+  put('cmp-current', cardHTML({
+    ctx: S, variant: 'current',
+    rows: [
+      { f: F.base, s: { a: ans({ status: 'full', amountN: 9322.2, recordedOn: TODAY }) } },
+      { f: F.fuel, s: { a: ans({ status: 'not_issued', amountN: 0, recordedOn: TODAY }) } },
+      { f: F.das, s: { a: ans({ status: 'partial', amountN: 3.12, recordedOn: TODAY }) } },
+      { f: F.multi, s: { a: null } },
+    ],
+  }))
+  const P = { ...S, defaultDate: '2026-09-16' }
+  put('cmp-proposed', cardHTML({
+    ctx: P, variant: 'proposed',
+    rows: [
+      { f: F.base, s: { a: ans({ status: 'full', amountN: 9322.2, answeredOn: '2026-09-16' }) } },
+      { f: F.fuel, s: { a: ans({ status: 'not_issued', amountN: 0, answeredOn: '2026-09-16', reason: DENY }) } },
+      { f: F.das, s: { a: ans({ status: 'partial', amountN: 3.12, answeredOn: '2026-09-16', reason: WHY_DAS }) } },
+      { f: F.multi, s: { a: null } },
+    ],
+  }))
+  put('cmp-current-denied', box(rowCurrent(F.fuel, { a: ans({ status: 'not_issued', amountN: 0, recordedOn: TODAY }), reasonOpen: true })) +
+    '<p class="tiny muted">Already saved as Denied, dated Sep 17. The reason field only appears after clicking "Add reason".</p>')
+  put('cmp-proposed-denied', box(row('fuel', { a: null, draftDate: '2026-09-16', open: { mode: 'denied', say: '' } })) +
+    '<p class="tiny muted">Nothing is saved until "Save as denied". Esc cancels, and the row goes back to waiting.</p>')
+
+  // 3 · Implentio options
+  put('impl-a', box(rowProposed(F.fuel, { a: ans({ status: 'not_issued', amountN: 0, answeredOn: '2026-09-16', reason: DENY, byType: 'implentio' }) }, Object.assign({}, S, { changeLabel: 'Something wrong? Correct it' }))))
+  put('impl-b', box(
+    '<div class="orow"><span class="rt">' + F.fuel.title + '</span><span class="ra">' + money(F.fuel.amt) + '</span><div class="rans">' +
+    '<div class="sline">' + chip('awaiting') + '</div>' +
+    '<div class="banner brand" style="flex-direction:column; gap:6px"><span class="small"><b>Implentio says</b> QuickBox denied this on Sep 16: “' + DENY + '”</span>' +
+    '<div class="row" style="gap:8px"><span class="btn primary sm">Confirm</span><span class="btn sm">It’s different</span></div></div>' +
+    '<span class="tiny muted">After confirming: “Recorded by Tori Matthews · reported by Implentio”</span></div></div>'))
+
+  // 5 · states
+  put('st-waiting', box(row('fuel', { a: null, menu: true })) + '<p class="tiny muted">Row of the Sep 8 dispute · Waiting 9 days · the ⋯ menu is shown open</p>')
+  put('st-full', box(row('base', { a: ans({ status: 'full', amountN: 9322.2, answeredOn: '2026-09-16' }) })))
+  put('st-partial', box(row('das', { a: ans({ status: 'partial', amountN: 3.12, answeredOn: '2026-09-16', reason: WHY_DAS }) })))
+  put('st-partial-no', box(row('das', { a: ans({ status: 'partial', amountN: 3.12, answeredOn: '2026-09-16' }) })))
+  put('st-denied', box(row('fuel', { a: ans({ status: 'not_issued', amountN: 0, answeredOn: '2026-09-16', reason: DENY }) })))
+  put('st-denied-no', box(row('multi', { a: ans({ status: 'not_issued', amountN: 0, answeredOn: '2026-09-16' }) })))
+  put('st-noanswer', box(row('multi', { a: ans({ status: 'no_answer', amountN: 0, closedOn: '2026-10-09', note: 'Chased twice by email, no reply.' }) }, { today: '2026-10-09' })))
+  put('st-changed', cardHTML({
+    ctx: S, variant: 'proposed', detailsOpen: true,
+    rows: [
+      { f: F.base, s: { a: ans({ status: 'full', amountN: 9322.2, answeredOn: '2026-09-11' }) } },
+      { f: F.fuel, s: { a: ans({ status: 'partial', amountN: 20, answeredOn: '2026-09-16', reason: 'Credited the packages billed after Aug 1 only.', by: 'Renee Alvarez' }), hl: true } },
+      { f: F.das, s: { a: ans({ status: 'full', amountN: 4.68, answeredOn: '2026-09-11' }) } },
+      { f: F.multi, s: { a: ans({ status: 'not_issued', amountN: 0, answeredOn: '2026-09-11', reason: DENY }) } },
+    ],
+    events: [
+      { at: 'Sep 17, 2026, 9:05 AM', by: 'Renee Alvarez', title: F.fuel.title, text: 'Denied → <b>Partly collected $20.00 of $35.10</b> · QuickBox answered Sep 16 (was Sep 11) · “Credited the packages billed after Aug 1 only.”' },
+      { at: 'Sep 12, 2026, 4:30 PM', by: 'Tori Matthews', title: F.multi.title, text: 'Waiting on Biller → <b>Denied</b> · QuickBox answered Sep 11 · “' + DENY + '”' },
+      { at: 'Sep 12, 2026, 4:28 PM', by: 'Tori Matthews', title: F.fuel.title, text: 'Waiting on Biller → <b>Denied</b> · QuickBox answered Sep 11 · “' + DENY + '”' },
+      { at: 'Sep 12, 2026, 4:26 PM', by: 'Tori Matthews', title: F.das.title, text: 'Waiting on Biller → <b>Fully collected</b> · QuickBox answered Sep 11' },
+      { at: 'Sep 12, 2026, 4:25 PM', by: 'Tori Matthews', title: F.base.title, text: 'Waiting on Biller → <b>Fully collected</b> · QuickBox answered Sep 11' },
+    ],
+  }))
+  put('st-implentio', cardHTML({
+    ctx: Object.assign({}, S, { implentioWaiting: true, changeLabel: 'Correct it' }), variant: 'proposed', handledBy: 'implentio',
+    rows: [
+      { f: F.base, s: { a: ans({ status: 'full', amountN: 9322.2, answeredOn: '2026-09-16', byType: 'implentio' }) } },
+      { f: F.fuel, s: { a: ans({ status: 'not_issued', amountN: 0, answeredOn: '2026-09-16', reason: DENY, byType: 'implentio' }) } },
+      { f: F.das, s: { a: null } },
+      { f: F.multi, s: { a: null } },
+    ],
+  }))
+  put('st-memo', cardHTML({ ctx: Object.assign({}, S, { scope: 'memo' }), variant: 'proposed', rows: [{ f: F.memo, s: { a: null } }] }))
+
+  // 6 · edge mocks
+  put('edge-amount',
+    box(row('fuel', { a: null, open: { mode: 'partial', amount: '40.00', why: '' } })) +
+    box(row('das', { a: null, open: { mode: 'partial', amount: '4.68', why: '' } })))
+  put('edge-date', box(row('fuel', { a: null, open: { mode: 'denied', say: DENY }, draftDate: '2026-09-05', dateBad: true })) +
+    '<p class="tiny muted">Shown as a typed date (Sep 5, before the Sep 8 send). The picker itself only offers allowed dates.</p>')
+  put('edge-late', box(row('multi', { a: ans({ status: 'full', amountN: 3.08, answeredOn: '2026-10-20' }) }, { today: '2026-10-21' })) +
+    '<div class="dc-box"><b class="small">Outcome history</b><ul class="hist">' +
+    '<li><span class="when">Oct 21, 2026, 11:10 AM · Tori Matthews</span><br><span class="medium">' + F.multi.title + ':</span> Closed, no answer → <b>Fully collected</b> · QuickBox answered Oct 20 (42 days after sending)</li>' +
+    '<li><span class="when">Oct 9, 2026, 3:02 PM · Tori Matthews</span><br><span class="medium">' + F.multi.title + ':</span> Waiting on Biller → <b>Closed, no answer</b> · note “Chased twice by email, no reply.”</li></ul></div>')
+  put('edge-long', box(row('fuel', { a: ans({ status: 'not_issued', amountN: 0, answeredOn: '2026-09-16', reason: 'Per our records the fuel surcharge was applied in line with contract addendum 3 (effective March 1, 2026), which sets the surcharge to the weekly national index plus 2.5%. Our billing team reviewed all 172 shipments and found no discrepancy against the addendum rate, so no credit will be issued for this line.' }) })))
+})()
+</script>
+</body>
+</html>

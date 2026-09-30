@@ -49,9 +49,7 @@ export interface InvoiceClassification {
 }
 
 /** Classify an invoice by its net variance (threshold: half a cent). */
-export function classifyInvoice(
-  invoice: Pick<MemoInvoice, 'netN'>,
-): InvoiceClassification {
+export function classifyInvoice(invoice: Pick<MemoInvoice, 'netN'>): InvoiceClassification {
   const net = invoice.netN
   if (net > 0.005) return { kind: 'overcharge', resultLabel: 'Potential overcharge', varN: r2(net) }
   if (net < -0.005)

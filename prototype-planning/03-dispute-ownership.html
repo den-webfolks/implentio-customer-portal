@@ -1,0 +1,1610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03 · Dispute ownership — Implentio planning</title>
+<style id="kit">
+/* Planning kit — shared by every prototype-planning/*.html file.
+   Inlined into each file's style block with id="kit" by sync-kit.mjs, so
+   every file stays self-contained (never write a closing style tag here). Edit here, then run:
+     node prototype-planning/_kit/sync-kit.mjs
+   Token values are copied from src/styles/tokens.css (--ds-*). */
+
+:root {
+  --ds-purple-700: #34287c; --ds-purple-600: #4535a5; --ds-purple-500: #5642ce;
+  --ds-purple-300: #bbb3eb; --ds-purple-100: #eeecfa;
+  --ds-orange-700: #913806; --ds-orange-500: #f25e0a; --ds-orange-100: #feefe6;
+  --ds-neutral-900: #10103e; --ds-neutral-800: #393863; --ds-neutral-700: #61608b;
+  --ds-neutral-600: #9a98b7; --ds-neutral-500: #bab8d1; --ds-neutral-400: #cccadc;
+  --ds-neutral-300: #e0dfec; --ds-neutral-200: #eceafa; --ds-neutral-100: #f6f4fe;
+  --ds-neutral-50: #f7f6f9; --ds-neutral-0: #ffffff;
+  --ds-red-500: #aa261b; --ds-red-100: #fbd8d6; --ds-green-500: #3a802f; --ds-green-100: #d3edce;
+  --ds-yellow-500: #9c6d11; --ds-yellow-100: #ffeac2;
+  --ds-blue-800: #1f4366; --ds-blue-500: #477db2; --ds-blue-300: #9dcaf5; --ds-blue-100: #d9ecff;
+
+  --fg: var(--ds-neutral-900); --muted: var(--ds-neutral-700); --faint: var(--ds-neutral-600);
+  --bg: var(--ds-neutral-50); --surface: var(--ds-neutral-0);
+  --line: rgba(16, 16, 62, 0.1); --line-2: rgba(16, 16, 62, 0.16); --line-3: rgba(16, 16, 62, 0.24);
+  --brand: var(--ds-purple-500); --brand-dark: var(--ds-purple-600); --brand-soft: var(--ds-purple-100);
+  --money: var(--ds-orange-700); --accent-soft: var(--ds-orange-100);
+  --focus: var(--ds-blue-300);
+
+  --t-neutral-fg: var(--ds-purple-500); --t-neutral-bg: var(--ds-purple-100);
+  --t-info-fg: var(--ds-blue-800); --t-info-bg: var(--ds-blue-100);
+  --t-success-fg: #2e6a28; --t-success-bg: var(--ds-green-100);
+  --t-attention-fg: #7f5a14; --t-attention-bg: var(--ds-yellow-100);
+  --t-danger-fg: var(--ds-red-500); --t-danger-bg: var(--ds-red-100);
+  --t-muted-fg: var(--ds-neutral-700); --t-muted-bg: var(--ds-neutral-50);
+
+  /* chart colours = the app's TONE_CHART_COLOR */
+  --c-open: var(--ds-purple-500); --c-wait: var(--ds-blue-500); --c-good: var(--ds-green-500);
+  --c-part: var(--ds-yellow-500); --c-bad: var(--ds-red-500); --c-none: var(--ds-neutral-500);
+
+  --r-s: 4px; --r-m: 6px; --r-l: 8px; --r-xl: 12px;
+  --shadow: 0 1px 0 rgba(27, 31, 35, 0.04);
+  --shadow-pop: 0 1px 0 rgba(27, 31, 35, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+  --font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* planning-layer colours (annotations, never product UI) */
+  --k-existing: #5d5c78; --k-existing-bg: #eceaf3;
+  --k-confirmed: #1f4366; --k-confirmed-bg: #d9ecff;
+  --k-proposed: #913806; --k-proposed-bg: #feefe6;
+  --k-unresolved: #7f5a14; --k-unresolved-bg: #ffeac2;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 400 14px/1.5 var(--font); letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums;
+}
+h1, h2, h3, h4 { margin: 0; letter-spacing: -0.02em; font-weight: 600; line-height: 1.25; }
+h1 { font-size: 28px; letter-spacing: -0.03em; }
+h2 { font-size: 21px; }
+h3 { font-size: 16px; }
+h4 { font-size: 14px; }
+p { margin: 0; }
+a { color: var(--brand); text-decoration: none; font-weight: 500; }
+a:hover { text-decoration: underline; }
+button { font: inherit; letter-spacing: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+ul, ol { margin: 0; padding-inline-start: 20px; }
+li + li { margin-top: 4px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
+
+/* ---------- document shell ---------- */
+.doc { max-width: 1200px; margin: 0 auto; padding: 28px 24px 96px; display: flex; flex-direction: column; gap: 40px; }
+.doc-head { display: flex; flex-direction: column; gap: 10px; }
+.crumbs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 13px; }
+.crumbs a { font-weight: 500; }
+.eyebrow { font: 600 12px/1.3 var(--font); letter-spacing: 0.05em; text-transform: uppercase; color: var(--brand); }
+.lede { font-size: 16px; color: var(--muted); max-width: 80ch; }
+.toc {
+  position: sticky; top: 0; z-index: 50; display: flex; gap: 6px; flex-wrap: wrap;
+  padding: 10px 0; margin: -10px 0 0; background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(6px); border-bottom: 1px solid var(--line);
+}
+.toc a { padding: 4px 10px; border-radius: 99px; font-size: 13px; color: var(--muted); border: 1px solid var(--line); background: var(--surface); }
+.toc a:hover { color: var(--brand); border-color: var(--ds-purple-300); text-decoration: none; }
+.sec { display: flex; flex-direction: column; gap: 16px; scroll-margin-top: 64px; }
+.sec-head { display: flex; flex-direction: column; gap: 6px; }
+.sec-num { font: 600 12px/1 var(--font); color: var(--faint); letter-spacing: 0.05em; text-transform: uppercase; }
+.sub { display: flex; flex-direction: column; gap: 12px; }
+.prose { max-width: 78ch; }
+.prose > * + * { margin-top: 8px; }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+.small { font-size: 13px; }
+.tiny { font-size: 12px; }
+.semi { font-weight: 600; }
+.medium { font-weight: 500; }
+.nowrap { white-space: nowrap; }
+.money { color: var(--money); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* layout helpers */
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.row.top { align-items: flex-start; }
+.between { justify-content: space-between; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.stack.s4 { gap: 4px; } .stack.s8 { gap: 8px; } .stack.s16 { gap: 16px; } .stack.s24 { gap: 24px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+.grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+
+/* ---------- planning layer (annotations) ---------- */
+.k { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 99px; font: 600 11px/18px var(--font); letter-spacing: 0.02em; white-space: nowrap; vertical-align: middle; }
+.k::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.k-existing { color: var(--k-existing); background: var(--k-existing-bg); }
+.k-confirmed { color: var(--k-confirmed); background: var(--k-confirmed-bg); }
+.k-proposed { color: var(--k-proposed); background: var(--k-proposed-bg); }
+.k-unresolved { color: var(--k-unresolved); background: var(--k-unresolved-bg); }
+.cx { display: inline-block; padding: 1px 7px; border-radius: var(--r-s); font: 600 11px/18px var(--font); border: 1px solid currentColor; white-space: nowrap; }
+.cx-change { color: var(--k-confirmed); }
+.cx-compat { color: var(--ds-green-500); }
+.cx-conflict { color: var(--ds-red-500); }
+.cx-verify { color: var(--k-unresolved); }
+.legend { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); }
+
+/* .note and .q are block containers: inline text inside them flows normally. */
+.note {
+  border: 1px dashed var(--line-3); border-radius: var(--r-l); background: #fffdf7;
+  padding: 12px 14px; font-size: 13px; color: var(--ds-neutral-800);
+}
+.note > .note-label { display: block; margin-bottom: 6px; font: 600 11px/1 var(--font); letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+.note > * + *:not(.note-label) { margin-top: 6px; }
+.q {
+  border-inline-start: 3px solid var(--ds-yellow-500); background: var(--k-unresolved-bg);
+  border-radius: 0 var(--r-m) var(--r-m) 0; padding: 10px 12px; font-size: 13px;
+}
+.q > b:first-child { display: block; margin-bottom: 4px; color: var(--k-unresolved); }
+.q > * + * { margin-top: 4px; }
+.problem { border-inline-start: 3px solid var(--ds-red-500); background: #fff6f5; border-radius: 0 var(--r-m) var(--r-m) 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.box.tint { background: var(--ds-neutral-100); }
+
+/* planning tables */
+.ptable { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); overflow: hidden; }
+.ptable th { text-align: start; font-weight: 600; color: var(--muted); background: var(--ds-neutral-50); padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+.ptable td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ptable tr:last-child td { border-bottom: 0; }
+.scroll-x { overflow-x: auto; border-radius: var(--r-l); }
+.d { display: inline-block; padding: 0 6px; border-radius: var(--r-s); font: 600 11px/18px var(--font); white-space: nowrap; }
+.d-have { background: var(--ds-green-100); color: #2e6a28; }
+.d-verify { background: var(--ds-yellow-100); color: #7f5a14; }
+.d-missing { background: var(--ds-red-100); color: var(--ds-red-500); }
+.d-new { background: var(--ds-blue-100); color: var(--ds-blue-800); }
+
+details.more { border: 1px solid var(--line); border-radius: var(--r-l); background: var(--surface); }
+details.more > summary { cursor: pointer; padding: 10px 14px; font-weight: 600; list-style: none; display: flex; gap: 8px; align-items: center; }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::before { content: '▸'; color: var(--faint); transition: transform 120ms; }
+details.more[open] > summary::before { transform: rotate(90deg); }
+details.more > .more-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+/* compare columns */
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; align-items: start; }
+.compare > .col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.col-head { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+
+/* segmented control & tabs (planning + app) */
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--r-l); background: var(--ds-neutral-200); flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; padding: 5px 12px; border-radius: var(--r-m); cursor: pointer; font-weight: 500; color: var(--muted); font-size: 13px; }
+.seg button[aria-pressed='true'], .seg button[aria-selected='true'] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow-pop); }
+.tabs { display: flex; gap: 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { border: 0; background: none; padding: 8px 2px 10px; cursor: pointer; color: var(--muted); font-weight: 500; font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button[aria-selected='true'] { color: var(--brand); border-bottom-color: var(--brand); }
+[data-panel][hidden] { display: none !important; }
+
+/* ---------- product UI mock (looks like the app) ---------- */
+/* Inline labels never stretch when they sit in a flex column. */
+.chip, .tag, .k, .cx, .d, .owner, .flag { width: fit-content; max-width: 100%; }
+.frame { border: 1px solid var(--line-2); border-radius: var(--r-xl); background: var(--bg); overflow: hidden; box-shadow: var(--shadow-pop); }
+.frame-bar { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--surface); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--faint); }
+.frame-bar::before { content: ''; width: 34px; height: 8px; background: radial-gradient(circle, var(--ds-neutral-400) 3.5px, transparent 4px) 0 0 / 12px 8px repeat-x; }
+.frame-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.frame.narrow { max-width: 420px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow); padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+.card.flat { box-shadow: none; }
+.card.accent { border-inline-start: 3px solid var(--brand); }
+.card.waiting { background: #f3f8fe; border-color: #d4e4f5; border-inline-start: 3px solid var(--ds-blue-500); }
+.card.warn { background: #fffaf0; border-color: #f1ddb2; border-inline-start: 3px solid var(--ds-yellow-500); }
+.card.implentio { background: #f7f5fe; border-color: #ddd8f6; border-inline-start: 3px solid var(--brand); }
+
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--r-m); font: 500 12px/20px var(--font); white-space: nowrap; background: var(--t-neutral-bg); color: var(--t-neutral-fg); vertical-align: middle; }
+.chip.lg { font-size: 14px; line-height: 24px; padding: 2px 10px; }
+.chip.info { background: var(--t-info-bg); color: var(--t-info-fg); }
+.chip.success { background: var(--t-success-bg); color: var(--t-success-fg); }
+.chip.attention { background: var(--t-attention-bg); color: var(--t-attention-fg); }
+.chip.danger { background: var(--t-danger-bg); color: var(--t-danger-fg); }
+.chip.muted { background: var(--t-muted-bg); color: var(--t-muted-fg); box-shadow: inset 0 0 0 1px var(--line); }
+.tag { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 99px; font: 500 12px/20px var(--font); border: 1px solid var(--line-2); color: var(--fg); background: var(--surface); white-space: nowrap; }
+.owner { display: inline-flex; align-items: center; gap: 5px; font: 500 12px/20px var(--font); color: var(--brand-dark); }
+.owner .dot { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--brand); color: #fff; font: 700 10px/1 var(--font); }
+.owner.you .dot { background: var(--ds-neutral-700); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 7px 12px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); color: var(--fg); font: 500 14px/1.46 var(--font); cursor: pointer; box-shadow: var(--shadow); white-space: nowrap; }
+.btn:hover { box-shadow: 0 1px 0 rgba(27, 31, 35, 0.12); }
+.btn.primary { background: var(--brand); border-color: var(--line); color: #fff; }
+.btn.primary:hover { background: var(--brand-dark); }
+.btn.sm { min-height: 32px; padding: 5px 11px; font-size: 13px; }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.lnk { border: 0; background: none; padding: 0; color: var(--brand); font-weight: 500; cursor: pointer; font-size: inherit; text-align: start; }
+.lnk:hover { text-decoration: underline; }
+.lnk.sm { font-size: 13px; }
+.lnk.bold { font-weight: 600; }
+
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat .lbl { font-size: 12px; color: var(--muted); }
+.stat .val { font-size: 18px; font-weight: 600; }
+.stat .val.big { font-size: 28px; letter-spacing: -0.03em; }
+.hero-amt { font: 600 34px/1.05 var(--font); letter-spacing: -0.03em; color: var(--money); }
+
+.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tbl th { text-align: start; color: var(--muted); font-weight: 400; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: bottom; }
+.tbl td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.tbl tbody tr:hover td { background: var(--ds-neutral-50); }
+.tbl .num, .tbl th.num { text-align: end; }
+.tbl tr.total td { font-weight: 600; background: var(--ds-neutral-50); }
+.tbl td.diff { color: var(--money); font-weight: 600; }
+.tbl tr.hl td { background: #fff8e8; }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label, .field .flabel { font-size: 13px; font-weight: 500; }
+.input, .textarea, .select { width: 100%; border: 1px solid var(--line-2); border-radius: var(--r-m); padding: 7px 10px; font: 400 14px/1.4 var(--font); background: var(--surface); color: var(--fg); }
+.textarea { min-height: 72px; resize: vertical; }
+.hint { font-size: 12px; color: var(--muted); }
+.radios { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.radios label { display: inline-flex; align-items: center; gap: 8px; padding: 5px 11px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); cursor: pointer; font-size: 14px; }
+.radios input { accent-color: var(--brand); margin: 0; }
+.radios label:has(input:checked) { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+.choice { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-l); background: var(--surface); cursor: pointer; }
+.choice input { accent-color: var(--brand); margin-top: 3px; }
+.choice:has(input:checked) { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); background: #fbfaff; }
+.check { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
+.check input { accent-color: var(--brand); width: 16px; height: 16px; margin: 0; }
+
+.banner { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--r-l); border: 1px solid var(--line); font-size: 13.5px; }
+.banner.info { background: var(--ds-blue-100); border-color: #bcd8f5; }
+.banner.warn { background: var(--ds-yellow-100); border-color: #f1d9a4; }
+.banner.good { background: var(--ds-green-100); border-color: #b9dcb2; }
+.banner.brand { background: var(--brand-soft); border-color: var(--ds-purple-300); }
+
+.stepper { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.stepper .step { display: inline-flex; align-items: center; gap: 6px; }
+.stepper .step b { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--ds-neutral-200); color: var(--muted); font-size: 11px; }
+.stepper .step.on { color: var(--fg); font-weight: 600; }
+.stepper .step.on b { background: var(--brand); color: #fff; }
+.stepper .step.done b { background: var(--ds-green-500); color: #fff; }
+.stepper .sep { width: 24px; height: 1px; background: var(--line-2); }
+
+.modal { border: 1px solid var(--line-2); border-radius: var(--r-xl); background: var(--surface); box-shadow: 0 12px 40px rgba(16, 16, 62, 0.18); display: flex; flex-direction: column; overflow: hidden; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.modal-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--line); background: var(--ds-neutral-50); flex-wrap: wrap; }
+.overlay-hint { background: rgba(16, 16, 62, 0.28); padding: 20px; border-radius: var(--r-xl); }
+
+/* bars */
+.bar { display: flex; height: 10px; border-radius: 99px; overflow: hidden; background: var(--ds-neutral-200); gap: 2px; }
+.bar > span { display: block; height: 100%; }
+.bar.thin { height: 8px; }
+.bar.tall { height: 14px; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; vertical-align: middle; margin-inline-end: 4px; }
+
+/* timeline */
+.tl { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; }
+.tl li { position: relative; padding: 0 0 14px 22px; margin: 0; }
+.tl li::before { content: ''; position: absolute; left: 4px; top: 5px; width: 9px; height: 9px; border-radius: 50%; background: var(--surface); border: 2px solid var(--line-3); }
+.tl li::after { content: ''; position: absolute; left: 8px; top: 16px; bottom: 0; width: 1px; background: var(--line-2); }
+.tl li:last-child::after { display: none; }
+.tl li.done::before { background: var(--ds-green-500); border-color: var(--ds-green-500); }
+.tl li.now::before { background: var(--brand); border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+.tl li.todo { color: var(--faint); }
+
+/* ---------- diagrams ---------- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; row-gap: 12px; }
+.flow .node { padding: 8px 12px; border-radius: var(--r-l); border: 1px solid var(--line-2); background: var(--surface); font-weight: 500; font-size: 13px; display: flex; flex-direction: column; gap: 2px; justify-content: center; min-width: 96px; }
+.flow .node small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.flow .arrow { align-self: center; color: var(--faint); padding: 0 6px; font-size: 16px; }
+.node.n-open { border-color: var(--ds-purple-300); background: var(--ds-purple-100); }
+.node.n-wait { border-color: #bcd8f5; background: var(--ds-blue-100); }
+.node.n-good { border-color: #b9dcb2; background: var(--ds-green-100); }
+.node.n-bad { border-color: #f0b8b3; background: var(--ds-red-100); }
+.node.n-part { border-color: #f1d9a4; background: var(--ds-yellow-100); }
+.node.n-muted { border-color: var(--line-2); background: var(--ds-neutral-50); color: var(--muted); }
+.node.n-new { border-style: dashed; border-color: var(--ds-orange-500); background: #fff8f3; }
+.node.n-gone { border-style: dashed; color: var(--faint); background: repeating-linear-gradient(135deg, #fff, #fff 6px, #f6f5f9 6px, #f6f5f9 12px); text-decoration: line-through; }
+
+/* print-ish */
+@media print { .toc { position: static; } body { background: #fff; } }
+@media (max-width: 640px) { .doc { padding: 16px 16px 64px; gap: 28px; } h1 { font-size: 23px; } .frame-body { padding: 14px; } }
+</style>
+<style>
+/* page-specific styles only; prefer kit classes */
+[data-ico] { display: inline-flex; flex: none; }
+[data-ico] svg { display: block; }
+.sw { background: var(--c-open); }
+.scroll-x > .ptable { min-width: 680px; }
+.ptable td .k, .ptable td .cx { margin-top: 2px; }
+.tagline { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+h3.subh { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.kbd-note { font-size: 12px; color: var(--faint); }
+
+/* ---- compare: vertical flows ---- */
+.flow.vflow { flex-direction: column; flex-wrap: nowrap; row-gap: 0; align-items: stretch; }
+.flow.vflow .arrow { align-self: flex-start; padding: 2px 0 2px 16px; line-height: 1.2; font-size: 13px; }
+.flow.vflow .node { min-width: 0; }
+.fork { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 8px; }
+.branch { font-size: 12px; color: var(--muted); margin: 2px 0 2px 12px; padding: 2px 0 2px 10px; border-inline-start: 2px dashed var(--line-3); }
+
+/* ---- two-lane model ---- */
+.lanes { display: flex; flex-direction: column; gap: 10px; }
+.lane-cap { font: 600 11px/1 var(--font); letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+.lane-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 12px; }
+.lane { border: 1px solid var(--line); border-radius: var(--r-l); background: var(--surface); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.lane.b { border-color: var(--ds-purple-300); background: #fbfaff; }
+.lane-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 600; }
+.shared { border: 1px solid var(--line); border-radius: var(--r-l); background: var(--ds-neutral-100); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.joins { text-align: center; color: var(--faint); font-size: 13px; }
+
+/* ---- dialog mock ---- */
+.dlg-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+@media (max-width: 980px) { .dlg-wrap { grid-template-columns: minmax(0, 1fr); } }
+.dlg-wrap .note { position: sticky; top: 64px; }
+@media (max-width: 980px) { .dlg-wrap .note { position: static; } }
+.modal h3 { font-size: 18px; }
+.dstepper { display: flex; gap: 4px 6px; flex-wrap: wrap; align-items: center; padding: 10px 18px; border-bottom: 1px solid var(--line); }
+.dstep { display: inline-flex; gap: 6px; align-items: center; border: 0; background: none; padding: 4px 6px; border-radius: var(--r-m); cursor: pointer; color: var(--muted); font-size: 13px; }
+.dstep:hover { background: var(--ds-neutral-100); }
+.dstep b { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--ds-neutral-200); color: var(--muted); font-size: 11px; }
+.dstep[aria-current='step'] { color: var(--fg); font-weight: 600; }
+.dstep[aria-current='step'] b { background: var(--brand); color: #fff; }
+.dstep.done b { background: var(--ds-green-500); color: #fff; }
+.dsep { width: 16px; height: 1px; background: var(--line-2); }
+@media (max-width: 640px) { .dsep { display: none; } }
+.dpanel { display: flex; flex-direction: column; gap: 14px; }
+.dpanel[hidden] { display: none; }
+.step-title { font-size: 16px; }
+.sel { border: 1px solid var(--line); border-radius: var(--r-l); overflow: hidden; }
+.sel-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.sel-total { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 14px; background: var(--ds-neutral-50); }
+.deadline { display: flex; gap: 8px; align-items: flex-start; }
+.who { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.who legend { font-weight: 600; padding: 0; margin-bottom: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ctext { display: flex; flex-direction: column; gap: 2px; }
+.sum { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 8px 16px; margin: 0; }
+.sum dt { color: var(--muted); }
+.sum dd { margin: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; min-width: 0; }
+@media (max-width: 640px) { .sum { grid-template-columns: minmax(0, 1fr); gap: 2px; } .sum dt { margin-top: 8px; } }
+.compose { border: 1px solid var(--line); border-radius: var(--r-l); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; background: var(--surface); }
+.compose-f { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 6px 10px; font-size: 13.5px; }
+.compose-f span:nth-child(odd) { color: var(--muted); }
+.email { border: 1px solid var(--line); border-radius: var(--r-l); padding: 14px; display: flex; flex-direction: column; gap: 10px; font-size: 13.5px; background: var(--surface); }
+.evidence { background: var(--ds-neutral-100); border-radius: var(--r-m); padding: 10px 12px; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+.evidence-head { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 12px; font-weight: 600; }
+.fileref { color: var(--brand); font-weight: 500; }
+.routes { display: grid; gap: 10px; }
+.route { border: 1px solid var(--line-2); border-radius: var(--r-l); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--surface); }
+.route.rec { border-color: var(--ds-purple-300); background: #fbfaff; }
+.next-box { border: 1px solid var(--line); border-radius: var(--r-l); background: var(--ds-neutral-50); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; }
+.next-box ol { display: flex; flex-direction: column; gap: 4px; }
+.done-ico { width: 44px; height: 44px; border-radius: 50%; background: var(--ds-green-100); color: var(--ds-green-500); display: grid; place-items: center; }
+.path-bar { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center; }
+
+/* ---- product mocks: dispute card, tracker row, finding line ---- */
+.dcard { gap: 14px; }
+.dcard-head { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.dcard-ico { width: 40px; height: 40px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; color: var(--t-info-fg); flex: none; }
+.card.implentio .dcard-ico { color: var(--brand); }
+.card.warn .dcard-ico { color: var(--t-attention-fg); }
+.card.closed { border-inline-start: 3px solid var(--ds-green-500); }
+.card.closed .dcard-ico { color: var(--ds-green-500); background: var(--ds-green-100); }
+.dcard-title { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dcard-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+@media (max-width: 560px) { .dcard-right { align-items: flex-start; } }
+.orows { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-m); padding: 4px 14px; }
+.orows-head { padding: 10px 0 0; font-weight: 600; }
+.orow { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.orow:last-child { border-bottom: 0; }
+.orow .t { flex: 1 1 220px; color: var(--brand); font-weight: 500; min-width: 0; }
+.orow .a { font-weight: 600; white-space: nowrap; }
+.orow .r { display: flex; gap: 6px 10px; align-items: center; flex-wrap: wrap; }
+.pill-radios { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.pill-radios span { border: 1px solid var(--line-2); border-radius: var(--r-m); padding: 3px 10px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; background: var(--surface); }
+.pill-radios span::before { content: ''; width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--line-3); }
+.req { border: 1px solid #f1ddb2; background: #fffaf0; border-radius: var(--r-m); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.quote { border-inline-start: 3px solid var(--line-3); padding: 2px 0 2px 10px; color: var(--ds-neutral-800); }
+.trow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.6fr) auto; gap: 12px 20px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 14px 16px; }
+@media (max-width: 760px) { .trow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+@media (max-width: 460px) { .trow { grid-template-columns: minmax(0, 1fr); } }
+.trow-hero { font: 600 20px/1.2 var(--font); letter-spacing: -0.02em; color: var(--money); }
+.fline { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 260px); gap: 8px 24px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 16px 18px; }
+@media (max-width: 600px) { .fline { grid-template-columns: minmax(0, 1fr); } }
+.fline .big { font-size: 22px; letter-spacing: -0.02em; }
+.surface-label { font: 600 11px/1 var(--font); letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); margin-top: 4px; }
+.state-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+@media (max-width: 980px) { .state-layout { grid-template-columns: minmax(0, 1fr); } }
+.state-layout > .note { position: sticky; top: 64px; }
+@media (max-width: 980px) { .state-layout > .note { position: static; } }
+.tcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.tcard.move { border-color: var(--ds-purple-300); box-shadow: inset 0 0 0 1px var(--ds-purple-300); }
+.tcard .val { font: 600 22px/1.2 var(--font); letter-spacing: -0.02em; }
+.nextcard { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 0; border: 1px solid var(--line); border-radius: var(--r-l); overflow: hidden; background: var(--surface); }
+.nextcard > div { padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.nextcard > div:first-child { background: var(--accent-soft); }
+@media (max-width: 700px) { .nextcard { grid-template-columns: minmax(0, 1fr); } }
+.eyebrow2 { font: 600 12px/1.3 var(--font); letter-spacing: 0.05em; text-transform: uppercase; color: var(--money); }
+.mini { font-size: 13px; }
+.mini .choice { padding: 8px 10px; }
+.selbar { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; padding: 10px 14px; border: 1px solid var(--ds-purple-300); border-radius: var(--r-l); background: var(--surface); box-shadow: var(--shadow-pop); }
+.switch { width: 34px; height: 20px; border-radius: 99px; background: var(--brand); position: relative; flex: none; }
+.switch::after { content: ''; position: absolute; top: 3px; right: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; }
+pre.code { background: var(--ds-neutral-100); border: 1px solid var(--line); border-radius: var(--r-l); padding: 12px 14px; overflow-x: auto; font: 12.5px/1.55 var(--mono); margin: 0; }
+.qlist { display: flex; flex-direction: column; gap: 10px; }
+.q.decide { border-inline-start-width: 5px; }
+</style>
+</head>
+<body>
+<main class="doc">
+  <header class="doc-head">
+    <nav class="crumbs" aria-label="Planning files"><a href="00-overview.html">← Overview</a><span>·</span><a href="../docs/client-app-prototype-plan.md">Plan document</a><span>·</span><span>Exploration 03 of 06</span></nav>
+    <div class="eyebrow">Planning exploration · not production UI</div>
+    <h1>Dispute ownership</h1>
+    <p class="lede">Who contacts the Biller: the customer, or Implentio? This file asks at what level that choice is made (per dispute, per Biller or per account), shows both paths through “Dispute with QuickBox”, and shows how every screen says who is responsible.</p>
+    <div class="legend"><span class="k k-existing">Existing</span><span class="k k-confirmed">Newly confirmed</span><span class="k k-proposed">Proposed</span><span class="k k-unresolved">Unresolved</span><span>· Mock data is labelled; package rows and history are synthetic.</span></div>
+    <div class="q"><b>Needs its own discussion (2026-09-29) · "With Implentio" as a layer, not a stage</b>Proposal to test against this file: "Handled by: you | Implentio" sits on top of every status in 01 instead of being a stage between <em>Ready to dispute</em> and <em>Waiting on Biller</em>. Handing over or taking back changes only the handler; the finding stays <em>Ready to dispute</em> until it's sent. Consequences to settle here: memo status and "whose move" when only Implentio holds open findings, whether <code>DisputeRecord.state = 'handed_off'</code> is still needed, and whether the prepared-email stage applies to Implentio. 01 no longer models any of this.</div>
+  </header>
+  <nav class="toc" aria-label="Sections">
+    <a href="#problem">1 Problem</a><a href="#compare">2 Current vs proposed</a><a href="#model">3 Proposed model</a><a href="#flow">4 Main flow</a><a href="#states">5 States</a><a href="#edge">6 Edge cases</a><a href="#data">7 Data</a><a href="#questions">8 Open questions</a>
+  </nav>
+
+  <!-- ============================================================ 1 -->
+  <section class="sec" id="problem">
+    <div class="sec-head"><span class="sec-num">1</span><h2>Problem</h2></div>
+    <div class="grid2">
+      <div class="problem">
+        <h4>Only the customer can own a dispute today</h4>
+        <p class="small">The only path is customer-managed <span class="k k-existing">Existing</span>. Implentio’s part is an opt-in “CC my Implentio support team” checkbox, and by <b>n326</b> a CC must never read as Implentio owning, sending or following up the dispute.</p>
+      </div>
+      <div class="problem">
+        <h4>The meeting asks for an Implentio-managed path</h4>
+        <p class="small">On 2026-09-24 “Ask Implentio to send it” was <b>deferred (D3)</b>, and the user asked where the idea came from. The client meeting now asks to support both paths. <span class="cx cx-change">Confirmed change</span> of direction (<b>C3</b>). Timing and scope are <span class="k k-unresolved">Unresolved</span>. Confirm the meeting’s exact scope before any build: which model, which accounts, which release.</p>
+      </div>
+      <div class="problem">
+        <h4>Nobody owns a dispute in the data (L8)</h4>
+        <p class="small"><code>sentBy</code> is a person and <code>via</code> is connected or manual. No field says who owns it. A CSM who already sends for a customer has no way to record that. Some accounts delegate entirely (“Magic Mind delegates entirely”, BI interviews), so for them the per-dispute flow is the wrong shape.</p>
+      </div>
+      <div class="problem">
+        <h4>Who records the Biller’s answer is a conflict</h4>
+        <p class="small">n344 says outcomes are “never inferred by Implentio”. n350 says Denied is the customer’s report. n347 labels reasons “Customer-entered”. D8 captions credits “Recorded by your team”. An Implentio-managed dispute breaks all four unless the customer confirms. <span class="cx cx-conflict">Potential conflict</span> <b>C11</b>, with <b>C10</b> <span class="cx cx-verify">Needs verification</span>.</p>
+      </div>
+    </div>
+    <div class="note">
+      <span class="note-label">Constraint from the meeting context</span>
+      <p>Implentio may later use agents to handle disputes. Nothing here designs AI. The model only records <b>who acted</b> (a person on the customer’s team, Implentio staff, or later an Implentio agent). The UI always says “Implentio”, never a named person or bot, so the actor can change without a UX change. <span class="k k-proposed">Proposed</span></p>
+    </div>
+  </section>
+
+  <!-- ============================================================ 2 -->
+  <section class="sec" id="compare">
+    <div class="sec-head"><span class="sec-num">2</span><h2>Current vs proposed</h2></div>
+    <div class="compare">
+      <div class="col">
+        <div class="col-head">Current <span class="k k-existing">Existing</span></div>
+        <div class="flow vflow">
+          <div class="node n-open">Tick findings on the memo page<small>Never pre-selected (D6), biggest first</small></div>
+          <span class="arrow">↓</span>
+          <div class="node">Selection bar · “2 findings · $9,357.30 selected”<small>One action: Review &amp; send</small></div>
+          <span class="arrow">↓</span>
+          <div class="node">Dispute with QuickBox<small>1 What you’re disputing → 2 Check the email — nothing is sent yet → 3 Review &amp; send</small></div>
+          <span class="arrow">↓</span>
+          <div class="fork">
+            <div class="node">Connected Gmail / Outlook<small>Send dispute → sent</small></div>
+            <div class="node n-part">Send it yourself<small>In a prepared email → “I sent it”</small></div>
+          </div>
+          <span class="arrow">↓</span>
+          <div class="node n-wait">Dispute card · Waiting on Biller<small>Blue card, one per send</small></div>
+          <span class="arrow">↓</span>
+          <div class="node">Your team records each answer<small>Fully collected · Partly collected · Denied</small></div>
+        </div>
+        <p class="small muted">Implentio’s only role: the “CC my Implentio support team” checkbox on step 2. Implentio gets a copy (n325), never ownership (n326).</p>
+      </div>
+      <div class="col">
+        <div class="col-head">Proposed <span class="k k-proposed">Proposed</span></div>
+        <div class="flow vflow">
+          <div class="node n-open">Same start: tick findings → Review &amp; send<small>Unchanged</small></div>
+          <span class="arrow">↓</span>
+          <div class="node n-new">Dispute with QuickBox · step 1<small>New question: “Who will contact QuickBox?”</small></div>
+          <span class="arrow">↓</span>
+          <div class="fork">
+            <div class="node">I’ll send it myself<small>Steps 2–3 unchanged</small></div>
+            <div class="node n-new">Implentio handles it<small>2 What Implentio will do → 3 Hand over</small></div>
+          </div>
+          <span class="arrow">↓</span>
+          <div class="node n-new">With Implentio<small>Reserved; “Take it back” until Implentio starts sending</small></div>
+          <span class="arrow">↓</span>
+          <div class="node n-wait">Waiting on Biller · handled by Implentio<small>Timeline, “What Implentio sent”, requests to you</small></div>
+          <span class="arrow">↓</span>
+          <div class="node">Answers, with their source<small>Recorded by Implentio, or confirmed by you (Unresolved, C11)</small></div>
+        </div>
+        <p class="small muted">Or, for delegating accounts (<b>M2</b>, section 3): no ticking at all. The memo is Implentio’s move from the moment it’s published.</p>
+      </div>
+    </div>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th>Stays the same</th><th>Changes</th><th>New</th></tr></thead>
+        <tbody><tr>
+          <td>Ticking findings, D6 (no pre-selection), the dialog title and step 1 list, the whole customer path, the CC checkbox, answers recorded per finding. <span class="k k-existing">Existing</span></td>
+          <td>Step 1 gains one question. Steps 2–3 depend on it. Dispute cards, tracker rows and finding status lines show who handles the dispute. <span class="k k-proposed">Proposed</span></td>
+          <td>Stage <b>With Implentio</b>, owner field <code>handledBy</code>, an event timeline, requests to the customer, “Take it back”, the answer’s source. <span class="k k-proposed">Proposed</span></td>
+        </tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================================================ 3 -->
+  <section class="sec" id="model">
+    <div class="sec-head"><span class="sec-num">3</span><h2>Proposed model</h2></div>
+
+    <div class="sub">
+      <h3 class="subh">3.1 The first question: at what level is ownership decided? <span class="k k-unresolved">Unresolved · Q-O8</span></h3>
+      <p class="prose small muted">Two peer models. Neither is recommended until Implentio answers Q-O8 (per dispute, per Biller, or per account) and Q-O1 (who can use it). The rest of this file works for both. Where they differ, it says so.</p>
+      <div class="grid2">
+        <div class="box">
+          <div class="row between"><h4>M1 · Choose per dispute</h4><span class="k k-proposed">Proposed option</span></div>
+          <p class="small">The customer ticks findings as today, then answers “Who will contact QuickBox?” in step 1 of <i>Dispute with QuickBox</i>.</p>
+          <ul class="small">
+            <li><b>Who selects findings:</b> the customer (D6 unchanged).</li>
+            <li><b>Deadline pressure:</b> on the customer until they hand over.</li>
+            <li><b>Fits:</b> accounts that dispute themselves and sometimes want help.</li>
+            <li><b>Needs:</b> lane B in the dialog and the new card states. No settings.</li>
+            <li><b>Weak for:</b> delegating accounts. They’d still have to open every memo, tick and hand over.</li>
+          </ul>
+        </div>
+        <div class="box">
+          <div class="row between"><h4>M2 · Delegate per Biller or account</h4><span class="k k-proposed">Proposed option</span></div>
+          <p class="small">A setting: “Implentio handles our disputes with QuickBox”. New memos for that Biller are Implentio’s move. The customer <b>does not tick findings</b>. Implentio selects, sends and follows up. There’s a per-memo override: “Dispute this memo yourself instead”.</p>
+          <ul class="small">
+            <li><b>Who selects findings:</b> Implentio. D6 needs re-reading (3.3).</li>
+            <li><b>Deadline pressure:</b> moves off the customer, who sees the date but no to-do. Whether Implentio commits to sending before it is <span class="k k-unresolved">Q-O3</span>.</li>
+            <li><b>Fits:</b> accounts that delegate entirely and rarely open the app.</li>
+            <li><b>Needs:</b> a setting, “whose move” wording across the tracker, and rules for leave-outs and Won’t pursue.</li>
+            <li><b>Weak for:</b> customers who want to review each claim before it goes.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="q decide"><b>Q-O8 decides this. Is the choice made per dispute, per Biller, or per account?</b><span>Both can coexist: M2 for delegating accounts, M1 for everyone else, with M1’s step-1 choice hidden or preset on delegated Billers. That combination costs the most to build. Ask first whether any account besides the delegating ones would use Implentio handling per dispute.</span></div>
+      <div class="problem" id="risk-deadend">
+        <div class="row between"><h4>Risk: M2 can leave dead ends for accounts that rarely log in</h4><span class="k k-unresolved">Unresolved · for the user to decide</span></div>
+        <p class="small">Each piece looks reasonable alone. Together they give a delegated memo that can’t close without the customer, which is exactly who M2 is for.</p>
+        <div class="flow">
+          <div class="node n-new">M2<small>Implentio selects and sends</small></div><span class="arrow">+</span>
+          <div class="node">Q-03a (i)<small>Left-out findings go back to the customer</small></div><span class="arrow">+</span>
+          <div class="node">01 · option A or D<small>“Flag only” / “Open, aged”: past deadline stays Ready to dispute</small></div><span class="arrow">+</span>
+          <div class="node">C11 option (b)<small>Answers count only after the customer confirms</small></div><span class="arrow">=</span>
+          <div class="node n-bad">Memo never reaches Done<small>“Your move” that nobody takes</small></div>
+        </div>
+        <div class="scroll-x">
+          <table class="ptable">
+            <thead><tr><th>Where it sticks</th><th>What the customer sees, months later</th><th>Choices that would unstick it (none chosen)</th></tr></thead>
+            <tbody>
+              <tr><td>Findings Implentio left out (M2 + Q-03a (i) + 01 A/D)</td><td>$3.08 “Ready to dispute · Your move”, past the deadline. The memo stays <i>Ready to dispute</i>, and the tracker’s “Left to dispute” card keeps its “Your move” tag</td><td>Q-03a (ii): Implentio may close leave-outs. 01 option B: past-deadline findings don’t hold the memo open. “Won’t pursue the rest” done by Implentio</td></tr>
+              <tr><td>Answers waiting for confirmation (M2 + C11 (b))</td><td>“Answer to confirm” on every dispute. Recovered stays $0 and Credit outcomes stays empty, even though QuickBox paid</td><td>C11 option (a). Or auto-accept after N days, recorded as “Reported by Implentio, not confirmed”</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small muted">This file doesn’t pick a fix. Decide Q-O8, Q-03a, Q-S1 (01) and Q-O4 together. Email reminders would soften it but are out of scope here.</p>
+      </div>
+    </div>
+
+    <div class="sub">
+      <h3 class="subh">3.2 Two lanes, one start, one end <span class="k k-proposed">Proposed</span></h3>
+      <p class="prose small muted">Ownership lives on the <b>dispute</b> (<code>handledBy</code>), not on the finding. One owner per dispute (Q-O7). Different findings of one memo can go in different disputes with different owners.</p>
+      <div class="lanes" role="group" aria-label="Two-lane diagram">
+        <div class="shared">
+          <span class="lane-cap">Shared start</span>
+          <div class="flow">
+            <div class="node n-open">Ready to dispute<small>Tick findings (M1)</small></div><span class="arrow">→</span>
+            <div class="node">Dispute with QuickBox<small>Step 1 · What you’re disputing</small></div><span class="arrow">→</span>
+            <div class="node n-new">Who will contact QuickBox?<small>The fork</small></div>
+          </div>
+        </div>
+        <div class="lane-grid">
+          <div class="lane">
+            <div class="lane-head">Lane A · Customer handles <span class="k k-existing">Existing</span></div>
+            <div class="flow vflow">
+              <div class="node">2 · Check the email — nothing is sent yet</div><span class="arrow">↓</span>
+              <div class="node">3 · Review &amp; send<small>Connected send, or send it yourself</small></div><span class="arrow">↓</span>
+              <div class="node n-part">In a prepared email<small>Only for a manual send</small></div>
+              <div class="branch">“I didn’t send it” → back to Ready to dispute</div>
+              <span class="arrow">↓ “I sent it” / connected send</span>
+              <div class="node n-wait">Sent</div>
+            </div>
+          </div>
+          <div class="lane b">
+            <div class="lane-head">Lane B · Implentio handles <span class="k k-proposed">Proposed</span></div>
+            <div class="flow vflow">
+              <div class="node n-new">2 · What Implentio will do<small>Contact on file, the claim and files (read-only), note for Implentio</small></div><span class="arrow">↓</span>
+              <div class="node n-new">3 · Hand over to Implentio<small>Summary, then confirmation</small></div><span class="arrow">↓</span>
+              <div class="node n-new">With Implentio<small>Findings reserved</small></div>
+              <div class="branch">“Take it back” (until Implentio starts sending) → Ready to dispute</div>
+              <div class="branch">Implentio couldn’t take it → Ready to dispute <span class="k k-unresolved">Unresolved</span></div>
+              <span class="arrow">↓ Implentio sends</span>
+              <div class="node n-new">Sent by Implentio<small>Request to you if QuickBox asks for something</small></div>
+              <div class="branch">M2 enters here directly: memo published → Implentio selects → With Implentio</div>
+            </div>
+          </div>
+        </div>
+        <div class="joins">↓ both lanes join ↓</div>
+        <div class="shared">
+          <span class="lane-cap">Shared end</span>
+          <div class="flow">
+            <div class="node n-wait">Waiting on Biller<small>· handled by you | Implentio</small></div><span class="arrow">→</span>
+            <div class="node">Answers per finding<small>Source always shown</small></div><span class="arrow">→</span>
+            <div class="node n-good">Closed<small>Fully · Partly · Denied</small></div><span class="arrow">→</span>
+            <div class="node">History<small>Credit outcomes, filter “Handled by”</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub">
+      <h3 class="subh">3.3 Whose move, money and memo status when Implentio holds it <span class="k k-proposed">Proposed</span></h3>
+      <p class="prose small">Handed-over findings are <b>reserved</b>, like “In a prepared email”: no checkbox and no Won’t pursue. But they must <b>not</b> make the memo read “Ready to dispute · Your move”. Today the tracker’s <i>Left to dispute</i> card carries a “Your move” tag, and memo rows say “Not disputed yet · Dispute by …”. Here’s what they say when Implentio owns the move.</p>
+      <div class="grid3">
+        <div class="stack s8">
+          <span class="surface-label">Today · tracker cards <span class="k k-existing">Existing</span></span>
+          <div class="tcard move">
+            <div class="row between"><span class="medium"><span class="sw" style="background:var(--c-open)"></span>Left to dispute</span><span class="tag">Your move</span></div>
+            <span class="val">$9,387.70</span>
+            <p class="small"><b>1 credit memo.</b> Dispute or skip each finding. Next deadline Sep 20 · 3 days left.</p>
+            <button class="btn sm primary" type="button">Review overcharges</button>
+          </div>
+          <div class="tcard">
+            <span class="medium"><span class="sw" style="background:var(--c-wait)"></span>Waiting on Biller</span>
+            <span class="val">$0.00</span>
+            <p class="small">Nothing waiting on an answer.</p>
+          </div>
+        </div>
+        <div class="stack s8">
+          <span class="surface-label">M1 · after a hand-over of $9,357.30</span>
+          <div class="tcard move">
+            <div class="row between"><span class="medium"><span class="sw" style="background:var(--c-open)"></span>Left to dispute</span><span class="tag">Your move</span></div>
+            <span class="val">$30.40</span>
+            <p class="small"><b>1 credit memo.</b> Dispute or skip each finding. Next deadline Sep 20 · 3 days left.</p>
+          </div>
+          <div class="tcard">
+            <div class="row between"><span class="medium"><span class="sw" style="background:var(--c-wait)"></span>Waiting on Biller</span><span class="tag">Implentio’s move</span></div>
+            <span class="val">$9,357.30</span>
+            <p class="small"><b>1 credit memo.</b> $9,357.30 with Implentio, not sent yet. Nothing to do.</p>
+          </div>
+        </div>
+        <div class="stack s8">
+          <span class="surface-label">M2 · QuickBox delegated to Implentio</span>
+          <div class="tcard">
+            <span class="medium"><span class="sw" style="background:var(--c-open)"></span>Left to dispute</span>
+            <span class="val">$0.00</span>
+            <p class="small">Nothing left for you to dispute.</p>
+          </div>
+          <div class="tcard">
+            <div class="row between"><span class="medium"><span class="sw" style="background:var(--c-wait)"></span>With Implentio</span><span class="tag">Implentio’s move</span></div>
+            <span class="val">$9,387.70</span>
+            <p class="small"><b>1 credit memo.</b> Implentio has it · deadline Sep 20. Nothing to do. <span class="k k-unresolved">Q-O3</span></p>
+          </div>
+        </div>
+      </div>
+      <div class="scroll-x">
+        <table class="ptable">
+          <thead><tr><th>Memo row in the tracker</th><th>Status chip</th><th>Detail lines</th><th>Tag</th></tr></thead>
+          <tbody>
+            <tr><td>Today, nothing sent</td><td><span class="chip">Not disputed yet</span></td><td>Dispute by Sep 20 · 3 days left</td><td><span class="k k-existing">Existing</span></td></tr>
+            <tr><td>M1, part handed over</td><td><span class="chip info">With Implentio</span></td><td>Handed over Sep 17 by Tori · Implentio sends next<br>Still to dispute by Sep 20 · 3 days left ($30.40)</td><td><span class="k k-proposed">Proposed</span></td></tr>
+            <tr><td>M2, delegated</td><td><span class="chip info">With Implentio</span></td><td>Implentio has it · deadline Sep 20</td><td><span class="k k-proposed">Proposed</span> <span class="k k-unresolved">Q-O3</span></td></tr>
+            <tr><td>Either, Implentio needs something</td><td><span class="chip attention">Implentio needs something</span></td><td>QuickBox asked for your signed rate sheet · Sep 22 · Your move</td><td><span class="k k-proposed">Proposed</span></td></tr>
+            <tr><td>Either, answer reported (C11 b)</td><td><span class="chip attention">Answer to confirm</span></td><td>QuickBox answered Sep 29 · reported by Implentio · Your move</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="scroll-x">
+        <table class="ptable">
+          <thead><tr><th>Handed-over money and memo status</th><th>Option 1 · count as Waiting <span class="k k-proposed">Proposed</span></th><th>Option 2 · its own line</th></tr></thead>
+          <tbody>
+            <tr><td>Money bucket</td><td>Inside <i>Waiting on Biller</i>, with a line “$X with Implentio, not sent yet”</td><td>A new bucket <i>With Implentio</i> between <i>Left to dispute</i> and <i>Waiting on Biller</i></td></tr>
+            <tr><td>Memo status</td><td>These findings never hold the memo in <i>Ready to dispute</i>. If nothing else is open: <i>Waiting on Biller</i></td><td>Same, or a new memo status <i>With Implentio</i></td></tr>
+            <tr><td>Whose move</td><td colspan="2">Implentio’s, in both. The customer’s “Your move” returns only for an open request, a returned hand-over, or findings Implentio left out (M2).</td></tr>
+            <tr><td>Risk</td><td>“Waiting on Biller” is slightly untrue until Implentio sends</td><td>A sixth bucket. If 01 adds <i>Past deadline</i>, that makes seven</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h4>Every new state: memo status, money and whose move <span class="k k-proposed">Proposed</span></h4>
+      <div class="scroll-x">
+        <table class="ptable">
+          <thead><tr><th>State</th><th>Dispute card chip</th><th>Tracker row chip</th><th>Memo status (these findings)</th><th>Money</th><th>Whose move</th></tr></thead>
+          <tbody>
+            <tr><td>With Implentio / Implentio is sending</td><td><span class="chip info">With Implentio</span></td><td><span class="chip info">With Implentio</span></td><td>Never <i>Ready to dispute</i>. <i>Waiting on Biller</i> if nothing else is open</td><td>Waiting (option 1 above)</td><td>Implentio</td></tr>
+            <tr><td>Sent by Implentio</td><td><span class="chip info">Waiting on Biller</span></td><td><span class="chip info">Active dispute</span></td><td><i>Waiting on Biller</i></td><td>Waiting on Biller</td><td>QuickBox</td></tr>
+            <tr><td>Implentio needs something</td><td><span class="chip info">Waiting on Biller</span> + request box</td><td><span class="chip attention">Implentio needs something</span></td><td><i>Waiting on Biller</i>, with “Implentio needs something from you” as the next step</td><td>Waiting on Biller</td><td><b>Customer</b></td></tr>
+            <tr><td>Answer to confirm (C11 b)</td><td><span class="chip attention">Answer to confirm</span>. Sub-line “QuickBox answered Sep 29”, <b>not</b> “Waiting N days”</td><td><span class="chip attention">Answer to confirm</span></td><td><i>Waiting on Biller</i> until confirmed, with “Answer to confirm” as the next step <span class="k k-unresolved">Q-03h</span></td><td>Stays out of <i>Recovered</i> until confirmed, shown as “$X answered, to confirm” <span class="k k-unresolved">Q-03h</span></td><td><b>Customer</b></td></tr>
+            <tr><td>Left out by Implentio (M2)</td><td>— (not in the dispute)</td><td><span class="chip">Not disputed yet</span> + “Left out by Implentio”</td><td><i>Ready to dispute</i> (01 A/D: never Done without a decision. See the risk in 3.1)</td><td>Left to dispute</td><td>Customer under Q-03a (i), Implentio under (ii)</td></tr>
+            <tr><td>Implentio couldn’t take it</td><td><span class="chip">Ready to dispute</span> (returned card)</td><td><span class="chip">Not disputed yet</span> + “Implentio couldn’t take it”</td><td><i>Ready to dispute</i></td><td>Left to dispute</td><td><b>Customer</b></td></tr>
+            <tr><td>Taken back</td><td>— (kept in history)</td><td>As before the hand-over</td><td><i>Ready to dispute</i></td><td>Left to dispute</td><td><b>Customer</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="grid2">
+        <div class="box">
+          <h4>M2 · Who may mark Won’t pursue? <span class="k k-unresolved">Unresolved · Q-03a</span></h4>
+          <ul class="small">
+            <li><b>(i) Only the customer.</b> Findings Implentio leaves out come back as <i>Ready to dispute</i> with Implentio’s reason: “Implentio left this out: too small to dispute on its own.” It’s the customer’s move to dispute it or mark Won’t pursue. This keeps Won’t pursue a customer decision (n359, n360).</li>
+            <li><b>(ii) Implentio may mark it for the customer.</b> It shows as “Won’t pursue · decided by Implentio” with the reason and an Undo. Fewer loose ends for accounts that never log in, but it changes what Won’t pursue means.</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h4>M2 · How D6 (no pre-selection) applies <span class="k k-unresolved">Unresolved · Q-03a</span></h4>
+          <p class="small">D6 stops <b>the app</b> from ticking findings for the customer. Under M2 the customer has delegated the choice, so Implentio’s selection is a decision made for them, not a pre-selection. Proposed reading: the app still never pre-ticks anything. Implentio’s choice is labelled as Implentio’s, and every left-out finding shows why. D6 was decided for customer-managed disputes, so this needs the user’s confirmation.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub">
+      <h3 class="subh">3.4 Who records the Biller’s answer? <span class="cx cx-conflict">Potential conflict · C11</span> <span class="k k-unresolved">Unresolved · Q-O4</span></h3>
+      <p class="prose small">This isn’t a given. <b>n344:</b> outcomes are “recorded by the customer … never inferred by Implentio”. <b>n350:</b> Denied is the customer’s report, never Implentio’s determination. <b>n347:</b> reasons are shown as “Customer-entered”. <b>D8:</b> credits are “Recorded by your team”. And <b>C10</b>: nobody confirms that the credit actually arrived.</p>
+      <div class="grid2">
+        <div class="box">
+          <div class="row between"><h4>(a) Implentio records it</h4><span class="k k-unresolved">Option</span></div>
+          <div class="orows mini">
+            <div class="orow"><span class="t">Shipping price higher than your contract rate</span><span class="a">$9,322.20</span><span class="r"><span class="chip success">Fully collected</span><span class="small muted">Recorded by Implentio, Sep 29</span><button class="lnk sm" type="button">Not right?</button></span></div>
+          </div>
+          <ul class="small">
+            <li>Nothing for a delegating account to do. That’s the point of delegation.</li>
+            <li>Breaks n344, n350 and n347 as written, and D8’s “Recorded by your team” caption.</li>
+            <li>“Not right?” lets the customer correct it, with history (n345).</li>
+          </ul>
+        </div>
+        <div class="box">
+          <div class="row between"><h4>(b) Implentio reports it, you confirm</h4><span class="k k-unresolved">Option</span></div>
+          <div class="orows mini">
+            <div class="orow"><span class="t">Shipping price higher than your contract rate</span><span class="a">$9,322.20</span><span class="r"><span class="small">QuickBox answered: <b>Fully collected</b> · reported by Implentio, Sep 29</span><button class="btn sm primary" type="button">Confirm</button><button class="btn sm" type="button">Something’s different</button></span></div>
+          </div>
+          <ul class="small">
+            <li>Keeps n344, n350 and D8. Until confirmed, the money isn’t counted as Recovered. The card says “Answer to confirm”, not “Waiting on Biller”, because QuickBox has answered.</li>
+            <li>Delegating accounts may never confirm, so answers get stuck and Credit outcomes stays empty. See the risk in <a href="#risk-deadend">3.1</a>.</li>
+            <li>The tracker flags “Answer to confirm” as the customer’s move.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="note"><span class="note-label">Either way</span><p>Every answer shows its source: “Recorded by you”, “Recorded by Renee Alvarez”, “Recorded by Implentio”, or “Reported by Implentio · confirmed by Tori Matthews”. The same label goes into Credit outcomes (05) and guidance (06). A denial reason Implentio types is QuickBox’s words passed on, not Implentio’s view (n350). It’s labelled “QuickBox’s reason, recorded by Implentio”. <span class="k k-proposed">Proposed</span></p></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 4 -->
+  <section class="sec" id="flow">
+    <div class="sec-head"><span class="sec-num">4</span><h2>Main flow</h2></div>
+    <div class="sub">
+      <h3 class="subh">4.1 M1 · “Dispute with QuickBox” with the new choice <span class="k k-proposed">Proposed</span></h3>
+      <p class="prose small muted">Mock data: the two biggest findings of CM-2026-0630 are ticked. Demo today is Thu, Sep 17, 2026. Pick an answer to “Who will contact QuickBox?” and click through. The stepper steps are clickable, so you can preview either path.</p>
+      <div class="path-bar">
+        <span class="small medium">Preview path:</span>
+        <div class="seg" role="group" aria-label="Preview path">
+          <button type="button" id="path-self" aria-pressed="true">A · I’ll send it myself</button>
+          <button type="button" id="path-impl" aria-pressed="false">B · Implentio handles it</button>
+        </div>
+        <button type="button" class="lnk sm" id="dlg-reset">Start over</button>
+      </div>
+      <div class="dlg-wrap">
+        <section class="modal" aria-label="Mock of the Dispute with QuickBox dialog">
+          <div class="modal-head"><h3>Dispute with QuickBox</h3><span class="faint" aria-hidden="true">✕</span></div>
+          <nav class="dstepper" id="dstepper" aria-label="Steps">
+            <button type="button" class="dstep" data-step="1"><b>1</b><span data-lbl="1">What you’re disputing</span></button><span class="dsep" aria-hidden="true"></span>
+            <button type="button" class="dstep" data-step="2"><b>2</b><span data-lbl="2">Check the email</span></button><span class="dsep" aria-hidden="true"></span>
+            <button type="button" class="dstep" data-step="3"><b>3</b><span data-lbl="3">Review &amp; send</span></button>
+          </nav>
+          <div class="modal-body">
+            <!-- step 1 · shared -->
+            <div class="dpanel" data-dp="1">
+              <h4 class="step-title">What you’re disputing</h4>
+              <div class="sel">
+                <div class="sel-row"><span class="medium">Shipping price higher than your contract rate</span><span class="semi num">$9,322.20</span><span class="small muted">Base freight · 510 packages · 8 invoices</span></div>
+                <div class="sel-row"><span class="medium">Fuel charge higher than your contract allows</span><span class="semi num">$35.10</span><span class="small muted">Fuel surcharge · 172 packages · 6 invoices</span></div>
+                <div class="sel-total"><span><b>Total you’re claiming: $9,357.30</b> <span class="muted">· 682 packages</span></span><button type="button" class="lnk sm bold">Change selection</button></div>
+              </div>
+              <p class="deadline small"><span data-ico="clock" data-s="18"></span><span>Dispute by September 20, 2026 (3 days left). 3 other findings ($30.40) are not included. They stay open until then.</span></p>
+              <fieldset class="who">
+                <legend>Who will contact QuickBox? <span class="k k-proposed">Proposed</span></legend>
+                <label class="choice"><input type="radio" name="owner" value="self" checked><span class="ctext"><span class="semi">I’ll send it myself</span><span class="small muted">You’ll check the email, then send it from your Gmail or Outlook, or from your own mail app.</span></span></label>
+                <label class="choice"><input type="radio" name="owner" value="impl"><span class="ctext"><span class="semi">Implentio handles it</span><span class="small muted">Implentio contacts QuickBox and keeps you posted here.</span></span></label>
+              </fieldset>
+            </div>
+
+            <!-- lane A · step 2 -->
+            <div class="dpanel" data-dp="a2" hidden>
+              <h4 class="step-title">Check the email — nothing is sent yet</h4>
+              <p class="small">You’re asking QuickBox for $9,357.30 back for 2 overcharges. Each file lists the packages that prove it. Click one to look.</p>
+              <div class="compose">
+                <div class="compose-f">
+                  <span>To</span><span>billing@quickbox.com <span class="small muted">· QuickBox’s dispute contact, from your Biller contacts</span></span>
+                  <span>CC</span><span>ops@quickbox.com</span>
+                  <span>Subject</span><span>Parcel invoice review — April – June 2026 — CM-2026-0630</span>
+                </div>
+                <label class="check" style="align-items:flex-start"><input type="checkbox" style="margin-top:2px"><span class="ctext"><span class="medium">CC my Implentio support team</span><span class="small muted">They can answer QuickBox’s questions about the findings. <span class="k k-existing">Existing</span></span><span class="small">Implentio gets a copy. You still handle the dispute. <span class="k k-proposed">Proposed line</span></span></span></label>
+              </div>
+              <div class="email">
+                <span>Hi Dana,</span>
+                <span>We reviewed our QuickBox parcel invoices for April – June 2026 and found charges above our contract. We’re asking for a credit of $9,357.30.</span>
+                <div class="evidence">
+                  <span class="evidence-head"><span data-ico="lock" data-s="14"></span>Evidence · locked so the numbers match the files</span>
+                  <span>1. Shipping price above the contract rate on 510 packages: $9,322.20 · <span class="fileref">Base-Freight.csv</span></span>
+                  <span>2. Fuel charge above the contract on 172 packages: $35.10 · <span class="fileref">Fuel-Surcharge.csv</span></span>
+                </div>
+                <span class="muted small">…closing and signature · <span class="fileref">Summary.pdf</span> attached</span>
+              </div>
+            </div>
+
+            <!-- lane A · step 3 -->
+            <div class="dpanel" data-dp="a3" hidden>
+              <h4 class="step-title">Review &amp; send</h4>
+              <dl class="sum">
+                <dt>To / CC</dt><dd><span>billing@quickbox.com · ops@quickbox.com</span><button type="button" class="lnk sm bold">Edit</button></dd>
+                <dt>Subject</dt><dd><span>Parcel invoice review — April – June 2026 — CM-2026-0630</span><button type="button" class="lnk sm bold">Edit</button></dd>
+                <dt>Disputing</dt><dd><span>2 findings · $9,357.30</span><button type="button" class="lnk sm bold">Edit</button></dd>
+                <dt>Files</dt><dd><span>Base-Freight.csv · Fuel-Surcharge.csv · Summary.pdf</span></dd>
+              </dl>
+              <div class="routes">
+                <div class="route rec">
+                  <span class="tag" style="align-self:flex-start">Recommended</span>
+                  <span class="semi">Send from your own Gmail or Outlook, in one click</span>
+                  <div class="row"><button type="button" class="btn sm">Connect Gmail</button><button type="button" class="btn sm">Connect Outlook</button></div>
+                  <span class="tiny muted">Send-only permission: Implentio can’t read, search or delete your email.</span>
+                </div>
+                <div class="route">
+                  <div class="row between"><span class="ctext"><span class="semi">Send it yourself</span><span class="small muted">Open the email in your mail app, attach the files, send it, then confirm here.</span></span><button type="button" class="btn sm">Continue manually</button></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- lane B · step 2 -->
+            <div class="dpanel" data-dp="b2" hidden>
+              <h4 class="step-title">What Implentio will do <span class="k k-proposed">Proposed</span></h4>
+              <p class="small">Implentio will ask QuickBox for $9,357.30 back for 2 overcharges. It uses the same claim and files you’d send yourself.</p>
+              <dl class="sum">
+                <dt>Who they’ll contact</dt><dd><span>QuickBox’s dispute contact on file: Dana Reyes · billing@quickbox.com (CC ops@quickbox.com)</span></dd>
+                <dt>From</dt><dd><span>Implentio’s address, or your connected mailbox? <span class="k k-unresolved">Unresolved · Q-O2</span></span></dd>
+                <dt>What they’ll send</dt><dd><span>The claim below and 3 files: <span class="fileref">Base-Freight.csv</span> · <span class="fileref">Fuel-Surcharge.csv</span> · <span class="fileref">Summary.pdf</span></span></dd>
+              </dl>
+              <details class="more">
+                <summary>Read the claim Implentio will send <span class="small muted" style="font-weight:400">· read-only</span></summary>
+                <div class="more-body">
+                  <div class="evidence">
+                    <span class="evidence-head"><span data-ico="lock" data-s="14"></span>Read-only · Implentio sends exactly this</span>
+                    <span>We’re asking for a credit of $9,357.30 for April – June 2026.</span>
+                    <span>1. Shipping price above the contract rate on 510 packages: $9,322.20 · <span class="fileref">Base-Freight.csv</span></span>
+                    <span>2. Fuel charge above the contract on 172 packages: $35.10 · <span class="fileref">Fuel-Surcharge.csv</span></span>
+                  </div>
+                  <span class="tiny muted">Want to change the wording? Choose “I’ll send it myself”, or tell Implentio in the note.</span>
+                </div>
+              </details>
+              <div class="field">
+                <label for="note-impl">Note for Implentio <span class="muted" style="font-weight:400">(optional)</span></label>
+                <textarea id="note-impl" class="textarea" placeholder="For example: our contract rates changed on April 1. The new rate sheet covers this whole period."></textarea>
+                <span class="hint">Only Implentio sees this. It isn’t sent to QuickBox.</span>
+              </div>
+              <div class="next-box">
+                <span class="semi">What happens next</span>
+                <ol>
+                  <li>Implentio checks the claim and sends it to QuickBox <span class="k k-unresolved">within [service promise] · Q-O3</span>.</li>
+                  <li>You’ll see “Sent to QuickBox by Implentio” on this memo, with a copy of what was sent.</li>
+                  <li>If QuickBox asks for something only you have, Implentio asks you here.</li>
+                  <li>When QuickBox answers, <span class="k k-unresolved">Implentio records it · or asks you to confirm · Q-O4</span>.</li>
+                </ol>
+                <span class="small muted">You can take it back until Implentio starts sending.</span>
+              </div>
+            </div>
+
+            <!-- lane B · step 3 -->
+            <div class="dpanel" data-dp="b3" hidden>
+              <h4 class="step-title">Hand over to Implentio <span class="k k-proposed">Proposed</span></h4>
+              <dl class="sum">
+                <dt>Handled by</dt><dd><span class="owner"><span class="dot">I</span>Implentio</span></dd>
+                <dt>Disputing</dt><dd><span>2 findings · $9,357.30</span><button type="button" class="lnk sm bold" data-go="1">Edit</button></dd>
+                <dt>Implentio contacts</dt><dd><span>QuickBox · billing@quickbox.com</span></dd>
+                <dt>Files</dt><dd><span>Base-Freight.csv · Fuel-Surcharge.csv · Summary.pdf</span></dd>
+                <dt>Deadline</dt><dd><span>Dispute by September 20, 2026 · 3 days left</span></dd>
+                <dt>Your note</dt><dd><span id="note-echo" class="muted">None</span><button type="button" class="lnk sm bold" data-go="2">Edit</button></dd>
+              </dl>
+              <p class="small muted">After you hand it over, these 2 findings are kept for Implentio. You can’t tick them or mark them Won’t pursue. You can take it back until Implentio starts sending.</p>
+            </div>
+
+            <!-- lane B · confirmation -->
+            <div class="dpanel" data-dp="bdone" hidden>
+              <span class="done-ico" data-ico="check" data-s="24"></span>
+              <h4 class="step-title">Handed over to Implentio <span class="k k-proposed">Proposed</span></h4>
+              <p>Implentio has your 2 findings ($9,357.30) for QuickBox. Nothing is sent yet.</p>
+              <div class="next-box">
+                <span class="semi">What happens next</span>
+                <ul>
+                  <li>Implentio sends it to QuickBox <span class="k k-unresolved">within [service promise] · Q-O3</span>.</li>
+                  <li>This memo then shows “Sent to QuickBox by Implentio”, with a copy of what was sent.</li>
+                  <li>If Implentio needs something from you, it shows on this memo and in the Parcel Credit Tracker.</li>
+                </ul>
+              </div>
+              <p class="small">Follow it on this memo under <b>Disputes</b>, or in the <b>Parcel Credit Tracker</b>. Changed your mind? Use <b>Take it back</b> on the memo page. It’s there until Implentio starts sending.</p>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button type="button" class="btn" id="dlg-back">Cancel</button>
+            <div class="row" style="gap:8px"><span class="tiny muted" id="dlg-hint"></span><button type="button" class="btn primary" id="dlg-next">Next: check the email</button></div>
+          </div>
+        </section>
+        <aside class="note" id="dlg-note" aria-live="polite"></aside>
+      </div>
+    </div>
+
+    <div class="sub">
+      <h3 class="subh">4.2 M2 · A delegated account, no ticking <span class="k k-proposed">Proposed</span></h3>
+      <p class="prose small muted">The same memo if the customer had set “Implentio handles our disputes with QuickBox”. Mock: Implentio sends 4 of 5 findings on Sep 18.</p>
+      <div data-tabs class="stack">
+        <div class="seg" role="tablist" aria-label="Delegated account storyboard">
+          <button type="button" data-tab="m2a" aria-selected="true">1 · Memo published</button>
+          <button type="button" data-tab="m2b">2 · Implentio sent it</button>
+          <button type="button" data-tab="m2c">3 · Answers come in</button>
+        </div>
+        <div data-panel="m2a" class="stack">
+          <div class="nextcard">
+            <div>
+              <span class="chip info" style="align-self:flex-start">With Implentio</span>
+              <span class="eyebrow2">With Implentio</span>
+              <span class="hero-amt">$9,387.70</span>
+              <span class="small muted">of $9,387.70 overcharged</span>
+              <p class="small">Implentio handles your disputes with QuickBox and has these 5 findings. Deadline September 20, 2026. Nothing to do yet.</p>
+              <span class="k k-unresolved" style="align-self:flex-start">When Implentio sends · Q-O3</span>
+              <button type="button" class="lnk sm bold">Dispute this memo yourself instead</button>
+            </div>
+            <div>
+              <span class="semi">Findings</span>
+              <div class="scroll-x"><table class="tbl">
+                <thead><tr><th>Finding</th><th class="num">Overcharged</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td>Shipping price higher than your contract rate</td><td class="num money">$9,322.20</td><td><span class="chip info">With Implentio</span></td></tr>
+                  <tr><td>Fuel charge higher than your contract allows</td><td class="num money">$35.10</td><td><span class="chip info">With Implentio</span></td></tr>
+                  <tr><td>Home-delivery fee charged incorrectly</td><td class="num money">$22.64</td><td><span class="chip info">With Implentio</span></td></tr>
+                  <tr><td>Remote-area fee charged incorrectly</td><td class="num money">$4.68</td><td><span class="chip info">With Implentio</span></td></tr>
+                  <tr><td>Shipping price and fuel charge both too high</td><td class="num money">$3.08</td><td><span class="chip info">With Implentio</span></td></tr>
+                </tbody>
+              </table></div>
+            </div>
+          </div>
+          <div class="note"><span class="note-label">Planning note</span><p>No checkboxes and no selection bar: nothing is the customer’s to tick. The override “Dispute this memo yourself instead” works until Implentio starts sending, like “Take it back”. The customer sees the deadline but gets no to-do. The copy doesn’t promise when Implentio sends. That waits on the service promise <span class="k k-unresolved">Q-O3</span>. <span class="k k-proposed">Proposed</span></p></div>
+        </div>
+        <div data-panel="m2b" class="stack">
+          <section class="card waiting dcard">
+            <div class="dcard-head">
+              <span class="dcard-ico" data-ico="plane"></span>
+              <div class="dcard-title"><h4>Dispute sent to QuickBox by Implentio · Sep 18, 2026</h4><span class="muted">4 findings · $9,384.62 · Sent today</span></div>
+              <div class="dcard-right"><span class="chip info">Waiting on Biller</span><span class="owner"><span class="dot">I</span>Handled by Implentio</span></div>
+            </div>
+            <div class="orows">
+              <div class="orow"><span class="t">Shipping price higher than your contract rate</span><span class="a">$9,322.20</span><span class="r small muted">Waiting</span></div>
+              <div class="orow"><span class="t">Fuel charge higher than your contract allows</span><span class="a">$35.10</span><span class="r small muted">Waiting</span></div>
+              <div class="orow"><span class="t">Home-delivery fee charged incorrectly</span><span class="a">$22.64</span><span class="r small muted">Waiting</span></div>
+              <div class="orow"><span class="t">Remote-area fee charged incorrectly</span><span class="a">$4.68</span><span class="r small muted">Waiting</span></div>
+            </div>
+          </section>
+          <div class="fline">
+            <div class="stack s4">
+              <span class="semi">Shipping price and fuel charge both too high <span class="tag">Base freight + fuel</span></span>
+              <span class="small muted">OSM · 154 packages</span>
+              <p class="small"><b>Implentio left this out:</b> “Too small to dispute on its own.” <span class="tiny muted">(mock reason)</span></p>
+              <div class="row" style="gap:8px"><button type="button" class="btn sm">Dispute it yourself</button><button type="button" class="lnk sm">Won’t pursue</button></div>
+            </div>
+            <div class="stack s4"><span class="tiny muted">Overcharged</span><span class="money big">$3.08</span><span class="chip" style="align-self:flex-start">Ready to dispute</span><span class="small muted">Your move · Dispute by September 20, 2026</span></div>
+          </div>
+          <div class="note"><span class="note-label">Planning note</span><p>Amounts add up: $9,384.62 sent + $3.08 left out = $9,387.70. Whether a left-out finding goes back to the customer (shown) or Implentio can mark it Won’t pursue is <span class="k k-unresolved">Unresolved · Q-03a</span>.</p></div>
+        </div>
+        <div data-panel="m2c" class="stack">
+          <section class="card waiting dcard">
+            <div class="dcard-head">
+              <span class="dcard-ico" data-ico="plane"></span>
+              <div class="dcard-title"><h4>Dispute sent to QuickBox by Implentio · Sep 18, 2026</h4><span class="muted">4 findings · $9,384.62 · Waiting 14 days</span></div>
+              <div class="dcard-right"><span class="chip info">Some outcomes recorded</span><span class="owner"><span class="dot">I</span>Handled by Implentio</span></div>
+            </div>
+            <div class="orows">
+              <div class="orow"><span class="t">Shipping price higher than your contract rate</span><span class="a">$9,322.20</span><span class="r"><span class="chip success">Fully collected</span><span class="small muted">Recorded by Implentio, Sep 29</span></span></div>
+              <div class="orow"><span class="t">Fuel charge higher than your contract allows</span><span class="a">$35.10</span><span class="r"><span class="chip danger">Denied</span><span class="small muted">Recorded by Implentio, Oct 2</span></span></div>
+              <div class="orow"><span class="t">Home-delivery fee charged incorrectly</span><span class="a">$22.64</span><span class="r small muted">Waiting</span></div>
+              <div class="orow"><span class="t">Remote-area fee charged incorrectly</span><span class="a">$4.68</span><span class="r small muted">Waiting</span></div>
+            </div>
+          </section>
+          <div class="note"><span class="note-label">Planning note</span><p>Shown with option (a) from 3.4. Under option (b), each answer would show <i>Answer to confirm</i> (the customer’s move) until confirmed. That’s the hard part for an account that rarely opens the app: see the <a href="#risk-deadend">dead-end risk in 3.1</a>. Mock clock: Oct 2. <span class="k k-unresolved">Unresolved · Q-O4 / C11</span></p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub">
+      <h3 class="subh">4.3 M1 · Where does the choice sit?</h3>
+      <p class="prose small muted">If Q-O8 lands on per dispute, where should the question go? Option A is the <span class="k k-proposed">Proposed</span> placement within M1. Q-O1 also matters: if few accounts can use Implentio handling, the question is hidden for everyone else.</p>
+      <div class="grid4">
+        <div class="box">
+          <div class="row between"><h4>A · Step 1 of the dialog</h4><span class="k k-proposed">Proposed</span></div>
+          <div class="mini stack s8">
+            <span class="semi">Who will contact QuickBox?</span>
+            <label class="choice"><input type="radio" name="altA" checked><span>I’ll send it myself</span></label>
+            <label class="choice"><input type="radio" name="altA"><span>Implentio handles it</span></label>
+          </div>
+        </div>
+        <div class="box">
+          <div class="row between"><h4>B · Two buttons in the bar</h4><span class="k k-proposed">Alternative</span></div>
+          <div class="selbar mini">
+            <span class="ctext" style="flex:1 1 140px"><span class="semi">2 findings · $9,357.30 selected</span><span class="tiny muted">Dispute by Sep 20 · 3 days left</span></span>
+            <button type="button" class="btn sm">Hand to Implentio</button><button type="button" class="btn sm primary">Review &amp; send</button>
+          </div>
+        </div>
+        <div class="box">
+          <div class="row between"><h4>C · Account default, override per dispute</h4><span class="k k-proposed">Alternative</span></div>
+          <div class="mini stack s8">
+            <span class="semi">Settings · Disputes with QuickBox</span>
+            <div class="radios"><label><input type="radio" name="altC" checked> We contact them</label><label><input type="radio" name="altC"> Implentio does</label></div>
+            <span class="tiny muted">Used as the starting answer in step 1. You can change it for each dispute.</span>
+          </div>
+        </div>
+        <div class="box">
+          <div class="row between"><h4>M2 · Delegate (for comparison)</h4><span class="k k-proposed">Peer model</span></div>
+          <div class="mini row" style="align-items:flex-start;flex-wrap:nowrap">
+            <span class="switch" aria-hidden="true"></span>
+            <span class="ctext"><span class="semi">Implentio handles our disputes with QuickBox</span><span class="tiny muted">Implentio picks the findings and sends them. You see everything on the memo page.</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="scroll-x">
+        <table class="ptable">
+          <thead><tr><th>Option</th><th>When the customer chooses</th><th>Sees what’s disputed first?</th><th>Delegating accounts</th><th>Needs</th><th>Main risk</th></tr></thead>
+          <tbody>
+            <tr><td><b>A</b> Step 1 <span class="k k-proposed">Proposed</span></td><td>Inside the dialog, after ticking</td><td>Yes: step 1 lists it. The claim shows in step 2 of either path</td><td>Poor fit: they tick and choose every time</td><td>Lane B only</td><td>One more question on every dispute, even for accounts that never use it (hide it by Q-O1)</td></tr>
+            <tr><td><b>B</b> Selection bar</td><td>Before opening anything</td><td>No. Forced before reviewing</td><td>Poor fit</td><td>Lane B only</td><td>Two primary actions side by side. Breaks “one obvious next step” for a trainee</td></tr>
+            <tr><td><b>C</b> Default + override</td><td>Once in settings, then per dispute</td><td>Yes</td><td>Better, but they still tick every memo</td><td>A settings page (per account or per Biller)</td><td>A default can hand a dispute over by accident. Who may change the setting (Q-03e)?</td></tr>
+            <tr><td><b>M2</b> Delegate</td><td>Once per Biller or account</td><td>Implentio decides. The customer sees it after</td><td>Best fit</td><td>Setting, whose-move wording, leave-out rules</td><td>D6 and Won’t pursue need re-reading (Q-03a). Customers lose the review step</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted">Deciding questions: <b>Q-O8</b> (level) first, then <b>Q-O1</b> (who can use it; decides whether A’s question shows at all).</p>
+    </div>
+  </section>
+
+  <!-- ============================================================ 5 -->
+  <section class="sec" id="states">
+    <div class="sec-head"><span class="sec-num">5</span><h2>States</h2></div>
+    <div class="sub">
+      <h3 class="subh">5.1 Each stage on the three surfaces that show it</h3>
+      <p class="prose small muted">Mock scenario: on Thu, Sep 17 Tori Matthews hands over the two biggest findings ($9,357.30). Later states move the clock forward (Sep 18 – Oct 2). To keep the mocks about ownership, the three smaller findings ($30.40) stay open and aren’t discussed here. Past-deadline handling is 01’s job.</p>
+      <div class="seg" id="st-seg" role="group" aria-label="Dispute state"></div>
+      <div class="state-layout">
+        <div class="stack s8">
+          <span class="surface-label">Memo page · dispute card</span>
+          <div id="st-card"></div>
+          <span class="surface-label">Parcel Credit Tracker · memo row</span>
+          <div id="st-row"></div>
+          <span class="surface-label">Memo page · finding card, status side (Shipping price)</span>
+          <div id="st-line"></div>
+        </div>
+        <aside class="note" id="st-note" aria-live="polite"></aside>
+      </div>
+    </div>
+
+    <div class="sub">
+      <h3 class="subh">5.2 The owner badge and where it appears <span class="k k-proposed">Proposed</span></h3>
+      <div class="row" style="gap:20px">
+        <span class="owner you"><span class="dot">TM</span>Handled by you</span>
+        <span class="owner"><span class="dot">I</span>Handled by Implentio</span>
+        <span class="small muted">Kit <code>.owner</code> / <code>.owner.you</code>. The “I” mark stands for Implentio, whoever acted: staff or, later, an agent.</span>
+      </div>
+      <div class="scroll-x">
+        <table class="ptable">
+          <thead><tr><th>Where</th><th>What it says</th><th>Rule</th></tr></thead>
+          <tbody>
+            <tr><td>Dispute card header (memo page)</td><td>Badge under the status chip</td><td>Always on Implentio-handled cards. On customer-handled cards only if the account can use Implentio handling (Q-O1). Otherwise it’s noise</td></tr>
+            <tr><td>Tracker memo row, status</td><td>“Sent Sep 18 by Implentio · 4 days ago”, or the badge when two disputes have different owners</td><td>Only the status column. Money columns don’t change</td></tr>
+            <tr><td>Finding status line</td><td>“Sent to QuickBox by Implentio on Sep 18, 2026”</td><td>Customer-handled lines keep today’s “Sent to QuickBox on Sep 8, 2026”. Only the Implentio case names the sender</td></tr>
+            <tr><td>Credit outcomes (05)</td><td>Filter “Handled by: You · Implentio”, plus a column in “Every finding”</td><td>Reads <code>handledBy</code> from the finding’s dispute</td></tr>
+            <tr><td>Answers</td><td>“Recorded by Implentio” / “Recorded by you”</td><td>A separate label: who recorded ≠ who handled (3.4)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted">“You” means the customer’s team, not only the person viewing. Renee sees “Handled by you” on a dispute Tori sent. Is “Handled by your team” clearer? See Q-T1.</p>
+    </div>
+
+    <div class="sub">
+      <h3 class="subh">5.3 Responsibility at a glance <span class="k k-proposed">Proposed</span></h3>
+      <div class="scroll-x">
+        <table class="ptable">
+          <thead><tr><th>Stage</th><th>Who acts</th><th>What the customer must do</th><th>What the customer sees</th></tr></thead>
+          <tbody>
+            <tr><td>Choosing (step 1)</td><td>Customer</td><td>Tick findings and choose who contacts QuickBox (M1)</td><td>Dispute with QuickBox dialog</td></tr>
+            <tr><td><b>With Implentio</b></td><td>Implentio</td><td>Nothing. “Take it back” if they change their mind</td><td>Purple card “Handed over to Implentio”, chip <i>With Implentio</i>, tracker “Implentio’s move”</td></tr>
+            <tr><td>Implentio is sending</td><td>Implentio</td><td>Nothing. Take-back is closed</td><td>“Implentio is sending — you can’t take it back now”</td></tr>
+            <tr><td>Waiting on Biller · handled by Implentio</td><td>QuickBox</td><td>Nothing</td><td>Blue card with timeline and “What Implentio sent”</td></tr>
+            <tr><td>Implentio needs something</td><td><b>Customer</b></td><td>Upload a file or reply</td><td>Amber request on the card. Tracker row “Implentio needs something” · Your move</td></tr>
+            <tr><td>QuickBox answered</td><td>Implentio (a), or Implentio then the <b>customer</b> (b)</td><td>(a) Check it. (b) Confirm each answer</td><td>(a) “Recorded by Implentio”. (b) Chip <i>Answer to confirm</i>, “QuickBox answered Sep 29”, your move. Never “Waiting on Biller · Waiting N days”</td></tr>
+            <tr><td>Left out by Implentio (M2) <span class="k k-unresolved">Q-03a</span></td><td>Customer (i), or Implentio (ii)</td><td>(i) Dispute it or Won’t pursue</td><td>“Ready to dispute” with Implentio’s reason. Tracker “Not disputed yet · Left out by Implentio”</td></tr>
+            <tr><td>Closed</td><td>—</td><td>Nothing</td><td>Done · Recovered / Not recovered, each answer with its source</td></tr>
+            <tr><td>Implentio couldn’t take it <span class="k k-unresolved">Unresolved</span></td><td><b>Customer</b></td><td>Dispute it themselves, or Won’t pursue</td><td>Amber card with Implentio’s reason. Findings back to Ready to dispute</td></tr>
+            <tr><td class="muted">Lane A for comparison</td><td class="muted">Customer, then QuickBox</td><td class="muted">Send, say “I sent it”, record answers</td><td class="muted">Today’s cards <span class="k k-existing">Existing</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sub">
+      <h3 class="subh">5.4 Changing ownership <span class="k k-proposed">Proposed</span></h3>
+      <div class="scroll-x">
+        <table class="ptable">
+          <thead><tr><th>Change</th><th>When</th><th>Rule</th><th>Tag</th></tr></thead>
+          <tbody>
+            <tr><td>You → Implentio</td><td>Nothing has left the app</td><td>Fine: change the answer in step 1. No record exists yet</td><td><span class="k k-proposed">Proposed</span></td></tr>
+            <tr><td>You → Implentio</td><td>A prepared email exists (<i>In a prepared email</i>)</td><td><b>Locked.</b> Once any part of the email has left the app, the customer must answer “Did you send it?” first. “Yes” means it’s sent and handled by you. “I didn’t send it” returns the findings to Ready to dispute, and then they can hand over</td><td><span class="k k-proposed">Proposed</span></td></tr>
+            <tr><td>You → Implentio</td><td>Already sent by the customer</td><td>No hand-over of follow-up in the app. The customer can CC support on replies. Taking over follow-up is a new question</td><td><span class="k k-unresolved">Unresolved · Q-03c</span></td></tr>
+            <tr><td>Implentio → you (“Take it back”)</td><td>With Implentio, before Implentio confirms it started</td><td>Allowed for anyone on the team. Findings go back to <i>Ready to dispute</i>. The hand-over is kept in history</td><td><span class="k k-proposed">Proposed</span></td></tr>
+            <tr><td>Implentio → you</td><td>Implentio is sending (race)</td><td>Blocked: “Implentio is sending — you can’t take it back now.” If the click lands a moment too late, the server refuses and the card says so</td><td><span class="k k-proposed">Proposed</span></td></tr>
+            <tr><td>Implentio → you</td><td>After Implentio sent</td><td>Contact Implentio. No in-app switch</td><td><span class="k k-unresolved">Unresolved · Q-O5</span></td></tr>
+            <tr><td>Implentio declines</td><td>With Implentio</td><td>Findings go back to <i>Ready to dispute</i> with Implentio’s reason. Whether this can happen at all is open</td><td><span class="k k-unresolved">Unresolved · Q-03d</span></td></tr>
+            <tr><td colspan="4"><b>Always:</b> a hand-over reserves its findings (no checkbox, no Won’t pursue). One open hand-over <i>or</i> prepared email per memo, like today’s “One email at a time per credit memo”. If the deadline passes while Implentio holds the dispute, the record stores <code>heldByAtDeadline: 'implentio'</code>, so “sent after the deadline” is never blamed on the customer. <span class="k k-proposed">Proposed</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sub">
+      <h3 class="subh">5.5 “CC my Implentio support team” stays, and still isn’t ownership</h3>
+      <div class="compare">
+        <div class="col">
+          <div class="col-head">Lane A · CC support <span class="k k-existing">Existing</span></div>
+          <div class="compose">
+            <label class="check" style="align-items:flex-start"><input type="checkbox" checked style="margin-top:2px"><span class="ctext"><span class="medium">CC my Implentio support team</span><span class="small muted">They can answer QuickBox’s questions about the findings.</span><span class="small">Implentio gets a copy. You still handle the dispute. <span class="k k-proposed">Proposed line</span></span></span></label>
+          </div>
+          <p class="small">n326 still binds: no success copy, card or status may suggest Implentio sent, owns or follows up this dispute. The card stays “Handled by you”. The CC is shown only in “Show details”. The extra line is needed once lane B exists, because the two options now sit a few clicks apart.</p>
+        </div>
+        <div class="col">
+          <div class="col-head">Lane B · Implentio handles it <span class="k k-proposed">Proposed</span></div>
+          <div class="compose">
+            <label class="choice"><input type="radio" checked name="ccB"><span class="ctext"><span class="semi">Implentio handles it</span><span class="small muted">Implentio contacts QuickBox and keeps you posted here.</span></span></label>
+          </div>
+          <p class="small">An explicit, recorded hand-over (<code>handledBy: 'implentio'</code>). The CC checkbox doesn’t appear in lane B, because Implentio is the sender. Ownership comes only from this choice, never from a CC (C3’s recommendation).</p>
+        </div>
+      </div>
+      <div class="scroll-x">
+        <table class="ptable">
+          <thead><tr><th></th><th>CC support (lane A)</th><th>Implentio handles it (lane B)</th></tr></thead>
+          <tbody>
+            <tr><td>Who sends to QuickBox</td><td>The customer</td><td>Implentio</td></tr>
+            <tr><td>Who follows up with QuickBox</td><td>The customer</td><td>Implentio</td></tr>
+            <tr><td>Who records answers</td><td>The customer <span class="k k-existing">Existing</span></td><td>Unresolved (3.4) <span class="k k-unresolved">Q-O4</span></td></tr>
+            <tr><td>Card says</td><td>“Dispute sent to QuickBox” · Handled by you</td><td>“Dispute sent to QuickBox by Implentio” · Handled by Implentio</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 6 -->
+  <section class="sec" id="edge">
+    <div class="sec-head"><span class="sec-num">6</span><h2>Edge cases</h2></div>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th>Case</th><th>Proposed handling</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><b>Hand-over just before the deadline.</b> Real demo case: Thu, Sep 17, and the deadline is Sun, Sep 20. “Within 2 business days” would mean Mon, Sep 21, after the deadline</td><td>Step 2 shows the deadline next to the service promise. If the promise ends after the deadline, the dialog warns “Implentio may not send before the deadline” and the customer chooses. The record stores who held it at the deadline</td><td><span class="k k-unresolved">Unresolved · Q-O3</span></td></tr>
+          <tr><td><b>Past-deadline findings handed over</b></td><td>Depends on 01. If the deadline becomes a flag (C1), a hand-over is allowed with “QuickBox may refuse a late dispute”. Today such findings are Expired and can’t be selected</td><td><span class="k k-unresolved">Unresolved · Q-S1</span></td></tr>
+          <tr><td><b>A prepared email exists and the customer wants Implentio instead</b></td><td>The owner choice is locked until “Did you send it?” is answered. “I didn’t send it” frees the findings, then they can hand over</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td><b>No connected mailbox</b></td><td>Doesn’t matter for lane B if Implentio sends from its own address. If Q-O2 answers “from the customer’s connected mailbox”, lane B needs a connected mailbox and step 3 must ask for one</td><td><span class="k k-unresolved">Depends on Q-O2</span></td></tr>
+          <tr><td><b>Implentio declines or can’t handle it</b></td><td>Card “Implentio couldn’t take this dispute” with the reason. Findings go back to Ready to dispute with the deadline shown, plus a primary “Dispute with QuickBox” button</td><td><span class="k k-unresolved">Unresolved · Q-03d</span></td></tr>
+          <tr><td><b>Whole-memo dispute</b> (no finding breakdown) handed over</td><td>Step 1 lists “Complete credit memo · $X” and asks the same question. Implentio sends the complete memo. One answer on the record (<code>scope: 'memo'</code>). Who records it follows 3.4</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td><b>Two disputes on one memo, different owners</b></td><td>Allowed: one owner per dispute (Q-O7). Each card has its own badge. The tracker row says “2 active disputes” and badges both</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td><b>A teammate opens the memo</b></td><td>“Handed over Sep 17 by Tori Matthews.” Anyone on the team can take it back or answer a request, like today’s prepared-email card (“anyone can answer”). Permissions are Q-03e</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td><b>Fully delegating account that rarely opens the app</b></td><td>M2 is the in-app answer. Email updates (requests, answers) are out of scope here. Noted only</td><td><span class="k k-unresolved">Out of scope · note</span></td></tr>
+          <tr><td><b>QuickBox replies to the customer, not to Implentio</b></td><td>The card offers “Got a reply from QuickBox? Send it to Implentio” (paste or attach). Whether the customer may record the answer directly on an Implentio-handled dispute depends on 3.4</td><td><span class="k k-unresolved">Unresolved · Q-03g</span></td></tr>
+          <tr><td><b>Take it back clicked while Implentio is sending</b></td><td>The server refuses. The card switches to “Implentio is sending — you can’t take it back now”. Nothing is half-changed</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td><b>The deadline passes while Implentio holds it</b></td><td><code>heldByAtDeadline: 'implentio'</code>. “Sent after the deadline” reads “sent by Implentio after the deadline”, not the customer’s fault</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td><b>M2: Implentio leaves findings out</b></td><td>Each left-out finding shows Implentio’s reason. Who marks Won’t pursue is open (3.3)</td><td><span class="k k-unresolved">Unresolved · Q-03a</span></td></tr>
+          <tr><td><b>M2: the customer overrides one memo</b></td><td>“Dispute this memo yourself instead”, until Implentio starts sending. Then the memo behaves like M1 lane A</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td><b>An answer recorded by Implentio looks wrong</b> (option a)</td><td>“Not right?” opens Change, with history (n345). The change is recorded as the customer’s</td><td><span class="k k-proposed">Proposed</span></td></tr>
+          <tr><td><b>Later: an agent acts as Implentio</b></td><td>The event stores <code>actor.type: 'agent'</code>. The UI still says “Implentio”. No UI change</td><td><span class="k k-proposed">Proposed</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================================================ 7 -->
+  <section class="sec" id="data">
+    <div class="sec-head"><span class="sec-num">7</span><h2>Data</h2></div>
+    <div class="legend"><span class="d d-have">Have</span> in the domain or fixtures today <span class="d d-verify">Verify</span> probably exists in Implentio’s process, confirm <span class="d d-missing">Missing</span> not available <span class="d d-new">New field</span> proposed</div>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th>Item</th><th></th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>DisputeRecord.sentBy</code></td><td><span class="d d-have">Have</span></td><td>A person’s name today. For lane B it would be “Implentio”, so it moves into <code>events[]</code> with an actor type</td></tr>
+          <tr><td><code>DisputeRecord.via</code> (connected / manual)</td><td><span class="d d-have">Have</span></td><td>Says <i>how</i> it went, not who owns it. Lane B’s route depends on Q-O2</td></tr>
+          <tr><td><code>DisputeRecord.senderEmail</code></td><td><span class="d d-have">Have</span></td><td>Would hold Implentio’s address or the customer’s connected mailbox (Q-O2)</td></tr>
+          <tr><td><code>AccountSettings.csm</code> (John Yu)</td><td><span class="d d-have">Have</span></td><td>Not shown in lane B: the UI says “Implentio”, never a person</td></tr>
+          <tr><td>CC-support flag (<code>csmOptIn</code>)</td><td><span class="d d-have">Have</span></td><td>A dialog field. Is it stored on the record, or only in the <code>cc</code> addresses? <span class="d d-verify">Verify</span></td></tr>
+          <tr><td><code>billerContacts[].email / cc</code></td><td><span class="d d-have">Have</span></td><td>The contact Implentio would use (“QuickBox’s dispute contact on file”)</td></tr>
+          <tr><td>How CSMs send for customers today</td><td><span class="d d-verify">Verify</span></td><td>Tool, mailbox, what gets recorded, and whether Billers accept it (Q-O2)</td></tr>
+          <tr><td>Owner, hand-over time, Implentio’s send, requests to the customer</td><td><span class="d d-missing">Missing</span></td><td>Nothing in the model today (L8)</td></tr>
+          <tr><td><code>handledBy: 'customer' | 'implentio'</code></td><td><span class="d d-new">New field</span></td><td>On the dispute, not the finding</td></tr>
+          <tr><td><code>handedOffAt</code>, <code>handedOffBy</code></td><td><span class="d d-new">New field</span></td><td>“Handed over Sep 17 by Tori Matthews”</td></tr>
+          <tr><td><code>noteForImplentio</code></td><td><span class="d d-new">New field</span></td><td>Never part of what’s sent to the Biller</td></tr>
+          <tr><td><code>events[] {at, actor {type: person | implentio | agent, name?}, kind, text}</code></td><td><span class="d d-new">New field</span></td><td>The timeline. Kinds: handed_off, send_started, sent, request, reply, answer, taken_back, returned</td></tr>
+          <tr><td><code>openRequest? {askedAt, text, kind: file | reply}</code></td><td><span class="d d-new">New field</span></td><td>Drives “Implentio needs something from you” and the tracker flag</td></tr>
+          <tr><td><code>DisputeRecord.state += 'handed_off'</code></td><td><span class="d d-new">New field</span></td><td>Plan G row 03 and row 01</td></tr>
+          <tr><td><code>state += 'returned'</code>, <code>heldByAtDeadline</code>, <code>collection.confirmedBy?</code>, <code>account.delegation? {biller | 'all', since, by}</code></td><td><span class="d d-new">New field</span></td><td>Beyond plan G, added by this file: the declined state, the deadline rule (F8), option (b) of C11, and M2</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <pre class="code" aria-label="Proposed record shape"><code>// Proposed shape: additions only (existing fields unchanged)
+interface DisputeRecord {
+  state: 'prepared' | 'sent' | 'discarded' | 'handed_off' | 'returned'
+  handledBy: 'customer' | 'implentio'
+  handedOffAt?: string; handedOffBy?: string        // Tori Matthews
+  noteForImplentio?: string
+  heldByAtDeadline?: 'customer' | 'implentio'
+  openRequest?: { askedAt: string; text: string; kind: 'file' | 'reply' } | null
+  events: { at: string; actor: { type: 'person' | 'implentio' | 'agent'; name?: string }
+            kind: 'handed_off' | 'send_started' | 'sent' | 'request' | 'reply'
+                | 'answer' | 'taken_back' | 'returned'; text?: string }[]
+}
+// "Take it back" allowed  ⇔  state === 'handed_off' && !events.some(e =&gt; e.kind === 'send_started')</code></pre>
+    <div class="scroll-x">
+      <table class="ptable">
+        <thead><tr><th>UI element</th><th>Reads</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>Step 1 “Who will contact QuickBox?”</td><td>Account eligibility (Q-O1). Starting answer from <code>account.delegation</code> (option C / M2)</td><td><span class="d d-new">New field</span></td></tr>
+          <tr><td>Step 2B “Who they’ll contact”</td><td><code>billerContacts</code> for QuickBox</td><td><span class="d d-have">Have</span></td></tr>
+          <tr><td>Step 2B “From”</td><td>Answer to Q-O2</td><td><span class="d d-verify">Verify</span></td></tr>
+          <tr><td>Step 2B claim and files</td><td>The same email model as lane A (claims, attachments)</td><td><span class="d d-have">Have</span></td></tr>
+          <tr><td>Note for Implentio</td><td><code>noteForImplentio</code></td><td><span class="d d-new">New field</span></td></tr>
+          <tr><td>Card title, chip, owner badge</td><td><code>handledBy</code>, <code>state</code>, answers</td><td><span class="d d-new">New field</span></td></tr>
+          <tr><td>“Handed over Sep 17 by Tori Matthews”</td><td><code>handedOffAt/By</code></td><td><span class="d d-new">New field</span></td></tr>
+          <tr><td>Timeline</td><td><code>events[]</code></td><td><span class="d d-new">New field</span></td></tr>
+          <tr><td>“Take it back” / “Implentio is sending”</td><td><code>state</code> + a <code>send_started</code> event</td><td><span class="d d-new">New field</span></td></tr>
+          <tr><td>“What Implentio sent”</td><td><code>to, cc, subject, body, attachments, sentAt, senderEmail</code></td><td><span class="d d-have">Have</span></td></tr>
+          <tr><td>Request box and tracker flag</td><td><code>openRequest</code>, then a <code>reply</code> event</td><td><span class="d d-new">New field</span></td></tr>
+          <tr><td>“Recorded by Implentio” / “Answer to confirm”</td><td><code>collection.recordedBy {type}</code> (04), <code>collection.confirmedBy</code></td><td><span class="d d-new">New field</span></td></tr>
+          <tr><td>Finding status line</td><td>Derived from the dispute’s <code>handledBy</code> + <code>sentAt</code></td><td><span class="d d-have">Have</span> + <span class="d d-new">New field</span></td></tr>
+          <tr><td>Tracker “whose move”, money line</td><td>Derived from <code>handledBy</code>, <code>state</code>, <code>openRequest</code></td><td><span class="d d-new">New field</span></td></tr>
+          <tr><td>Credit outcomes “Handled by” filter</td><td><code>handledBy</code> per dispute, joined to findings</td><td><span class="d d-new">New field</span></td></tr>
+          <tr><td>“Sent by Implentio after the deadline”</td><td><code>heldByAtDeadline</code>, <code>sentAfterDeadline</code></td><td><span class="d d-new">New field</span> + <span class="d d-have">Have</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================================================ 8 -->
+  <section class="sec" id="questions">
+    <div class="sec-head"><span class="sec-num">8</span><h2>Open questions</h2></div>
+    <div class="grid3">
+      <div class="box"><div class="row between"><h4>C3 · Implentio-managed disputes</h4><span class="cx cx-change">Confirmed change</span></div><p class="small">Reverses D3 (deferred 2026-09-24). n326 still binds for the CC: a CC never equals a hand-over. n242 listed “sending on behalf of the user” as a future capability. That future is now being asked for. Scope and release: <span class="k k-unresolved">Unresolved</span>.</p></div>
+      <div class="box"><div class="row between"><h4>C10 · Credits realized</h4><span class="cx cx-verify">Needs verification</span></div><p class="small">D8 says credits are customer-reported. n167 and n32 want ingested Biller credit records. When Implentio handles a dispute, who confirms that the credit actually arrived?</p></div>
+      <div class="box"><div class="row between"><h4>C11 · Who records answers</h4><span class="cx cx-conflict">Potential conflict</span></div><p class="small">n344, n350, n347 and D8 all assume the customer records. Options (a) and (b) are in 3.4.</p></div>
+    </div>
+    <div class="qlist">
+      <div class="q decide"><b>Q-O8 · The deciding question: is the choice made per dispute, per Biller or per account?</b><span>Decides M1 vs M2 (3.1), whether step 1 gets a new question at all, and whether settings are needed. Answer this before any other ownership question. If M2: decide it together with Q-03a, Q-S1 (01) and Q-O4, or delegated memos can dead-end (<a href="#risk-deadend">risk in 3.1</a>).</span></div>
+      <div class="q"><b>Q-O1 · Is Implentio-managed a paid service, part of a plan, or per request? Can every account use it?</b><span>Decides whether “Who will contact QuickBox?” shows for everyone or only for eligible accounts.</span></div>
+      <div class="q"><b>Q-O2 · Does the Biller accept disputes from Implentio?</b><span>Is an authorisation letter or agent-of-record needed? Which mailbox does Implentio send from: its own, or the customer’s connected one? Decides step 2B’s “From” line and whether lane B needs a connected mailbox.</span></div>
+      <div class="q"><b>Q-O3 · What’s the service promise, e.g. “Implentio sends within 2 business days”?</b><span>What happens when the hand-over is a day or two before the deadline? In the demo, Thu Sep 17 plus 2 business days is Mon Sep 21, after the Sep 20 deadline.</span></div>
+      <div class="q"><b>Q-O4 · Who records outcomes and confirms that the credit arrived? (C10, C11)</b><span>Option (a): Implentio records and the customer can correct. Option (b): Implentio reports and the customer confirms.</span></div>
+      <div class="q"><b>Q-O5 · Can the customer take it back after Implentio has sent it?</b><span>Proposed: no in-app switch. Contact Implentio.</span></div>
+      <div class="q"><b>Q-O6 · Does the customer see Implentio’s correspondence with the Biller, or a summary?</b><span>Decides what “What Implentio sent” and the timeline show after the first email.</span></div>
+      <div class="q"><b>Q-O7 · Can one dispute mix owners?</b><span>Proposed: no. One owner per dispute. Different findings can go in different disputes.</span></div>
+      <div class="q"><b>Q-03a (new) · Under M2, who selects findings, and who may mark Won’t pursue?</b><span>Does D6 (no pre-selection) apply when Implentio selects on the customer’s behalf? Do left-out findings go back to the customer, or can Implentio close them?</span></div>
+      <div class="q"><b>Q-03b (new) · Do handed-over findings count in “Waiting on Biller”, or in their own “With Implentio” line?</b><span>Also: does a memo get a “With Implentio” status? (3.3, option 1 vs 2)</span></div>
+      <div class="q"><b>Q-03c (new) · Can a customer hand over the follow-up of a dispute they already sent themselves?</b><span>For example: sent Sep 8, no answer, “Implentio, please chase this.”</span></div>
+      <div class="q"><b>Q-03d (new) · Can Implentio decline a hand-over? For what reasons?</b><span>If never, drop the “Implentio couldn’t take it” state.</span></div>
+      <div class="q"><b>Q-03e (new) · Who on the customer’s team may hand over, take back, or change the delegation setting?</b><span>Anyone (like today’s “anyone can answer”), or admins only?</span></div>
+      <div class="q"><b>Q-03f (new) · Does the customer confirm an authorisation per hand-over, or once per account?</b><span>Tied to Q-O2. It could add a checkbox to step 3B.</span></div>
+      <div class="q"><b>Q-03g (new) · If QuickBox replies to the customer directly, how does the reply reach Implentio?</b><span>And may the customer record that answer on an Implentio-handled dispute?</span></div>
+      <div class="q"><b>Q-03h (new) · Under C11 (b), where does an answer waiting for confirmation sit?</b><span>Proposed: the dispute and tracker say <i>Answer to confirm</i> (the customer’s move), not “Waiting on Biller”. The money stays out of Recovered, shown as “answered, to confirm”. Is that a sixth money line, or part of Waiting? Should it auto-accept after N days?</span></div>
+      <div class="q"><b>Q-T1 · Names (PM)</b><span><i>With Implentio</i>, <i>Handled by Implentio</i>, <i>Hand over to Implentio</i>, <i>Take it back</i>, <i>Implentio’s move</i>, <i>Answer to confirm</i>, <i>Left out by Implentio</i>, and “Handled by you” vs “Handled by your team”. All Proposed.</span></div>
+    </div>
+  </section>
+</main>
+<script id="kit">
+/* Planning kit behaviour — inlined into each file's script block with
+   id="kit" by sync-kit.mjs (never write a closing script tag in this file).
+
+   [data-tabs]          container; its [data-tab="x"] buttons show the matching
+                        [data-panel="x"] inside the same container (nearest).
+   [data-toggle="grp"]  buttons with data-value; sets data-<grp>="value" on the
+                        element named by data-target (default: <body>) and
+                        aria-pressed on the buttons. CSS/JS react to it.
+   window.kit.money(n)  "$1,234.56"
+*/
+(function () {
+  const money = (n) =>
+    (n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  function initTabs(root) {
+    root.querySelectorAll('[data-tabs]').forEach((box) => {
+      const own = (el) => el.closest('[data-tabs]') === box
+      const tabs = [...box.querySelectorAll('[data-tab]')].filter(own)
+      const panels = [...box.querySelectorAll('[data-panel]')].filter(own)
+      const show = (key) => {
+        tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === key)))
+        panels.forEach((p) => (p.hidden = p.dataset.panel !== key))
+        box.dispatchEvent(new CustomEvent('tabchange', { detail: key }))
+      }
+      tabs.forEach((t) => {
+        t.setAttribute('role', 'tab')
+        t.addEventListener('click', () => show(t.dataset.tab))
+      })
+      const first = tabs.find((t) => t.getAttribute('aria-selected') === 'true') ?? tabs[0]
+      if (first) show(first.dataset.tab)
+    })
+  }
+
+  function initToggles(root) {
+    const groups = new Map()
+    root.querySelectorAll('[data-toggle]').forEach((b) => {
+      const g = b.dataset.toggle
+      if (!groups.has(g)) groups.set(g, [])
+      groups.get(g).push(b)
+    })
+    groups.forEach((btns, g) => {
+      const set = (v) => {
+        btns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === v)))
+        const targetSel = btns[0].dataset.target
+        const target = targetSel ? document.querySelector(targetSel) : document.body
+        if (target) target.dataset[g] = v
+        document.dispatchEvent(new CustomEvent('toggle:' + g, { detail: v }))
+      }
+      btns.forEach((b) => b.addEventListener('click', () => set(b.dataset.value)))
+      const first = btns.find((b) => b.getAttribute('aria-pressed') === 'true') ?? btns[0]
+      set(first.dataset.value)
+    })
+  }
+
+  window.kit = { money, initTabs, initToggles }
+  document.addEventListener('DOMContentLoaded', () => {
+    initTabs(document)
+    initToggles(document)
+  })
+})()
+</script>
+<script>
+/* page-specific behaviour (vanilla JS, no libraries) */
+(function () {
+  const ICONS = {
+    clock: 'M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
+    lock: 'M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z',
+    check: 'M4.5 12.75l6 6 9-13.5',
+    plane: 'M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5',
+    brief: 'M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 0 0 .75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 0 0-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0 1 12 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 0 1-.673-.38m0 0A2.18 2.18 0 0 1 3 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 0 1 3.413-.387m7.5 0V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25v.894m7.5 0a48.667 48.667 0 0 0-7.5 0',
+    alert: 'M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z',
+    back: 'M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3',
+    done: 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
+    upload: 'M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5',
+  }
+  const ico = (name, s = 20) =>
+    `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="${ICONS[name]}"/></svg>`
+  const fillIcons = (root) => root.querySelectorAll('[data-ico]').forEach((el) => { if (!el.firstChild) el.innerHTML = ico(el.dataset.ico, Number(el.dataset.s) || 20) })
+
+  const K = {
+    existing: '<span class="k k-existing">Existing</span>',
+    proposed: '<span class="k k-proposed">Proposed</span>',
+    unresolved: (t = 'Unresolved') => `<span class="k k-unresolved">${t}</span>`,
+  }
+
+  /* ---------------- 4.1 the dialog ---------------- */
+  const LABELS = {
+    self: ['What you’re disputing', 'Check the email', 'Review & send'],
+    impl: ['What you’re disputing', 'What Implentio will do', 'Hand over'],
+  }
+  const NOTES = {
+    '1': `<span class="note-label">Step 1 · shared</span>
+      <p>The list, total and deadline are today’s step 1 ${K.existing}. The only addition is <b>“Who will contact QuickBox?”</b> ${K.proposed}.</p>
+      <p>It starts on “I’ll send it myself”, so nothing changes for customers who never use Implentio. This is a route, not a finding, so D6 (no pre-selection) isn’t touched. If Q-O1 limits the service to some accounts, the question is hidden for the rest.</p>
+      <p>If the memo already has a prepared email, this question is locked until “Did you send it?” is answered (5.4).</p>`,
+    a2: `<span class="note-label">Lane A · step 2</span><p>Unchanged ${K.existing}. The one new line, under the CC checkbox, keeps n326 explicit now that a real hand-over exists: <b>“Implentio gets a copy. You still handle the dispute.”</b> ${K.proposed}</p>`,
+    a3: `<span class="note-label">Lane A · step 3</span><p>Unchanged ${K.existing}: connected send, or send it yourself → <i>In a prepared email</i> → “I sent it”. The dispute is then <i>Waiting on Biller · handled by you</i>.</p>`,
+    b2: `<span class="note-label">Lane B · step 2</span>
+      <p>Replaces “Check the email”. It says who Implentio will contact, the claim and files (<b>read-only</b>: the numbers must match the files, as in lane A’s locked evidence), and an optional note for Implentio ${K.proposed}.</p>
+      <p>Any service promise is a placeholder ${K.unresolved('Unresolved · Q-O3')}. In this demo it matters: today is Thu, Sep 17 and the deadline is Sun, Sep 20. “2 business days” would mean Mon, Sep 21, after the deadline. See Edge cases.</p>
+      <p>The sender address is open ${K.unresolved('Q-O2')}.</p>`,
+    b3: `<span class="note-label">Lane B · step 3</span><p>A summary and one primary button, <b>Hand over to Implentio</b> ${K.proposed}. It reads like lane A’s Review &amp; send, so both paths feel the same. The edit links jump back to steps 1 and 2.</p><p>The reserve rule is stated before the click, not after.</p>`,
+    bdone: `<span class="note-label">Confirmation</span><p>The dialog ends on a confirmation, not a toast, because the customer needs to know what happens next and where to follow it ${K.proposed}.</p><p>The memo page then shows the purple card. <a href="#states" data-goto-state="with">See the “With Implentio” state →</a></p>`,
+  }
+  const dlg = { path: 'self', step: 1, done: false }
+  const $ = (s, r = document) => r.querySelector(s)
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)]
+  const panelKey = () => (dlg.step === 1 ? '1' : dlg.done ? 'bdone' : (dlg.path === 'self' ? 'a' : 'b') + dlg.step)
+
+  function renderDialog() {
+    const key = panelKey()
+    $$('.dpanel').forEach((p) => (p.hidden = p.dataset.dp !== key))
+    $$('.dstep').forEach((b) => {
+      const n = Number(b.dataset.step)
+      $('[data-lbl]', b).textContent = LABELS[dlg.path][n - 1]
+      if (n === dlg.step && !dlg.done) b.setAttribute('aria-current', 'step')
+      else b.removeAttribute('aria-current')
+      b.classList.toggle('done', dlg.done || n < dlg.step)
+    })
+    $('#path-self').setAttribute('aria-pressed', String(dlg.path === 'self'))
+    $('#path-impl').setAttribute('aria-pressed', String(dlg.path === 'impl'))
+    $$('input[name="owner"]').forEach((r) => (r.checked = r.value === dlg.path))
+    const back = $('#dlg-back'), next = $('#dlg-next'), hint = $('#dlg-hint')
+    back.hidden = dlg.done
+    back.textContent = dlg.step === 1 ? 'Cancel' : 'Back'
+    hint.textContent = ''
+    next.disabled = false
+    if (dlg.done) next.textContent = 'Done'
+    else if (dlg.step === 1) next.textContent = dlg.path === 'self' ? 'Next: check the email' : 'Next: what Implentio will do'
+    else if (dlg.step === 2) next.textContent = dlg.path === 'self' ? 'Next: review' : 'Next: hand over'
+    else if (dlg.path === 'self') { next.textContent = 'I sent it'; next.disabled = true; hint.textContent = 'Available once the email leaves the app' }
+    else next.textContent = 'Hand over to Implentio'
+    const note = ($('#note-impl').value || '').trim()
+    $('#note-echo').textContent = note ? `“${note}”` : 'None'
+    $('#note-echo').classList.toggle('muted', !note)
+    $('#dlg-note').innerHTML = NOTES[key]
+  }
+  const go = (step) => { dlg.step = step; dlg.done = false; renderDialog() }
+  $$('.dstep').forEach((b) => b.addEventListener('click', () => go(Number(b.dataset.step))))
+  $$('input[name="owner"]').forEach((r) => r.addEventListener('change', () => { dlg.path = r.value; renderDialog() }))
+  $('#path-self').addEventListener('click', () => { dlg.path = 'self'; go(dlg.step) })
+  $('#path-impl').addEventListener('click', () => { dlg.path = 'impl'; go(dlg.step) })
+  $('#dlg-reset').addEventListener('click', () => { dlg.path = 'self'; $('#note-impl').value = ''; go(1) })
+  $$('[data-go]').forEach((b) => b.addEventListener('click', () => go(Number(b.dataset.go))))
+  $('#dlg-back').addEventListener('click', () => { if (dlg.step > 1) go(dlg.step - 1) })
+  $('#dlg-next').addEventListener('click', () => {
+    if (dlg.done) { dlg.path = 'self'; $('#note-impl').value = ''; go(1); return }
+    if (dlg.step < 3) go(dlg.step + 1)
+    else if (dlg.path === 'impl') { dlg.done = true; renderDialog() }
+  })
+  $('#note-impl').addEventListener('input', renderDialog)
+
+  /* ---------------- 5.1 states ---------------- */
+  const OWN_I = '<span class="owner"><span class="dot">I</span>Handled by Implentio</span>'
+  const OWN_YOU = '<span class="owner you"><span class="dot">TM</span>Handled by you</span>'
+  const RADIOS = '<span class="pill-radios" aria-hidden="true"><span>Fully collected</span><span>Partly collected</span><span>Denied</span></span>'
+  const F1 = 'Shipping price higher than your contract rate', F2 = 'Fuel charge higher than your contract allows'
+  const orow = (t, a, r) => `<div class="orow"><span class="t">${t}</span><span class="a">${a}</span><span class="r">${r}</span></div>`
+  const card = ({ tone, icon, title, sub, right, body = '', foot = '' }) => `
+    <section class="card ${tone} dcard">
+      <div class="dcard-head">
+        <span class="dcard-ico">${ico(icon)}</span>
+        <div class="dcard-title"><h4>${title}</h4><span class="muted">${sub}</span></div>
+        <div class="dcard-right">${right}</div>
+      </div>${body}${foot}
+    </section>`
+  const tl = (items) => `<ol class="tl small">${items.map(([cls, txt]) => `<li class="${cls}">${txt}</li>`).join('')}</ol>`
+  const trow = (status, facts) => `
+    <article class="trow">
+      <div class="stack s4"><a href="#states" class="semi" onclick="return false">CM-2026-0630</a><span class="small muted">QuickBox · April – June 2026</span></div>
+      <div class="stack s4"><span class="small medium"><span class="sw"></span>Left to dispute</span><span class="trow-hero">$30.40</span><span class="tiny muted">${facts}</span></div>
+      <div class="stack s4">${status}</div>
+      <div><button type="button" class="btn sm primary">Check details →</button></div>
+    </article>`
+  const fline = (chip, secondary, extra = '') => `
+    <div class="fline">
+      <div class="stack s4"><span class="semi">${F1} <span class="tag">Base freight</span></span><span class="small muted">OSM, UPS · 510 packages · 8 invoices</span><span class="small">e.g. one package was billed $223.50; under your contract it should have been $117.39</span>${extra}</div>
+      <div class="stack s4"><span class="tiny muted">Overcharged</span><span class="money big">$9,322.20</span><span style="align-self:flex-start">${chip}</span><span class="small muted">${secondary}</span></div>
+    </div>`
+  const chip = (tone, txt) => `<span class="chip ${tone}">${txt}</span>`
+  const details = (label, inner) => `<details class="more"><summary>${label}</summary><div class="more-body small">${inner}</div></details>`
+  const SENT_DETAILS = details('What Implentio sent', `
+      <dl class="sum">
+        <dt>Sent</dt><dd>Sep 18, 2026, 9:52 AM · by Implentio</dd>
+        <dt>From</dt><dd>${K.unresolved('Implentio’s address or your mailbox · Q-O2')}</dd>
+        <dt>To / CC</dt><dd>billing@quickbox.com · ops@quickbox.com</dd>
+        <dt>Subject</dt><dd>Parcel invoice review — April – June 2026 — CM-2026-0630</dd>
+        <dt>Files</dt><dd>Base-Freight.csv · Fuel-Surcharge.csv · Summary.pdf</dd>
+        <dt>Your note</dt><dd>“Our contract rates changed on April 1. The new rate sheet covers this whole period.” <span class="tiny muted">(only Implentio saw this)</span></dd>
+      </dl>
+      <span class="tiny muted">Shows exactly what went to QuickBox. Whether later emails between Implentio and QuickBox show here too is Q-O6.</span>`)
+  const WAIT_ROWS = (right) => `<div class="orows"><div class="orows-head">${right}</div>${orow(F1, '$9,322.20', '<span class="small muted">Waiting</span>')}${orow(F2, '$35.10', '<span class="small muted">Waiting</span>')}</div>`
+
+  const STATES = {
+    you: {
+      label: 'Handled by you · waiting',
+      card: () => card({ tone: 'waiting', icon: 'plane', title: 'Dispute sent to QuickBox · Sep 18, 2026', sub: '2 findings · $9,357.30 · Waiting 4 days', right: chip('info', 'Waiting on Biller') + OWN_YOU,
+        body: `<div class="orows"><div class="orows-head">Record QuickBox’s answer for each finding</div>${orow(F1, '$9,322.20', RADIOS)}${orow(F2, '$35.10', RADIOS)}</div>`,
+        foot: '<button type="button" class="lnk sm bold">Show details ▾</button>' }),
+      row: trow(`${chip('info', 'Active dispute')}<span class="small">Sent Sep 18 · 4 days ago</span>`, '$9,357.30 waiting on QuickBox'),
+      line: fline(chip('info', 'Waiting on Biller'), 'Sent to QuickBox on Sep 18, 2026'),
+      note: `<span class="note-label">Lane A, for comparison · clock Sep 22</span><p>Today’s blue card, rows and wording ${K.existing}. The only addition is the <b>Handled by you</b> badge ${K.proposed}, and only on accounts that can use Implentio handling (Q-O1).</p><p><b>Who acts:</b> QuickBox. <b>Customer does:</b> records each answer when it comes in.</p>`,
+    },
+    with: {
+      label: 'With Implentio',
+      card: () => card({ tone: 'implentio', icon: 'brief', title: 'Handed over to Implentio · Sep 17, 2026', sub: '2 findings · $9,357.30 · Implentio sends next', right: chip('info', 'With Implentio') + OWN_I,
+        body: tl([['done', 'Handed over Sep 17 by Tori Matthews'], ['now', `Implentio sends it to QuickBox ${K.unresolved('within [service promise] · Q-O3')}`], ['todo', 'QuickBox answers']]) +
+          `<div class="orows">${orow(F1, '$9,322.20', '<span class="small muted">Kept for Implentio</span>')}${orow(F2, '$35.10', '<span class="small muted">Kept for Implentio</span>')}</div>` +
+          '<p class="small"><span class="muted">Your note for Implentio:</span> “Our contract rates changed on April 1. The new rate sheet covers this whole period.”</p>',
+        foot: '<div class="row" style="gap:6px 12px"><span class="small">Changed your mind?</span><button type="button" class="btn sm">Take it back</button><span class="tiny muted">Until Implentio starts sending. The 2 findings go back to Ready to dispute.</span></div>' }),
+      row: trow(`${chip('info', 'With Implentio')}<span class="small">Handed over Sep 17 by Tori · Implentio’s move</span>`, '$9,357.30 with Implentio, not sent yet'),
+      line: fline(chip('info', 'With Implentio'), 'Handed over to Implentio on Sep 17, 2026 by Tori Matthews'),
+      note: `<span class="note-label">With Implentio · clock Sep 17</span><p><b>Who acts:</b> Implentio. <b>Customer does:</b> nothing, or <b>Take it back</b> ${K.proposed}.</p><p>The findings are reserved: no checkbox and no Won’t pursue on their cards. The memo doesn’t read “Your move” for them (3.3).</p><p>The chip is blue (info) like Waiting, not purple like Ready, because it isn’t the customer’s move. The card is tinted purple so it reads as Implentio’s. Tone ${K.proposed}.</p>`,
+    },
+    sending: {
+      label: 'Implentio is sending',
+      card: () => card({ tone: 'implentio', icon: 'brief', title: 'Handed over to Implentio · Sep 17, 2026', sub: '2 findings · $9,357.30 · Implentio is sending it now', right: chip('info', 'With Implentio') + OWN_I,
+        body: tl([['done', 'Handed over Sep 17 by Tori Matthews'], ['now', 'Implentio started sending it to QuickBox · Sep 18, 9:40 AM'], ['todo', 'QuickBox answers']]),
+        foot: `<p class="small row" style="gap:6px">${ico('lock', 16)}<span>Implentio is sending — you can’t take it back now.</span></p>
+          <div class="banner info small"><span>${ico('alert', 18)}</span><span><b>If “Take it back” was clicked a moment too late:</b> “Implentio had already started sending, so it wasn’t taken back. Contact Implentio if something needs to change.” Nothing is half-changed.</span></div>` }),
+      row: trow(`${chip('info', 'With Implentio')}<span class="small">Implentio is sending it now</span>`, '$9,357.30 with Implentio'),
+      line: fline(chip('info', 'With Implentio'), 'Implentio is sending it to QuickBox'),
+      note: `<span class="note-label">Race state · clock Sep 18, 9:40 AM</span><p>Between “Implentio started” and “sent”, take-back is closed ${K.proposed}. It exists so the customer and Implentio never both think they own it (review F8).</p><p>Data: a <code>send_started</code> event. “Take it back” is allowed only before it.</p>`,
+    },
+    sent: {
+      label: 'Sent by Implentio',
+      card: () => card({ tone: 'waiting', icon: 'plane', title: 'Dispute sent to QuickBox by Implentio · Sep 18, 2026', sub: '2 findings · $9,357.30 · Waiting 4 days', right: chip('info', 'Waiting on Biller') + OWN_I,
+        body: tl([['done', 'Handed over Sep 17 by Tori Matthews'], ['done', 'Sent to QuickBox Sep 18 by Implentio'], ['now', 'Waiting on QuickBox’s answer']]) +
+          WAIT_ROWS(`<span class="small muted" style="font-weight:400">QuickBox’s answers will be recorded by ${K.unresolved('Implentio, or you confirm · Q-O4')}</span>`),
+        foot: SENT_DETAILS }),
+      row: trow(`${chip('info', 'Active dispute')}<span class="small">Sent Sep 18 by Implentio · 4 days ago</span>`, '$9,357.30 waiting on QuickBox'),
+      line: fline(chip('info', 'Waiting on Biller'), 'Sent to QuickBox by Implentio on Sep 18, 2026'),
+      note: `<span class="note-label">Waiting · handled by Implentio · clock Sep 22</span><p><b>Who acts:</b> QuickBox. <b>Customer does:</b> nothing.</p><p>Same blue card as lane A, so “waiting” looks the same everywhere. The differences: “by Implentio” in the title, the badge, the timeline, and <b>What Implentio sent</b> instead of answer buttons ${K.proposed}.</p>`,
+    },
+    request: {
+      label: 'Implentio needs something',
+      card: () => card({ tone: 'waiting', icon: 'plane', title: 'Dispute sent to QuickBox by Implentio · Sep 18, 2026', sub: '2 findings · $9,357.30 · Waiting 4 days', right: chip('info', 'Waiting on Biller') + OWN_I,
+        body: `<div class="req">
+            <span class="semi row" style="gap:6px">${ico('alert', 18)}Implentio needs something from you</span>
+            <p class="small"><b>QuickBox asked for your signed rate sheet</b>: the page of your QuickBox contract that lists your rates. Only your team has it. <span class="muted">Asked Sep 22.</span></p>
+            <div class="row" style="gap:8px"><button type="button" class="btn sm primary">${ico('upload', 16)}Upload file</button><span class="small muted">or</span></div>
+            <div class="field"><label for="req-reply">Reply to Implentio</label><textarea id="req-reply" class="textarea" style="min-height:56px" placeholder="For example: we don’t have a signed copy. Here’s the email where QuickBox agreed the rates."></textarea></div>
+            <div><button type="button" class="btn sm">Send to Implentio</button></div>
+          </div>` +
+          tl([['done', 'Handed over Sep 17 by Tori Matthews'], ['done', 'Sent to QuickBox Sep 18 by Implentio'], ['now', 'QuickBox asked for your signed rate sheet · Sep 22']]),
+        foot: SENT_DETAILS }),
+      row: trow(`${chip('attention', 'Implentio needs something')}<span class="small">QuickBox asked for your signed rate sheet · Sep 22</span><span class="small medium">Your move</span>`, '$9,357.30 waiting on QuickBox'),
+      line: fline(chip('info', 'Waiting on Biller'), 'Sent to QuickBox by Implentio on Sep 18, 2026 · Implentio needs something from you'),
+      note: `<span class="note-label">Open request · clock Sep 22</span><p><b>Who acts:</b> the customer. The only lane B state where it’s the customer’s move ${K.proposed}.</p><p>The tracker row flags it (amber, “Your move”), and “Check details” lands on the request. The finding line mentions it too, so a teammate can’t miss it.</p><p>Email notifications are out of scope. Data: <code>openRequest</code>, then a <code>reply</code> event.</p>`,
+    },
+    answers: {
+      label: 'Answers come in',
+      card: (opt) => opt === 'b'
+        ? card({ tone: 'warn', icon: 'alert', title: 'Dispute sent to QuickBox by Implentio · Sep 18, 2026', sub: '2 findings · $9,357.30 · QuickBox answered Sep 29 · 1 answer to confirm, 1 waiting', right: chip('attention', 'Answer to confirm') + OWN_I,
+          body: `<div class="orows"><div class="orows-head">Confirm QuickBox’s answers</div>${orow(F1, '$9,322.20', '<span class="small">QuickBox answered <b>Fully collected</b> · reported by Implentio, Sep 29</span><button type="button" class="btn sm primary">Confirm</button><button type="button" class="btn sm">Something’s different</button>')}${orow(F2, '$35.10', '<span class="small muted">Waiting</span>')}</div>`,
+          foot: SENT_DETAILS })
+        : card({ tone: 'waiting', icon: 'plane', title: 'Dispute sent to QuickBox by Implentio · Sep 18, 2026', sub: '2 findings · $9,357.30 · Waiting 11 days', right: chip('info', 'Some outcomes recorded') + OWN_I,
+          body: `<div class="orows">${orow(F1, '$9,322.20', `${chip('success', 'Fully collected')}<span class="small muted">Recorded by Implentio, Sep 29</span><button type="button" class="lnk sm">Not right?</button>`)}${orow(F2, '$35.10', '<span class="small muted">Waiting</span>')}</div>`,
+          foot: SENT_DETAILS }),
+      row: (opt) => opt === 'b'
+        ? trow(`${chip('attention', 'Answer to confirm')}<span class="small">QuickBox answered Sep 29 · reported by Implentio</span><span class="small medium">Your move</span>`, '$9,322.20 answered, to confirm · $35.10 waiting')
+        : trow(`${chip('info', 'Active dispute')}<span class="small">Last answer Sep 29 · recorded by Implentio</span>`, '$9,322.20 recovered · $35.10 waiting'),
+      line: (opt) => opt === 'b'
+        ? fline(chip('attention', 'Answer to confirm'), 'QuickBox answered Sep 29 · reported by Implentio · Confirm it on the dispute')
+        : fline(chip('success', 'Fully collected'), 'Sent to QuickBox by Implentio on Sep 18, 2026 · Collected September 29, 2026 · Recorded by Implentio'),
+      note: (opt) => `<span class="note-label">Answers · clock Sep 29</span>
+        <div class="seg" role="group" aria-label="Who records answers"><button type="button" data-ans="a" aria-pressed="${opt !== 'b'}">(a) Implentio records</button><button type="button" data-ans="b" aria-pressed="${opt === 'b'}">(b) You confirm</button></div>
+        <p>${opt === 'b' ? 'Implentio passes on the answer. It counts only after the customer confirms, which keeps n344, n350 and D8. QuickBox has answered, so the card no longer says “Waiting on Biller · Waiting N days”. It says <b>Answer to confirm</b>, and it’s the customer’s move. The money stays out of Recovered until then, shown as “answered, to confirm” (Q-03h). Delegating accounts may never confirm: see the risk in 3.1.' : 'Implentio records the answer with its source. The customer can correct it (“Not right?”, with history, n345). This conflicts with n344, n350, n347 and D8.'}</p>
+        <p>${K.unresolved('Unresolved · Q-O4 / C11')} Every answer shows its source either way.</p>`,
+    },
+    declined: {
+      label: 'Implentio couldn’t take it',
+      card: () => card({ tone: 'warn', icon: 'back', title: 'Implentio couldn’t take this dispute · Sep 18, 2026', sub: '2 findings · $9,357.30 are back with you', right: chip('', 'Ready to dispute') + OWN_YOU,
+        body: `<div class="stack s4"><span class="small muted">Implentio’s reason</span><p class="quote small">“QuickBox only accepts disputes from the account holder.” <span class="tiny muted">(mock reason)</span></p></div>
+          <p class="small">Dispute by September 20, 2026 · 2 days left.</p>`,
+        foot: '<div class="row" style="gap:8px"><button type="button" class="btn sm primary">Dispute with QuickBox</button><span class="tiny muted">Opens the dialog on “I’ll send it myself”</span></div>' }),
+      row: trow(`${chip('', 'Not disputed yet')}<span class="small">Implentio couldn’t take it · Sep 18</span><span class="small">Dispute by Sep 20 · 2 days left</span>`, 'Nothing sent or recovered yet'),
+      line: fline(chip('', 'Ready to dispute'), 'Implentio couldn’t take this · Dispute by September 20, 2026 · 2 days left'),
+      note: `<span class="note-label">Returned · clock Sep 18</span><p>${K.unresolved('Unresolved · Q-03d')} Can this happen at all? If yes, the findings return to <i>Ready to dispute</i>, the reason is shown, and the one next step is the normal dialog.</p><p>The card stays in the memo’s history (<code>state: 'returned'</code>), like a discarded prepared email.</p>`,
+    },
+    closed: {
+      label: 'Closed',
+      card: () => card({ tone: 'closed', icon: 'done', title: 'Dispute sent to QuickBox by Implentio · Sep 18, 2026', sub: '2 findings · $9,357.30 · Collected $9,322.20 · Not recovered $35.10', right: chip('success', 'Done') + OWN_I,
+        body: `<div class="orows">${orow(F1, '$9,322.20', `${chip('success', 'Fully collected')}<span class="small muted">Recorded by Implentio, Sep 29</span>`)}${orow(F2, '$35.10', `${chip('danger', 'Denied')}<span class="small muted">Recorded by Implentio, Oct 2</span>`)}</div>
+          <p class="small"><span class="muted">QuickBox’s reason for the fuel charge, recorded by Implentio:</span> “Fuel surcharge follows our weekly published index.” <span class="tiny muted">(mock)</span></p>`,
+        foot: details('History', tl([['done', 'Handed over Sep 17 by Tori Matthews'], ['done', 'Sent to QuickBox Sep 18 by Implentio'], ['done', 'QuickBox asked for the signed rate sheet Sep 22 · Tori uploaded it Sep 23'], ['done', 'Shipping price: Fully collected · recorded by Implentio Sep 29'], ['done', 'Fuel charge: Denied · recorded by Implentio Oct 2']])) }),
+      row: trow(`${chip('success', 'Closed')}<span class="small">Last answer Oct 2 · recorded by Implentio</span>`, '$9,322.20 recovered · $35.10 not recovered'),
+      line: fline(chip('success', 'Fully collected'), 'Sent to QuickBox by Implentio on Sep 18, 2026 · Collected September 29, 2026 · Recorded by Implentio'),
+      note: `<span class="note-label">Closed · clock Oct 2</span><p>Money adds up: $9,322.20 recovered + $35.10 not recovered = $9,357.30.</p><p>Shown with option (a). The source label follows the answer into Credit outcomes (05), and the “Handled by” filter can split results by owner ${K.proposed}.</p><p>The Denied reason is QuickBox’s words passed on. It’s never Implentio’s own conclusion (n350).</p>`,
+    },
+  }
+  const st = { key: 'with', ans: 'a' }
+  const seg = $('#st-seg')
+  seg.innerHTML = Object.entries(STATES).map(([k, s]) => `<button type="button" data-st="${k}">${s.label}</button>`).join('')
+  const val = (v) => (typeof v === 'function' ? v(st.ans) : v)
+  function renderState() {
+    const s = STATES[st.key]
+    $$('button', seg).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.st === st.key)))
+    $('#st-card').innerHTML = val(s.card)
+    $('#st-row').innerHTML = val(s.row)
+    $('#st-line').innerHTML = val(s.line)
+    $('#st-note').innerHTML = val(s.note)
+    $$('[data-ans]', $('#st-note')).forEach((b) => b.addEventListener('click', () => { st.ans = b.dataset.ans; renderState() }))
+  }
+  seg.addEventListener('click', (e) => { const b = e.target.closest('[data-st]'); if (b) { st.key = b.dataset.st; renderState() } })
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-goto-state]')
+    if (a) { st.key = a.dataset.gotoState; renderState() }
+  })
+
+  fillIcons(document)
+  renderDialog()
+  renderState()
+})()
+</script>
+</body>
+</html>

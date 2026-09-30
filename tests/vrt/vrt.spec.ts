@@ -98,7 +98,7 @@ test('vrt package view', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/memos/CM-2026-0630')
   await settle(page)
-  await page.locator('#finding-eg-base').getByRole('button', { name: 'Show me why' }).click()
+  await page.locator('#finding-eg-base').getByRole('button', { name: 'Show why' }).click()
   await page.locator('#finding-eg-base').getByRole('button', { name: /^See all/ }).click()
   await expect(page.getByRole('dialog', { name: /^All 510 packages/ })).toBeVisible()
   await expect(page).toHaveScreenshot('package-view-desktop.png', { maxDiffPixelRatio: 0.001 })
@@ -111,6 +111,15 @@ test('vrt invite modal', async ({ page }) => {
   await page.getByRole('button', { name: 'Invite member' }).click()
   await expect(page.getByRole('dialog', { name: 'Invite team member' })).toBeVisible()
   await expect(page).toHaveScreenshot('invite-modal-desktop.png', { maxDiffPixelRatio: 0.001 })
+})
+
+// The past-deadline warning and "Won't pursue the rest" at the smallest width.
+test('vrt memo-dispute-deadline @phone375', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 900 })
+  await page.goto('/memos/CM-2026-0630?scenario=dispute-deadline')
+  await settle(page)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
+  await expect(page).toHaveScreenshot('memo-dispute-deadline-phone375.png', SHOT)
 })
 
 test('vrt collapsed rail', async ({ page }) => {

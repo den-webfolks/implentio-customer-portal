@@ -4,7 +4,13 @@
 import { useState } from 'react'
 import { EnvelopeOpenIcon } from '@heroicons/react/24/outline'
 import type { DisputeRecord } from '@/domain/types'
-import { fmtDateShort, fmtDateLong, countdownText, daysUntilDeadline, isoDate } from '@/domain/dates'
+import {
+  fmtDateShort,
+  fmtDateLong,
+  countdownText,
+  daysUntilDeadline,
+  isoDate,
+} from '@/domain/dates'
 import { TextField } from '@/ui/Form/TextField'
 import { fmtMoney } from '@/domain/money'
 import { plural } from '@/domain/plural'
@@ -47,7 +53,8 @@ export function PreparedCard({
   const firstName = preparer.split(' ')[0] ?? preparer
   const daysLeft = deadline ? daysUntilDeadline(deadline, now) : null
   const late = daysLeft != null && daysLeft < 0
-  const what = record.scope === 'memo' ? 'the complete credit memo' : plural(record.groupIds.length, 'finding')
+  const what =
+    record.scope === 'memo' ? 'the complete credit memo' : plural(record.groupIds.length, 'finding')
 
   return (
     <section
@@ -65,19 +72,34 @@ export function PreparedCard({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-        <span style={{ width: 40, height: 40, borderRadius: 'var(--ds-radius-full)', background: 'var(--ds-bg-default)', color: 'var(--ds-status-attention-fg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+        <span
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 'var(--ds-radius-full)',
+            background: 'var(--ds-bg-default)',
+            color: 'var(--ds-status-attention-fg)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flex: 'none',
+          }}
+        >
           <EnvelopeOpenIcon width={20} height={20} aria-hidden="true" />
         </span>
         <div style={{ minWidth: 0, flex: 1 }}>
           <h3 id="prepared-title" tabIndex={-1} className="ds-heading-small" style={{ margin: 0 }}>
-            Email to {record.biller} prepared {preparedOn} by {mine ? 'you' : preparer} — not confirmed as sent
+            Email to {record.biller} prepared {preparedOn} by {mine ? 'you' : preparer} — not
+            confirmed as sent
           </h3>
           <p className="ds-body-base" style={{ margin: '4px 0 0' }}>
             {what} · {fmtMoney(record.amountN)}
             {deadline && daysLeft != null && (
               <>
                 {' · '}
-                {late ? `Deadline was ${fmtDateLong(deadline)}` : `Dispute by ${fmtDateLong(deadline)} · ${countdownText(daysLeft)}`}
+                {late
+                  ? `Deadline was ${fmtDateLong(deadline)}`
+                  : `Dispute by ${fmtDateLong(deadline)} · ${countdownText(daysLeft)}`}
               </>
             )}
           </p>
@@ -88,19 +110,29 @@ export function PreparedCard({
           )}
           {late && (
             <p className="ds-body-small ds-w-medium" style={{ margin: '4px 0 0' }}>
-              Not confirmed. If it went on or before the deadline, say so; if it wasn’t sent, {record.biller} may refuse it now.
+              Not confirmed. If it went on or before the deadline, say so; if it wasn’t sent,{' '}
+              {record.biller} may refuse it now.
             </p>
           )}
           {record.memoVersion !== memoVersion && (
             <p className="ds-body-small ds-w-medium" style={{ margin: '4px 0 0' }}>
-              This memo was updated after the email was prepared ({record.memoVersion} → {memoVersion}). Confirming records the version that was sent.
+              This memo was updated after the email was prepared ({record.memoVersion} →{' '}
+              {memoVersion}). Confirming records the version that was sent.
             </p>
           )}
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px 16px', flexWrap: 'wrap' }}>
         <div style={{ width: 170 }}>
-          <TextField label="Sent on" type="date" size="small" min={preparedDay} max={isoDate(now)} value={sentOn} onChange={(e) => setSentOn(e.target.value)} />
+          <TextField
+            label="Sent on"
+            type="date"
+            size="small"
+            min={preparedDay}
+            max={isoDate(now)}
+            value={sentOn}
+            onChange={(e) => setSentOn(e.target.value)}
+          />
         </div>
         <Button variant="primary" size="small" onClick={() => onConfirm(sentOn)}>
           {mine ? 'Yes, I sent it' : 'Yes, it was sent'}
@@ -112,7 +144,10 @@ export function PreparedCard({
           {mine ? 'I didn’t send it' : 'It wasn’t sent'}
         </Link>
         {!mailboxConnected && (
-          <span className="ds-body-small ds-muted" style={{ marginInlineStart: 'auto', marginBottom: 6 }}>
+          <span
+            className="ds-body-small ds-muted"
+            style={{ marginInlineStart: 'auto', marginBottom: 6 }}
+          >
             Connected mailboxes record sends automatically.{' '}
             <Link variant="accent" size="small" bold to="/account">
               Connect Gmail or Outlook
@@ -142,8 +177,10 @@ export function PreparedCard({
         }
       >
         <p className="ds-body-base" style={{ margin: 0 }}>
-          {what} ({fmtMoney(record.amountN)}) {record.groupIds.length === 1 || record.scope === 'memo' ? 'becomes' : 'become'} selectable again{late ? ', or Expired where the deadline has passed' : ''}. The prepared email stays in
-          this memo’s activity as discarded.
+          {what} ({fmtMoney(record.amountN)}){' '}
+          {record.groupIds.length === 1 || record.scope === 'memo' ? 'becomes' : 'become'}{' '}
+          selectable again{late ? ', marked past the dispute deadline' : ''}. The prepared email
+          stays in this memo’s activity as discarded.
         </p>
       </Modal>
     </section>

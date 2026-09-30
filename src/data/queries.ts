@@ -153,7 +153,7 @@ export function useSetGroupNotPursued() {
   const ds = useDataSource()
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: { groupId: string; notPursued: boolean }) => ds.setGroupNotPursued(input),
+    mutationFn: (input: { groupIds: string[]; notPursued: boolean }) => ds.setGroupNotPursued(input),
     onSuccess: () => invalidateDisputeData(qc),
   })
 }

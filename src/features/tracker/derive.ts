@@ -43,7 +43,7 @@ export type RowTarget = 'findings' | 'prepared' | 'outcomes' | 'dispute' | null
 /** What has been done with the memo and what's next: a status chip and one or two lines. */
 export interface RowStatus {
   tone: 'neutral' | 'info' | 'attention' | 'success' | 'muted'
-  icon: 'prepared' | 'draft' | 'active' | 'open' | 'closed' | 'expired'
+  icon: 'prepared' | 'draft' | 'active' | 'open' | 'closed' | 'skipped'
   label: string
   detail: string[]
 }
@@ -70,8 +70,13 @@ export interface MemoRowView {
   factsText: string | null
   status: RowStatus | null
   target: RowTarget
-  /** Earliest deadline among findings still open (ISO date). */
+  /** Earliest deadline not yet passed among findings still open (ISO date). */
   deadline: string | null
+  /** Left-to-dispute money past its deadline (still disputable). */
+  pastDeadlineN: number
+  /** Money is left to dispute, and all of it is past its deadline: sorts
+   *  after memos with live deadlines and waiting memos (status model, option D). */
+  pastOnly: boolean
   waitDays: number | null
   /** When the longest-waiting finding was sent. */
   waitSince: Date | null
@@ -97,7 +102,7 @@ const short = (iso: string) => fmtDateShort(new Date(iso + 'T00:00:00'))
 function longestWait(rows: readonly OutcomeRow[], now: Date): { days: number; sent: Date } | null {
   let best: { days: number; sent: Date } | null = null
   for (const row of rows) {
-    if (findingPhase(row, now) !== 'waiting') continue
+    if (findingPhase(row) !== 'waiting') continue
     const sent = sentDate(row)
     if (!sent) continue
     const days = daysSince(sent, now)
@@ -139,6 +144,8 @@ export function memoRowView(
     status: null,
     target: null,
     deadline: null,
+    pastDeadlineN: 0,
+    pastOnly: false,
     waitDays: null,
     waitSince: null,
     detailAvailable: m.detailAvailable,
@@ -154,7 +161,7 @@ export function memoRowView(
   const st = rs.report === 'generating' || !rows.length ? null : memoStatus(rows, { draft, now })
   if (!st) return { ...base, place: 'processing' }
 
-  const buckets = recoveryBuckets(rows, now)
+  const buckets = recoveryBuckets(rows)
   const totalN = r2(RECOVERY_BUCKETS.reduce((s, b) => s + buckets[b.key], 0))
   // "New" means nothing has been done with the memo yet.
   const acted = !rs.isNew || st.hasDraft || rows.some((r) => r.pursuit === 'pursued' || r.pursuit === 'excluded' || r.prepared)
@@ -165,20 +172,30 @@ export function memoRowView(
   const sentAny = rows.some((r) => r.pursuit === 'pursued')
 
   const open = buckets.open
-  const sub = some(totalN - open)
+  // Past-deadline money stays Left to dispute, said once under the number.
+  const pastN = st.pastDeadline.amountN
+  const pastOnly = some(open) && !some(open - pastN)
+  const baseSub = some(totalN - open)
     ? `of ${fmtMoney(totalN)} overcharged`
     : wholeMemo
       ? 'The complete credit memo'
       : [plural(rows.length, 'finding'), m.orders != null ? plural(m.orders, 'package') : null].filter(Boolean).join(' · ')
+  const sub = some(pastN) ? `${baseSub} · ${pastOnly ? 'all' : fmtMoney(pastN)} past the deadline` : baseSub
 
   // The rest of the memo, once each, in bar order.
   const facts = RECOVERY_BUCKETS.filter((b) => b.key !== 'open' && some(buckets[b.key])).map((b) => ({ key: b.key, valueN: buckets[b.key] }))
   const factsText = facts.length ? null : 'Nothing sent or recovered yet'
 
   // What has been done, and what's next — the row's status.
-  const deadlineLine = some(open) && st.nextDeadline && st.daysLeft != null ? `Dispute by ${short(st.nextDeadline)} · ${countdownText(st.daysLeft).toLowerCase()}` : null
+  // The next live deadline; else, when everything open is past it, say so.
+  const deadlineLine =
+    some(open) && st.nextDeadline && st.daysLeft != null
+      ? `Dispute by ${short(st.nextDeadline)} · ${countdownText(st.daysLeft).toLowerCase()}`
+      : pastOnly && st.pastDeadline.deadline
+        ? `Past the dispute deadline (${short(st.pastDeadline.deadline)})`
+        : null
   const preparedAt = rows.find((r) => r.prepared)?.preparedAt
-  const activeDisputes = new Set(rows.filter((r) => findingPhase(r, now) === 'waiting').map((r) => r.pursuedTs ?? r.pursuedAt ?? r.id)).size
+  const activeDisputes = new Set(rows.filter((r) => findingPhase(r) === 'waiting').map((r) => r.pursuedTs ?? r.pursuedAt ?? r.id)).size
   const lastAnswer = rows.map((r) => r.collection?.date).filter((d): d is string => !!d).sort().pop()
   const status: RowStatus = prepared
     ? {
@@ -203,29 +220,30 @@ export function memoRowView(
             label: activeDisputes > 1 ? `${activeDisputes} active disputes` : 'Active dispute',
             detail: [
               wait ? `Sent ${fmtDateShort(wait.sent)} · ${wait.days <= 0 ? 'today' : `${plural(wait.days, 'day')} ago`}` : null,
-              deadlineLine ? `Still to ${deadlineLine.charAt(0).toLowerCase()}${deadlineLine.slice(1)}` : null,
+              deadlineLine ? (pastOnly ? `Still to dispute: ${deadlineLine.charAt(0).toLowerCase()}${deadlineLine.slice(1)}` : `Still to ${deadlineLine.charAt(0).toLowerCase()}${deadlineLine.slice(1)}`) : null,
             ].filter((x): x is string => !!x),
           }
         : some(open)
           ? { tone: 'neutral', icon: 'open', label: 'Not disputed yet', detail: [deadlineLine ?? 'No deadline set'] }
           : lastAnswer
             ? { tone: 'success', icon: 'closed', label: 'Closed', detail: [`Last answer ${short(lastAnswer)}`] }
-            : {
-                tone: 'muted',
-                icon: 'expired',
-                label: 'Closed, not disputed',
-                // Say why: skipped by the team, the deadline passed, or both.
-                detail: [
-                  rows.some((r) => r.pursuit === 'excluded') && rows.some((r) => r.pursuit !== 'excluded')
-                    ? 'Some skipped by your team; the deadline passed for the rest'
-                    : rows.every((r) => r.pursuit === 'excluded')
-                      ? 'Your team chose not to dispute'
-                      : 'The deadline passed',
-                ],
-              }
+            : // Only a decision closes an undisputed memo; the calendar never does.
+              { tone: 'muted', icon: 'skipped', label: 'Closed, not disputed', detail: ['Your team chose not to dispute'] }
 
-  // "Check details" opens the memo page on the part that matters — never a dialog.
-  const target: RowTarget = prepared ? 'prepared' : some(open) ? (wholeMemo ? null : 'findings') : some(buckets.awaiting) ? 'outcomes' : sentAny ? 'dispute' : null
+  // "Check details" opens the memo page on the part that matters — never a
+  // dialog. Answers to record come before findings that are past their deadline.
+  const findingsTarget: RowTarget = wholeMemo ? null : 'findings'
+  const target: RowTarget = prepared
+    ? 'prepared'
+    : some(open - pastN)
+      ? findingsTarget
+      : some(buckets.awaiting)
+        ? 'outcomes'
+        : some(open)
+          ? findingsTarget
+          : sentAny
+            ? 'dispute'
+            : null
 
   return {
     ...base,
@@ -240,6 +258,8 @@ export function memoRowView(
     status,
     target,
     deadline: some(open) ? st.nextDeadline : null,
+    pastDeadlineN: pastN,
+    pastOnly,
     waitDays: wait?.days ?? null,
     waitSince: wait?.sent ?? null,
   }
@@ -255,12 +275,15 @@ const cmpKeys = (a: number[], b: number[]) => {
 
 const deadlineKey = (r: MemoRowView) => (r.deadline ? new Date(r.deadline + 'T00:00:00').getTime() : INF)
 
-/** "value": most left to dispute first, then most waiting. "deadline": soonest
- *  deadline first, then the longest wait. */
+/** "value": most left to dispute (on time) first, then most waiting.
+ *  "deadline": soonest deadline first, then the longest wait. Either way,
+ *  memos with nothing to do but past-deadline findings come last (option D). */
 function sortKey(r: MemoRowView, sort: TrackerSort): number[] {
   const b = r.buckets
-  if (sort === 'value') return [-(b?.open ?? 0), -(b?.awaiting ?? 0), r.index]
-  return [deadlineKey(r), -(r.waitDays ?? 0), -(b?.open ?? 0), r.index]
+  const stale = r.pastOnly && !some(b?.awaiting ?? 0) ? 1 : 0
+  const liveOpen = (b?.open ?? 0) - r.pastDeadlineN
+  if (sort === 'value') return [stale, some(liveOpen) ? 0 : 1, -liveOpen, -(b?.awaiting ?? 0), -(b?.open ?? 0), r.index]
+  return [stale, deadlineKey(r), -(r.waitDays ?? 0), -liveOpen, -(b?.open ?? 0), r.index]
 }
 
 /** The list (sorted) and the finished memos (biggest recovered first). */
@@ -279,7 +302,7 @@ export interface TrackerSummary {
   buckets: RecoveryBuckets
   /** Memos with overcharges (all-clear and in-audit memos don't count). */
   memoCount: number
-  toDispute: { memos: number; nextDeadline: string | null; daysLeft: number | null }
+  toDispute: { memos: number; nextDeadline: string | null; daysLeft: number | null; pastDeadline: { amountN: number; memos: number } }
   waiting: { memos: number; oldestSent: string | null }
   /** Recovered ÷ (recovered + not recovered); null before any answer. */
   recoveryRate: number | null
@@ -299,7 +322,12 @@ export function trackerSummary(rows: readonly MemoRowView[], now: Date): Tracker
     totalN: r2(RECOVERY_BUCKETS.reduce((s, b) => s + buckets[b.key], 0)),
     buckets,
     memoCount: withMoney.length,
-    toDispute: { memos: open.length, nextDeadline, daysLeft: nextDeadline ? daysUntilDeadline(nextDeadline, now) : null },
+    toDispute: {
+      memos: open.length,
+      nextDeadline,
+      daysLeft: nextDeadline ? daysUntilDeadline(nextDeadline, now) : null,
+      pastDeadline: { amountN: r2(open.reduce((s, r) => s + r.pastDeadlineN, 0)), memos: open.filter((r) => some(r.pastDeadlineN)).length },
+    },
     waiting: {
       memos: waiting.length,
       oldestSent: oldest ? fmtDateShort(oldest) : null,
@@ -317,12 +345,12 @@ export type DispositionKey = RecoveryBucketKey
 
 export type DispositionAmounts = Record<DispositionKey, number>
 
-export function dispositionAmounts(rows: readonly OutcomeRow[], now: Date): DispositionAmounts {
-  return recoveryBuckets(rows, now)
+export function dispositionAmounts(rows: readonly OutcomeRow[]): DispositionAmounts {
+  return recoveryBuckets(rows)
 }
 
-export function dispositionMatch(g: OutcomeRow, key: DispositionKey, now: Date): boolean {
-  return bucketMatch(g, key, now)
+export function dispositionMatch(g: OutcomeRow, key: DispositionKey): boolean {
+  return bucketMatch(g, key)
 }
 
 export interface DonutSlice {
@@ -347,8 +375,8 @@ const DONUT_DEFS: { key: DispositionKey; label: string; color: string }[] = RECO
   color: TONE_CHART_COLOR[BUCKET_TONE[b.key]],
 }))
 
-export function dispositionDonut(rows: readonly OutcomeRow[], now: Date): DonutData {
-  const amts = dispositionAmounts(rows, now)
+export function dispositionDonut(rows: readonly OutcomeRow[]): DonutData {
+  const amts = dispositionAmounts(rows)
   const total = r2(RECOVERY_BUCKETS.reduce((s, b) => s + amts[b.key], 0))
   const R = 68
   const CIRC = 2 * Math.PI * R
